@@ -384,8 +384,8 @@ function CompanySetup() {
     try {
       console.log('Creating company with data:', formData);
       
-      // Create company in database
-      const { data: company, error: companyError } = await supabase
+      // Create company in database without selecting it back
+      const { error: companyError } = await supabase
         .from('companies')
         .insert({
           name: formData.name,
@@ -417,25 +417,66 @@ function CompanySetup() {
             multiCurrency: formData.multiCurrency,
             inventoryTracking: formData.inventoryTracking
           },
-        })
-        .select()
-        .single();
+        });
  
       if (companyError) {
         console.error('Company creation error:', companyError);
         throw companyError;
       }
 
-      console.log('Company created successfully:', company);
+      console.log('Company created successfully');
 
-      // Create user-company relationship
-      const { error: userCompanyError } = await supabase
+      // Get the created company by name (since we can't get it from insert due to RLS)
+      const { data: company, error: fetchError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('name', formData.name)
+        .eq('country', formData.address.country)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError || !company) {
+        console.error('Error fetching created company:', fetchError);
+        throw new Error('Failed to retrieve created company');
+      }
+
+      // Check if user-company relationship already exists
+      const { data: existingRelation, error: checkError } = await supabase
         .from('users_companies')
-        .insert({
-          user_id: user?.id,
-          company_id: company.id,
-          is_active: true
-        });
+        .select('id, is_active')
+        .eq('user_id', user?.id)
+        .eq('company_id', company.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 means no rows found, which is expected for new companies
+        console.error('Error checking user-company relationship:', checkError);
+        throw checkError;
+      }
+
+      let userCompanyError = null;
+      
+      if (!existingRelation) {
+        // Create new user-company relationship
+        const { error } = await supabase
+          .from('users_companies')
+          .insert({
+            user_id: user?.id,
+            company_id: company.id,
+            is_active: true
+          });
+        userCompanyError = error;
+      } else if (!existingRelation.is_active) {
+        // Reactivate existing relationship
+        const { error } = await supabase
+          .from('users_companies')
+          .update({ is_active: true })
+          .eq('user_id', user?.id)
+          .eq('company_id', company.id);
+        userCompanyError = error;
+      }
+      // If relationship exists and is active, do nothing
 
       if (userCompanyError) {
         console.error('User-company relationship error:', userCompanyError);

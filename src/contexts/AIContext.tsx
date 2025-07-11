@@ -18,7 +18,7 @@ interface AIContextType {
 const AIContext = createContext<AIContextType | undefined>(undefined);
 
 const GEMINI_API_KEY = 'AIzaSyDYY-jiLmJ68-6HL0HiDgxRLexdrpdvPhg';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export function AIProvider({ children }: { children: React.ReactNode }) {
   const [isAIEnabled, setIsAIEnabled] = useState(true);
@@ -30,6 +30,11 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
 
   const callGeminiAPI = async (prompt: string) => {
     try {
+      // Check if API key is valid
+      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-api-key-here') {
+        throw new Error('Gemini API key not configured');
+      }
+
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
@@ -52,7 +57,8 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
       return data.candidates[0].content.parts[0].text;
     } catch (error) {
       console.error('Gemini API Error:', error);
-      throw error;
+      // Return a fallback response instead of throwing to prevent app crashes
+      return null;
     }
   };
 
@@ -62,6 +68,14 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
     try {
       const prompt = `As an ERP AI assistant, analyze this data and provide suggestions for improvement or auto-completion. Focus on accuracy and compliance. Data: ${JSON.stringify(data)}. Return only JSON format with suggestions, confidence level, and any warnings.`;
       const response = await callGeminiAPI(prompt);
+      
+      if (!response) {
+        return { 
+          suggestion: 'AI service temporarily unavailable', 
+          confidence: 'low',
+          warnings: ['AI suggestions not available']
+        };
+      }
       
       try {
         return JSON.parse(response);
@@ -331,6 +345,15 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
       - confidence (high/medium/low)`;
       
       const response = await callGeminiAPI(prompt);
+      
+      if (!response) {
+        return {
+          predictions: [],
+          trends: [],
+          recommendations: ['AI analysis temporarily unavailable'],
+          confidence: 'low'
+        };
+      }
       
       try {
         return JSON.parse(response);
