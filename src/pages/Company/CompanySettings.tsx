@@ -18,7 +18,6 @@ import { supabase } from '../../lib/supabase';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
-import PeriodManager from '../../components/Company/PeriodManager';
 
 function CompanySettings() {
   const { currentCompany, refreshCompanies } = useCompany();
@@ -141,7 +140,7 @@ function CompanySettings() {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Building },
-    { id: 'periods', label: 'Periods', icon: Calendar },
+    // { id: 'periods', label: 'Periods', icon: Calendar }, // Period management moved to CompanyManagement.tsx
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'users', label: 'Users', icon: Users }
   ];
@@ -347,10 +346,6 @@ function CompanySettings() {
             </Button>
           </div>
         </div>
-      )}
-
-      {activeTab === 'periods' && (
-        <PeriodManager />
       )}
 
       {activeTab === 'security' && (

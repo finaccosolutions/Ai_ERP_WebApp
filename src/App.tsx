@@ -21,6 +21,7 @@ import { useAuth } from './hooks/useAuth';
 import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
 import { useCompany } from './contexts/CompanyContext';
+import CompanyManagement from './pages/Company/CompanyManagement';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -43,6 +44,7 @@ function AppContent() {
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/company/manage" element={<CompanyManagement />} />
         <Route path="/company/setup" element={<CompanySetup />} />
         <Route path="/company/settings" element={<CompanySettings />} />
         <Route path="/sales/*" element={<Sales />} />
