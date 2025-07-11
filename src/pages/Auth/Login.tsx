@@ -1,15 +1,31 @@
 import React, { useState } from 'react';
-import { Building, Mail, Lock, Bot, User, Eye, EyeOff } from 'lucide-react';
+import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
 import Card from '../../components/UI/Card';
 
+const countries = [
+  { code: 'US', name: 'United States', flag: '🇺🇸', dialCode: '+1' },
+  { code: 'IN', name: 'India', flag: '🇮🇳', dialCode: '+91' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dialCode: '+44' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦', dialCode: '+1' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺', dialCode: '+61' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪', dialCode: '+49' },
+  { code: 'FR', name: 'France', flag: '🇫🇷', dialCode: '+33' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵', dialCode: '+81' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬', dialCode: '+65' },
+  { code: 'AE', name: 'UAE', flag: '🇦🇪', dialCode: '+971' },
+];
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,6 +45,10 @@ function Login() {
     if (isSignUp) {
       if (!fullName) {
         setError('Please enter your full name');
+        return false;
+      }
+      if (!mobile) {
+        setError('Please enter your mobile number');
         return false;
       }
       if (password !== confirmPassword) {
@@ -67,11 +87,11 @@ function Login() {
         success = await signUp(email, password, fullName);
         if (success) {
           setError('');
-          // Optionally switch to login mode after successful signup
           setIsSignUp(false);
           setPassword('');
           setConfirmPassword('');
           setFullName('');
+          setMobile('');
         } else {
           setError('Sign up failed. Please try again.');
         }
@@ -103,42 +123,110 @@ function Login() {
     setPassword('');
     setConfirmPassword('');
     setFullName('');
+    setMobile('');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header Section */}
-        <div className="text-center">
+    <div className={`min-h-screen ${theme.isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'} flex`}>
+      {/* Left Side - Information */}
+      <div className={`hidden lg:flex lg:w-1/2 ${theme.isDark ? 'bg-gray-800' : 'bg-white'} flex-col justify-center px-12`}>
+        <div className="max-w-md">
           <div className={`
-            mx-auto h-20 w-20 bg-gradient-to-r ${theme.primaryGradient} 
-            ${theme.borderRadius} flex items-center justify-center shadow-xl
-            transform hover:scale-105 transition-all duration-300
+            h-16 w-16 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
+            ${theme.borderRadius} flex items-center justify-center shadow-xl mb-8
           `}>
-            <Building size={40} className="text-white" />
+            <Building size={32} className="text-white" />
           </div>
-          <h2 className="mt-6 text-4xl font-bold text-gray-900">
-            {isSignUp ? 'Create Your Account' : 'Welcome Back'}
-          </h2>
-          <p className="mt-3 text-lg text-gray-600">
-            {isSignUp 
-              ? 'Join thousands of businesses using our AI-powered ERP' 
-              : 'Sign in to your AI-powered business management system'
-            }
+          
+          <h1 className={`text-4xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-6`}>
+            Welcome to ERP Pro
+          </h1>
+          
+          <p className={`text-lg ${theme.isDark ? 'text-gray-300' : 'text-gray-600'} mb-8`}>
+            The most advanced AI-powered business management system designed for global enterprises.
           </p>
-          <div className="mt-4 flex items-center justify-center space-x-2">
-            <Bot size={20} className="text-blue-600" />
-            <span className="text-sm font-medium text-blue-600">AI-Powered Technology</span>
+          
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4">
+              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+                <Bot size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
+                  AI-Powered Intelligence
+                </h3>
+                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Smart automation and predictive analytics for better business decisions
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-4">
+              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+                <Globe size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
+                  Global Multi-Country Support
+                </h3>
+                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Manage businesses across multiple countries with localized compliance
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-4">
+              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+                <Building size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
+                  Complete Business Suite
+                </h3>
+                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Sales, Purchase, Inventory, Accounting, HR, CRM, and Manufacturing
+                </p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Form Card */}
-        <Card className="p-8 shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-5">
-              {/* Full Name Field - Only for Sign Up */}
-              {isSignUp && (
-                <div className="space-y-2">
+      {/* Right Side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="max-w-md w-full space-y-8">
+          {/* Mobile Header */}
+          <div className="lg:hidden text-center">
+            <div className={`
+              mx-auto h-16 w-16 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
+              ${theme.borderRadius} flex items-center justify-center shadow-xl mb-4
+            `}>
+              <Building size={32} className="text-white" />
+            </div>
+            <h2 className={`text-3xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+              ERP Pro
+            </h2>
+          </div>
+
+          {/* Form Header */}
+          <div className="text-center">
+            <h2 className={`text-3xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+              {isSignUp ? 'Create Your Account' : 'Welcome Back'}
+            </h2>
+            <p className={`mt-2 text-lg ${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              {isSignUp 
+                ? 'Join thousands of businesses worldwide' 
+                : 'Sign in to your business management system'
+              }
+            </p>
+          </div>
+
+          {/* Main Form Card */}
+          <Card className={`p-8 ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white/90'} backdrop-blur-sm`}>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-5">
+                {/* Full Name Field - Only for Sign Up */}
+                {isSignUp && (
                   <FormField
                     label="Full Name"
                     type="text"
@@ -148,11 +236,9 @@ function Login() {
                     required
                     icon={<User size={18} className="text-gray-400" />}
                   />
-                </div>
-              )}
-              
-              {/* Email Field */}
-              <div className="space-y-2">
+                )}
+                
+                {/* Email Field */}
                 <FormField
                   label="Email Address"
                   type="email"
@@ -162,143 +248,177 @@ function Login() {
                   required
                   icon={<Mail size={18} className="text-gray-400" />}
                 />
-              </div>
-              
-              {/* Password Field */}
-              <div className="space-y-2">
-                <div className="relative">
-                  <FormField
-                    label="Password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={setPassword}
-                    placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
-                    required
-                    icon={<Lock size={18} className="text-gray-400" />}
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {isSignUp && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be at least 6 characters long
-                  </p>
-                )}
-              </div>
 
-              {/* Confirm Password Field - Only for Sign Up */}
-              {isSignUp && (
+                {/* Mobile Number Field - Only for Sign Up */}
+                {isSignUp && (
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Mobile Number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex">
+                      {/* Country Selector */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                          className={`
+                            flex items-center space-x-2 px-3 py-2 border border-gray-300 
+                            ${theme.borderRadius} border-r-0 rounded-r-none
+                            ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                          `}
+                        >
+                          <span className="text-lg">{selectedCountry.flag}</span>
+                          <span className="text-sm">{selectedCountry.dialCode}</span>
+                        </button>
+                        
+                        {showCountryDropdown && (
+                          <div className={`
+                            absolute top-full left-0 mt-1 w-64 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} 
+                            border ${theme.isDark ? 'border-gray-600' : 'border-gray-300'} 
+                            ${theme.borderRadius} ${theme.shadowLevel} z-50 max-h-60 overflow-y-auto
+                          `}>
+                            {countries.map((country) => (
+                              <button
+                                key={country.code}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCountry(country);
+                                  setShowCountryDropdown(false);
+                                }}
+                                className={`
+                                  w-full px-3 py-2 text-left hover:bg-gray-100 
+                                  ${theme.isDark ? 'hover:bg-gray-600 text-white' : 'hover:bg-gray-100'}
+                                  flex items-center space-x-3
+                                `}
+                              >
+                                <span className="text-lg">{country.flag}</span>
+                                <span className="text-sm">{country.dialCode}</span>
+                                <span className="text-sm">{country.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Mobile Input */}
+                      <div className="relative flex-1">
+                        <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="tel"
+                          value={mobile}
+                          onChange={(e) => setMobile(e.target.value)}
+                          placeholder="Enter mobile number"
+                          required
+                          className={`
+                            w-full pl-10 pr-3 py-2 border border-gray-300 
+                            ${theme.borderRadius} rounded-l-none border-l-0
+                            ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                          `}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Password Field */}
                 <div className="space-y-2">
                   <div className="relative">
                     <FormField
-                      label="Confirm Password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={setConfirmPassword}
-                      placeholder="Confirm your password"
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={setPassword}
+                      placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
                       required
                       icon={<Lock size={18} className="text-gray-400" />}
                     />
                     <button
                       type="button"
-                      onClick={toggleConfirmPasswordVisibility}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      onClick={togglePasswordVisibility}
+                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {isSignUp && (
+                    <p className={`text-xs ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Password must be at least 6 characters long
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <div className="flex items-center">
-                  <div className="text-red-600 text-sm font-medium">
-                    {error}
+                {/* Confirm Password Field - Only for Sign Up */}
+                {isSignUp && (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <FormField
+                        label="Confirm Password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={setConfirmPassword}
+                        placeholder="Confirm your password"
+                        required
+                        icon={<Lock size={18} className="text-gray-400" />}
+                      />
+                      <button
+                        type="button"
+                        onClick={toggleConfirmPasswordVisibility}
+                        className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center">
+                    <div className="text-red-600 text-sm font-medium">
+                      {error}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-4 text-lg font-semibold"
-              size="lg"
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>{isSignUp ? 'Creating Account...' : 'Signing In...'}</span>
-                </div>
-              ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
               )}
-            </Button>
-          </form>
 
-          {/* Switch Mode Section */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-3">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              </p>
-              <button
-                type="button"
-                onClick={switchMode}
-                className="text-blue-600 hover:text-blue-800 font-semibold text-sm transition-colors duration-200 hover:underline"
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-4 text-lg font-semibold"
+                size="lg"
               >
-                {isSignUp ? 'Sign In Here' : 'Create Account'}
-              </button>
-            </div>
-          </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>{isSignUp ? 'Creating Account...' : 'Signing In...'}</span>
+                  </div>
+                ) : (
+                  isSignUp ? 'Create Account' : 'Sign In'
+                )}
+              </Button>
+            </form>
 
-          {/* Demo Information */}
-          {!isSignUp && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+            {/* Switch Mode Section */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-sm text-blue-800 font-medium mb-1">
-                  Demo Access
+                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'} mb-3`}>
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                 </p>
-                <p className="text-xs text-blue-600">
-                  Use any valid email and password to explore the system
-                </p>
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm transition-colors duration-200 hover:underline"
+                >
+                  {isSignUp ? 'Sign In Here' : 'Create Account'}
+                </button>
               </div>
             </div>
-          )}
-
-          {/* Features Section */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="space-y-2">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <Bot size={16} className="text-green-600" />
-                </div>
-                <p className="text-xs text-gray-600">AI-Powered</p>
-              </div>
-              <div className="space-y-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                  <Building size={16} className="text-blue-600" />
-                </div>
-                <p className="text-xs text-gray-600">Multi-Company</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            By {isSignUp ? 'creating an account' : 'signing in'}, you agree to our Terms of Service and Privacy Policy
-          </p>
+          </Card>
         </div>
       </div>
     </div>

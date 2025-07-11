@@ -14,7 +14,7 @@ function Layout({ children }: LayoutProps) {
   const { theme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen ${theme.isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <TopNavbar 
         sidebarOpen={sidebarOpen} 
         setSidebarOpen={setSidebarOpen}

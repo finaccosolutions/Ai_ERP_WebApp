@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -7,29 +7,143 @@ import {
   Users,
   Calendar,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import AIButton from '../../components/UI/AIButton';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { supabase } from '../../lib/supabase';
 
 function Dashboard() {
   const { currentCompany, currentPeriod } = useCompany();
   const { theme } = useTheme();
+  const [dashboardData, setDashboardData] = useState({
+    totalRevenue: 0,
+    activeOrders: 0,
+    inventoryItems: 0,
+    activeCustomers: 0,
+    recentActivities: [],
+    salesTrend: 12.5,
+    ordersTrend: 8.3,
+    inventoryTrend: -2.1,
+    customersTrend: 15.7
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentCompany) {
+      loadDashboardData();
+    }
+  }, [currentCompany]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load sales data
+      const { data: salesData } = await supabase
+        .from('sales_invoices')
+        .select('total_amount')
+        .eq('company_id', currentCompany?.id)
+        .eq('status', 'paid');
+
+      // Load orders data
+      const { data: ordersData } = await supabase
+        .from('sales_orders')
+        .select('id')
+        .eq('company_id', currentCompany?.id)
+        .in('status', ['confirmed', 'partially_delivered']);
+
+      // Load inventory data
+      const { data: inventoryData } = await supabase
+        .from('items')
+        .select('id')
+        .eq('company_id', currentCompany?.id)
+        .eq('is_active', true);
+
+      // Load customers data
+      const { data: customersData } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('company_id', currentCompany?.id)
+        .eq('is_active', true);
+
+      // Calculate totals
+      const totalRevenue = salesData?.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0) || 0;
+      const activeOrders = ordersData?.length || 0;
+      const inventoryItems = inventoryData?.length || 0;
+      const activeCustomers = customersData?.length || 0;
+
+      setDashboardData({
+        totalRevenue,
+        activeOrders,
+        inventoryItems,
+        activeCustomers,
+        recentActivities: [
+          { id: 1, type: 'sale', message: 'New sales invoice created for ABC Corp', time: '2 hours ago' },
+          { id: 2, type: 'purchase', message: 'Purchase order approved for XYZ Supplies', time: '4 hours ago' },
+          { id: 3, type: 'payment', message: 'Payment received from John Doe', time: '6 hours ago' },
+          { id: 4, type: 'inventory', message: 'Low stock alert for Product A', time: '8 hours ago' },
+        ],
+        salesTrend: 12.5,
+        ordersTrend: 8.3,
+        inventoryTrend: -2.1,
+        customersTrend: 15.7
+      });
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currentCompany?.currency || 'USD'
+    }).format(amount);
+  };
 
   const kpiData = [
-    { title: 'Total Revenue', value: '$2,847,390', change: '+12.5%', icon: DollarSign, color: 'text-green-600' },
-    { title: 'Active Orders', value: '1,247', change: '+8.3%', icon: ShoppingCart, color: 'text-blue-600' },
-    { title: 'Inventory Items', value: '8,945', change: '-2.1%', icon: Package, color: 'text-orange-600' },
-    { title: 'Active Customers', value: '3,542', change: '+15.7%', icon: Users, color: 'text-purple-600' },
-  ];
-
-  const recentActivities = [
-    { id: 1, type: 'sale', message: 'New sales invoice created for ABC Corp', time: '2 hours ago' },
-    { id: 2, type: 'purchase', message: 'Purchase order approved for XYZ Supplies', time: '4 hours ago' },
-    { id: 3, type: 'payment', message: 'Payment received from John Doe', time: '6 hours ago' },
-    { id: 4, type: 'inventory', message: 'Low stock alert for Product A', time: '8 hours ago' },
+    { 
+      title: 'Total Revenue', 
+      value: formatCurrency(dashboardData.totalRevenue), 
+      change: `${dashboardData.salesTrend > 0 ? '+' : ''}${dashboardData.salesTrend}%`, 
+      icon: DollarSign, 
+      color: 'text-green-600',
+      bgColor: 'from-green-500 to-green-600',
+      trend: dashboardData.salesTrend
+    },
+    { 
+      title: 'Active Orders', 
+      value: dashboardData.activeOrders.toLocaleString(), 
+      change: `${dashboardData.ordersTrend > 0 ? '+' : ''}${dashboardData.ordersTrend}%`, 
+      icon: ShoppingCart, 
+      color: 'text-blue-600',
+      bgColor: 'from-blue-500 to-blue-600',
+      trend: dashboardData.ordersTrend
+    },
+    { 
+      title: 'Inventory Items', 
+      value: dashboardData.inventoryItems.toLocaleString(), 
+      change: `${dashboardData.inventoryTrend > 0 ? '+' : ''}${dashboardData.inventoryTrend}%`, 
+      icon: Package, 
+      color: 'text-orange-600',
+      bgColor: 'from-orange-500 to-orange-600',
+      trend: dashboardData.inventoryTrend
+    },
+    { 
+      title: 'Active Customers', 
+      value: dashboardData.activeCustomers.toLocaleString(), 
+      change: `${dashboardData.customersTrend > 0 ? '+' : ''}${dashboardData.customersTrend}%`, 
+      icon: Users, 
+      color: 'text-purple-600',
+      bgColor: 'from-purple-500 to-purple-600',
+      trend: dashboardData.customersTrend
+    },
   ];
 
   const aiInsights = [
@@ -38,13 +152,23 @@ function Dashboard() {
     { title: 'Customer Behavior', insight: 'Premium customers show 25% increase in order frequency', confidence: 'high' },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className={`text-3xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+            Dashboard
+          </h1>
+          <p className={`${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             Welcome back! Here's what's happening with {currentCompany?.name} in {currentPeriod?.name}
           </p>
         </div>
@@ -58,18 +182,42 @@ function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {kpiData.map((kpi) => {
           const Icon = kpi.icon;
+          const isPositive = kpi.trend > 0;
+          
           return (
-            <Card key={kpi.title} hover className="p-6">
-              <div className="flex items-center justify-between">
+            <Card key={kpi.title} hover className="p-6 relative overflow-hidden">
+              <div className="flex items-center justify-between relative z-10">
                 <div>
-                  <p className="text-sm text-gray-600">{kpi.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
-                  <p className={`text-sm ${kpi.color}`}>{kpi.change}</p>
+                  <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {kpi.title}
+                  </p>
+                  <p className={`text-2xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {kpi.value}
+                  </p>
+                  <div className="flex items-center mt-1">
+                    {isPositive ? (
+                      <ArrowUp size={16} className="text-green-500 mr-1" />
+                    ) : (
+                      <ArrowDown size={16} className="text-red-500 mr-1" />
+                    )}
+                    <p className={`text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                      {kpi.change}
+                    </p>
+                  </div>
                 </div>
-                <div className={`p-3 ${theme.borderRadius} bg-gray-100`}>
-                  <Icon size={24} className={kpi.color} />
+                <div className={`
+                  p-4 bg-gradient-to-r ${kpi.bgColor} ${theme.borderRadius} 
+                  shadow-lg transform hover:scale-110 transition-transform duration-200
+                `}>
+                  <Icon size={28} className="text-white" />
                 </div>
               </div>
+              
+              {/* Background Pattern */}
+              <div className={`
+                absolute top-0 right-0 w-32 h-32 bg-gradient-to-r ${kpi.bgColor} 
+                opacity-5 transform rotate-12 translate-x-8 -translate-y-8
+              `} />
             </Card>
           );
         })}
@@ -80,13 +228,20 @@ function Dashboard() {
         {/* Revenue Chart */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Revenue Trends</h3>
+            <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+              Revenue Trends
+            </h3>
             <TrendingUp className="text-green-600" size={20} />
           </div>
-          <div className="h-64 bg-gradient-to-br from-green-50 to-blue-50 rounded-lg flex items-center justify-center">
+          <div className={`
+            h-64 bg-gradient-to-br ${theme.isDark ? 'from-gray-700 to-gray-800' : 'from-green-50 to-blue-50'} 
+            rounded-lg flex items-center justify-center
+          `}>
             <div className="text-center">
-              <TrendingUp size={48} className="text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600">Interactive Chart Coming Soon</p>
+              <TrendingUp size={48} className={`${theme.isDark ? 'text-gray-500' : 'text-gray-400'} mx-auto mb-2`} />
+              <p className={`${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Interactive Chart Coming Soon
+              </p>
             </div>
           </div>
         </Card>
@@ -94,9 +249,13 @@ function Dashboard() {
         {/* AI Insights */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">AI Insights</h3>
+            <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+              AI Insights
+            </h3>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Powered by AI</span>
+              <span className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Powered by AI
+              </span>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             </div>
           </div>
@@ -104,15 +263,22 @@ function Dashboard() {
             {aiInsights.map((insight, index) => (
               <div key={index} className="border-l-4 border-blue-500 pl-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">{insight.title}</h4>
+                  <h4 className={`font-medium ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {insight.title}
+                  </h4>
                   <span className={`
                     px-2 py-1 text-xs rounded-full
-                    ${insight.confidence === 'high' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
+                    ${insight.confidence === 'high' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                    }
                   `}>
                     {insight.confidence} confidence
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">{insight.insight}</p>
+                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                  {insight.insight}
+                </p>
               </div>
             ))}
           </div>
@@ -123,16 +289,26 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activities */}
         <Card className="p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h3>
+          <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+            Recent Activities
+          </h3>
           <div className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            {dashboardData.recentActivities.map((activity) => (
+              <div key={activity.id} className={`
+                flex items-center space-x-3 p-3 
+                ${theme.isDark ? 'bg-gray-700' : 'bg-gray-50'} 
+                rounded-lg transition-colors hover:bg-opacity-80
+              `}>
                 <div className="flex-shrink-0">
                   <CheckCircle size={16} className="text-green-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
+                  <p className={`text-sm ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {activity.message}
+                  </p>
+                  <p className={`text-xs ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {activity.time}
+                  </p>
                 </div>
               </div>
             ))}
@@ -141,30 +317,42 @@ function Dashboard() {
 
         {/* Quick Actions */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+            Quick Actions
+          </h3>
           <div className="space-y-3">
             <button className={`
-              w-full p-3 text-left bg-gradient-to-r ${theme.primaryGradient} 
-              text-white ${theme.borderRadius} hover:opacity-90 transition-opacity
+              w-full p-3 text-left bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
+              text-white ${theme.borderRadius} hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 transition-all
+              transform hover:scale-105 shadow-lg
             `}>
               <div className="flex items-center space-x-2">
                 <ShoppingCart size={16} />
                 <span>Create Sales Invoice</span>
               </div>
             </button>
-            <button className="w-full p-3 text-left bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+            <button className={`
+              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
+              rounded-lg transition-all transform hover:scale-105
+            `}>
               <div className="flex items-center space-x-2">
                 <Package size={16} />
                 <span>Add Purchase Order</span>
               </div>
             </button>
-            <button className="w-full p-3 text-left bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+            <button className={`
+              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
+              rounded-lg transition-all transform hover:scale-105
+            `}>
               <div className="flex items-center space-x-2">
                 <DollarSign size={16} />
                 <span>Record Payment</span>
               </div>
             </button>
-            <button className="w-full p-3 text-left bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+            <button className={`
+              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
+              rounded-lg transition-all transform hover:scale-105
+            `}>
               <div className="flex items-center space-x-2">
                 <Users size={16} />
                 <span>Add New Customer</span>

@@ -9,34 +9,54 @@ interface ThemeSettings {
   borderRadius: string;
   shadowLevel: string;
   fontSize: 'sm' | 'md' | 'lg';
+  isDark: boolean;
 }
 
 interface ThemeContextType {
   theme: ThemeSettings;
   updateTheme: (updates: Partial<ThemeSettings>) => void;
   resetTheme: () => void;
+  toggleDarkMode: () => void;
 }
 
-const defaultTheme: ThemeSettings = {
-  primaryGradient: 'from-[#9BE7C4] via-[#A7D8DE] to-[#B3E5FC]',
-  panelBg: 'bg-slate-100',
-  sidebarBg: 'bg-slate-800',
-  textColor: '#333333',
-  headingColor: '#1F2937',
-  borderRadius: 'rounded-2xl',
-  shadowLevel: 'shadow-xl',
-  fontSize: 'md'
+const lightTheme: ThemeSettings = {
+  primaryGradient: 'from-blue-500 via-purple-500 to-indigo-600',
+  panelBg: 'bg-white',
+  sidebarBg: 'bg-gray-900',
+  textColor: '#374151',
+  headingColor: '#111827',
+  borderRadius: 'rounded-xl',
+  shadowLevel: 'shadow-lg',
+  fontSize: 'md',
+  isDark: false
+};
+
+const darkTheme: ThemeSettings = {
+  primaryGradient: 'from-blue-500 via-purple-500 to-indigo-600',
+  panelBg: 'bg-gray-800',
+  sidebarBg: 'bg-gray-900',
+  textColor: '#E5E7EB',
+  headingColor: '#F9FAFB',
+  borderRadius: 'rounded-xl',
+  shadowLevel: 'shadow-2xl',
+  fontSize: 'md',
+  isDark: true
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<ThemeSettings>(defaultTheme);
+  const [theme, setTheme] = useState<ThemeSettings>(lightTheme);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('erp-theme');
+    const savedDarkMode = localStorage.getItem('erp-dark-mode');
+    
     if (savedTheme) {
-      setTheme(JSON.parse(savedTheme));
+      const parsedTheme = JSON.parse(savedTheme);
+      setTheme(parsedTheme);
+    } else if (savedDarkMode === 'true') {
+      setTheme(darkTheme);
     }
   }, []);
 
@@ -47,13 +67,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetTheme = () => {
-    setTheme(defaultTheme);
+    setTheme(lightTheme);
     localStorage.removeItem('erp-theme');
+    localStorage.removeItem('erp-dark-mode');
+  };
+
+  const toggleDarkMode = () => {
+    const newTheme = theme.isDark ? lightTheme : darkTheme;
+    setTheme(newTheme);
+    localStorage.setItem('erp-theme', JSON.stringify(newTheme));
+    localStorage.setItem('erp-dark-mode', newTheme.isDark.toString());
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, updateTheme, resetTheme }}>
-      {children}
+    <ThemeContext.Provider value={{ theme, updateTheme, resetTheme, toggleDarkMode }}>
+      <div className={theme.isDark ? 'dark' : ''}>
+        {children}
+      </div>
     </ThemeContext.Provider>
   );
 }
