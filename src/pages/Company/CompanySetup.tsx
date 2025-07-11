@@ -416,11 +416,11 @@ function CompanySetup() {
             autoNumbering: formData.autoNumbering,
             multiCurrency: formData.multiCurrency,
             inventoryTracking: formData.inventoryTracking
-          }
+          },
         })
         .select()
         .single();
-
+ 
       if (companyError) {
         console.error('Company creation error:', companyError);
         throw companyError;
