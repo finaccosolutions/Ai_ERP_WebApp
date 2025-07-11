@@ -47,7 +47,7 @@ function AIButton({ onSuggest, onTeach, variant = 'suggest', size = 'md', classN
       onClick={currentConfig.onClick}
       variant={currentConfig.variant}
       size={size}
-      className={`${className} animate-pulse`}
+      className={`${className} animate-pulse-soft hover:shadow-[#6AC8A3]/25`}
     >
       {currentConfig.text}
     </Button>

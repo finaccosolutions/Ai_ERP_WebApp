@@ -58,8 +58,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
   return (
     <nav className={`
       fixed top-0 left-0 right-0 z-40 h-16 
-      ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-      border-b ${theme.shadowLevel} backdrop-blur-sm
+      ${theme.topNavBg} border-b ${theme.borderColor}
+      ${theme.shadowLevel} backdrop-blur-sm
     `}>
       <div className="px-4 h-full flex items-center justify-between">
         {/* Left Section */}
@@ -68,8 +68,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`
-              lg:hidden p-2 rounded-lg transition-colors
-              ${theme.isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}
+              lg:hidden p-2 ${theme.borderRadius} transition-all duration-300
+              text-white hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
             `}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -77,12 +77,12 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
 
           <div className="flex items-center space-x-3">
             <div className={`
-              w-8 h-8 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
-              ${theme.borderRadius} flex items-center justify-center shadow-lg
+              w-8 h-8 bg-gradient-to-r ${theme.primaryGradient}
+              ${theme.borderRadius} flex items-center justify-center ${theme.shadowLevel}
             `}>
               <Building size={16} className="text-white" />
             </div>
-            <h1 className={`text-xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-800'} hidden sm:block`}>
+            <h1 className="text-xl font-bold text-white hidden sm:block">
               ERP Pro
             </h1>
           </div>
@@ -91,30 +91,24 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
         {/* Center Section - Search */}
         <div className="flex-1 max-w-2xl mx-4 sm:mx-8">
           <form onSubmit={handleSearch} className="relative">
-            <Search size={20} className={`
-              absolute left-3 top-1/2 transform -translate-y-1/2 
-              ${theme.isDark ? 'text-gray-400' : 'text-gray-400'}
-            `} />
+            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Smart search across all modules..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`
-                w-full pl-10 pr-12 py-2 border 
-                ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'} 
-                ${theme.borderRadius} focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                transition-all duration-200
+                w-full pl-10 pr-12 py-2 border ${theme.inputBorder}
+                ${theme.borderRadius} ${theme.inputBg} ${theme.textPrimary}
+                focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
+                transition-all duration-300 hover:border-[#6AC8A3]
+                placeholder:text-slate-400
               `}
             />
             <button
               type="button"
               onClick={handleVoiceSearch}
-              className={`
-                absolute right-3 top-1/2 transform -translate-y-1/2 
-                ${theme.isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}
-                transition-colors duration-200
-              `}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#6AC8A3] transition-colors duration-300"
             >
               <Mic size={20} />
             </button>
@@ -129,9 +123,9 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
               <button
                 onClick={() => setShowCompanyMenu(!showCompanyMenu)}
                 className={`
-                  flex items-center space-x-2 px-3 py-2 text-sm 
-                  ${theme.isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'} 
-                  ${theme.borderRadius} transition-colors duration-200
+                  flex items-center space-x-2 px-3 py-2 text-sm text-white
+                  hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
+                  ${theme.borderRadius} transition-all duration-300
                 `}
               >
                 <Building size={16} />
@@ -139,9 +133,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
               </button>
               {showCompanyMenu && (
                 <div className={`
-                  absolute right-0 mt-2 w-56 
-                  ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-                  border ${theme.borderRadius} ${theme.shadowLevel} z-50
+                  absolute right-0 mt-2 w-56 ${theme.cardBg} border ${theme.borderColor}
+                  ${theme.borderRadius} ${theme.shadowLevel} z-50
                 `}>
                   <div className="py-1">
                     {companies.map(company => (
@@ -152,8 +145,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
                           setShowCompanyMenu(false);
                         }}
                         className={`
-                          w-full px-4 py-2 text-left text-sm transition-colors
-                          ${theme.isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}
+                          w-full px-4 py-2 text-left text-sm transition-all duration-300
+                          ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
                         `}
                       >
                         {company.name}
@@ -171,9 +164,9 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
               <button
                 onClick={() => setShowPeriodMenu(!showPeriodMenu)}
                 className={`
-                  flex items-center space-x-2 px-3 py-2 text-sm 
-                  ${theme.isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'} 
-                  ${theme.borderRadius} transition-colors duration-200
+                  flex items-center space-x-2 px-3 py-2 text-sm text-white
+                  hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
+                  ${theme.borderRadius} transition-all duration-300
                 `}
               >
                 <Calendar size={16} />
@@ -181,9 +174,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
               </button>
               {showPeriodMenu && (
                 <div className={`
-                  absolute right-0 mt-2 w-48 
-                  ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-                  border ${theme.borderRadius} ${theme.shadowLevel} z-50
+                  absolute right-0 mt-2 w-48 ${theme.cardBg} border ${theme.borderColor}
+                  ${theme.borderRadius} ${theme.shadowLevel} z-50
                 `}>
                   <div className="py-1">
                     {periods.map(period => (
@@ -194,8 +186,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
                           setShowPeriodMenu(false);
                         }}
                         className={`
-                          w-full px-4 py-2 text-left text-sm transition-colors
-                          ${theme.isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}
+                          w-full px-4 py-2 text-left text-sm transition-all duration-300
+                          ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
                         `}
                       >
                         {period.name}
@@ -211,11 +203,12 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
           <button
             onClick={toggleDarkMode}
             className={`
-              p-2 ${theme.borderRadius} transition-all duration-200 transform hover:scale-110
+              p-2 ${theme.borderRadius} transition-all duration-300 transform hover:scale-110
               ${theme.isDark 
                 ? 'bg-yellow-500 text-yellow-900 hover:bg-yellow-400' 
-                : 'bg-gray-700 text-yellow-400 hover:bg-gray-600'
+                : 'bg-yellow-500 text-yellow-900 hover:bg-yellow-400'
               }
+              ${theme.shadowLevel}
             `}
           >
             {theme.isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -225,11 +218,12 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
           <button
             onClick={toggleAI}
             className={`
-              p-2 ${theme.borderRadius} transition-all duration-200 transform hover:scale-110
+              p-2 ${theme.borderRadius} transition-all duration-300 transform hover:scale-110
               ${isAIEnabled 
-                ? 'bg-green-500 text-white hover:bg-green-400' 
-                : `${theme.isDark ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`
+                ? 'bg-[#6AC8A3] text-white hover:bg-[#5BB394]' 
+                : 'bg-slate-600 text-slate-400 hover:bg-slate-500'
               }
+              ${theme.shadowLevel}
             `}
           >
             <Bot size={20} />
@@ -239,9 +233,10 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
           <button
             onClick={() => setShowAI(!showAI)}
             className={`
-              p-2 ${theme.borderRadius} bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
-              text-white hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-110
-              shadow-lg
+              p-2 ${theme.borderRadius} bg-gradient-to-r ${theme.primaryGradient}
+              text-white hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
+              transition-all duration-300 transform hover:scale-110
+              ${theme.shadowLevel} hover:shadow-[#6AC8A3]/25
             `}
           >
             <Bot size={20} />
@@ -252,8 +247,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className={`
-                p-2 ${theme.borderRadius} transition-colors duration-200 relative
-                ${theme.isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}
+                p-2 ${theme.borderRadius} transition-all duration-300 relative
+                text-white hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
               `}
             >
               <Bell size={20} />
@@ -266,12 +261,11 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
             
             {showNotifications && (
               <div className={`
-                absolute right-0 mt-2 w-80 
-                ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-                border ${theme.borderRadius} ${theme.shadowLevel} z-50
+                absolute right-0 mt-2 w-80 ${theme.cardBg} border ${theme.borderColor}
+                ${theme.borderRadius} ${theme.shadowLevel} z-50
               `}>
-                <div className={`p-4 border-b ${theme.isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <h3 className={`font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`p-4 border-b ${theme.borderColor}`}>
+                  <h3 className={`font-semibold ${theme.textPrimary}`}>
                     Notifications
                   </h3>
                 </div>
@@ -280,21 +274,21 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
                     <div
                       key={notification.id}
                       className={`
-                        p-4 border-b ${theme.isDark ? 'border-gray-700' : 'border-gray-200'} transition-colors
-                        ${theme.isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}
-                        ${notification.unread ? (theme.isDark ? 'bg-blue-900' : 'bg-blue-50') : ''}
+                        p-4 border-b ${theme.borderColor} transition-all duration-300
+                        hover:bg-[#6AC8A3] hover:bg-opacity-10
+                        ${notification.unread ? 'bg-blue-50 border-l-4 border-l-[#6AC8A3]' : ''}
                       `}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <p className={`font-medium text-sm ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                          <p className={`font-medium text-sm ${theme.textPrimary}`}>
                             {notification.title}
                           </p>
-                          <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <p className={`text-sm ${theme.textMuted}`}>
                             {notification.message}
                           </p>
                         </div>
-                        <span className={`text-xs ${theme.isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <span className={`text-xs ${theme.textMuted}`}>
                           {notification.time}
                         </span>
                       </div>
@@ -310,46 +304,45 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className={`
-                flex items-center space-x-2 p-2 rounded-lg transition-colors
-                ${theme.isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
+                flex items-center space-x-2 p-2 ${theme.borderRadius} transition-all duration-300
+                hover:bg-white hover:bg-opacity-10
               `}
             >
               <img
                 src={user?.avatar || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150'}
                 alt="User"
-                className="w-8 h-8 rounded-full border-2 border-gray-300"
+                className="w-8 h-8 rounded-full border-2 border-[#6AC8A3]"
               />
-              <span className={`text-sm font-medium hidden sm:block ${theme.isDark ? 'text-white' : 'text-gray-700'}`}>
+              <span className="text-sm font-medium hidden sm:block text-white">
                 {user?.name}
               </span>
             </button>
             {showUserMenu && (
               <div className={`
-                absolute right-0 mt-2 w-48 
-                ${theme.isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-                border ${theme.borderRadius} ${theme.shadowLevel} z-50
+                absolute right-0 mt-2 w-48 ${theme.cardBg} border ${theme.borderColor}
+                ${theme.borderRadius} ${theme.shadowLevel} z-50
               `}>
                 <div className="py-1">
                   <button className={`
-                    w-full px-4 py-2 text-left text-sm flex items-center transition-colors
-                    ${theme.isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}
+                    w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
+                    ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
                   `}>
                     <User size={16} className="mr-2" />
                     Profile
                   </button>
                   <button className={`
-                    w-full px-4 py-2 text-left text-sm flex items-center transition-colors
-                    ${theme.isDark ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'}
+                    w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
+                    ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
                   `}>
                     <Settings size={16} className="mr-2" />
                     Settings
                   </button>
-                  <hr className={`my-1 ${theme.isDark ? 'border-gray-700' : 'border-gray-200'}`} />
+                  <hr className={`my-1 ${theme.borderColor}`} />
                   <button
                     onClick={logout}
                     className={`
-                      w-full px-4 py-2 text-left text-sm flex items-center transition-colors
-                      ${theme.isDark ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-red-50'}
+                      w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
+                      text-red-600 hover:bg-red-50 hover:text-red-700
                     `}
                   >
                     <LogOut size={16} className="mr-2" />

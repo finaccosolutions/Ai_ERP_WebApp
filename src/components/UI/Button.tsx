@@ -25,15 +25,30 @@ function Button({
   const { theme } = useTheme();
 
   const baseClasses = `
-    inline-flex items-center justify-center font-medium transition-all duration-200
+    inline-flex items-center justify-center font-medium transition-all duration-300
     ${theme.borderRadius} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer transform hover:scale-105'}
   `;
 
   const variants = {
-    primary: `bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 text-white hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 ${theme.shadowLevel} shadow-lg`,
-    secondary: `${theme.isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-600 text-white hover:bg-gray-700'} ${theme.shadowLevel}`,
-    outline: `border-2 ${theme.isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`,
-    ghost: `${theme.isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`
+    primary: `
+      bg-gradient-to-r ${theme.primaryGradient} text-white 
+      hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
+      ${theme.shadowLevel} hover:${theme.shadowHover}
+      hover:shadow-[#6AC8A3]/25
+    `,
+    secondary: `
+      ${theme.cardBg} ${theme.textPrimary} hover:bg-slate-300 
+      ${theme.isDark ? 'hover:bg-slate-600' : ''} ${theme.shadowLevel}
+    `,
+    outline: `
+      border-2 ${theme.borderColor} ${theme.textPrimary} 
+      hover:border-[#6AC8A3] hover:text-[#6AC8A3] hover:bg-slate-50
+      ${theme.isDark ? 'hover:bg-slate-800' : ''}
+    `,
+    ghost: `
+      ${theme.textPrimary} hover:bg-slate-100 hover:text-[#6AC8A3]
+      ${theme.isDark ? 'hover:bg-slate-700' : ''}
+    `
   };
 
   const sizes = {

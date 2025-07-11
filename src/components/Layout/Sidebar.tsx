@@ -53,8 +53,8 @@ function Sidebar({ open, setOpen }: SidebarProps) {
       <div className={`
         fixed left-0 top-16 h-[calc(100vh-4rem)] z-30 transition-all duration-300 ease-in-out
         ${open ? 'w-64' : 'w-16'} 
-        ${theme.isDark ? 'bg-gray-900 border-gray-700' : 'bg-gray-900'} 
-        border-r shadow-2xl overflow-y-auto
+        ${theme.sidebarBg} border-r ${theme.borderColor}
+        ${theme.shadowLevel} overflow-y-auto
       `}>
         <div className="relative h-full">
           {/* Toggle Button */}
@@ -62,10 +62,10 @@ function Sidebar({ open, setOpen }: SidebarProps) {
             onClick={() => setOpen(!open)}
             className={`
               absolute ${open ? '-right-3' : '-right-3'} top-4 
-              ${theme.isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'} 
-              border-2 rounded-full p-1.5 shadow-lg hover:shadow-xl 
+              ${theme.cardBg} border-2 ${theme.borderColor}
+              rounded-full p-1.5 ${theme.shadowLevel} hover:${theme.shadowHover}
               transition-all duration-300 transform hover:scale-110 z-40
-              ${theme.isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'}
+              ${theme.textPrimary} hover:text-[#6AC8A3] hover:border-[#6AC8A3]
             `}
           >
             {open ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
@@ -84,11 +84,11 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     key={item.path}
                     to={item.path}
                     className={`
-                      group relative flex items-center px-3 py-3 rounded-xl 
+                      group relative flex items-center px-3 py-3 ${theme.borderRadius}
                       transition-all duration-300 ease-in-out transform hover:scale-105
                       ${isActive 
-                        ? `bg-gradient-to-r ${item.color} text-white shadow-lg` 
-                        : 'text-gray-300 hover:bg-white hover:bg-opacity-10 hover:text-white'
+                        ? `bg-gradient-to-r ${theme.primaryGradient} text-white ${theme.shadowLevel}` 
+                        : 'text-slate-300 hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]'
                       }
                       ${!open ? 'justify-center' : ''}
                     `}
@@ -100,7 +100,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     <div className={`
                       relative flex items-center justify-center
                       ${open ? 'mr-3' : ''} 
-                      ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}
+                      ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#6AC8A3]'}
                       transition-colors duration-300
                     `}>
                       <Icon size={20} className="relative z-10" />
@@ -108,7 +108,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                       {/* Icon Background Effect for collapsed state */}
                       {!open && isActive && (
                         <div className={`
-                          absolute inset-0 bg-gradient-to-r ${item.color} 
+                          absolute inset-0 bg-gradient-to-r ${theme.primaryGradient}
                           rounded-lg opacity-20 scale-150
                         `} />
                       )}
@@ -118,7 +118,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     {open && (
                       <span className={`
                         text-sm font-medium transition-all duration-300
-                        ${isActive ? 'text-white' : 'text-gray-300 group-hover:text-white'}
+                        ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-[#6AC8A3]'}
                       `}>
                         {item.label}
                       </span>
@@ -136,14 +136,14 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     {/* Tooltip for collapsed state */}
                     {!open && (
                       <div className={`
-                        absolute left-full ml-3 px-3 py-2 bg-gray-800 text-white text-sm 
-                        rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
-                        transition-all duration-300 whitespace-nowrap z-50 shadow-lg
-                        border border-gray-700
+                        absolute left-full ml-3 px-3 py-2 ${theme.cardBg} ${theme.textPrimary} text-sm 
+                        ${theme.borderRadius} opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                        transition-all duration-300 whitespace-nowrap z-50 ${theme.shadowLevel}
+                        border ${theme.borderColor}
                       `}>
                         {item.label}
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 
-                                      border-4 border-transparent border-r-gray-800" />
+                        <div className={`absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 
+                                      border-4 border-transparent border-r-slate-100`} />
                       </div>
                     )}
                   </Link>

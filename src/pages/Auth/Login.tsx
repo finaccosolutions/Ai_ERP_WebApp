@@ -132,7 +132,7 @@ function Login() {
       <div className={`hidden lg:flex lg:w-1/2 ${theme.isDark ? 'bg-gray-800' : 'bg-white'} flex-col justify-center px-12`}>
         <div className="max-w-md">
           <div className={`
-            h-16 w-16 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
+            h-16 w-16 bg-gradient-to-r ${theme.primaryGradient}
             ${theme.borderRadius} flex items-center justify-center shadow-xl mb-8
           `}>
             <Building size={32} className="text-white" />
@@ -148,7 +148,7 @@ function Login() {
           
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
                 <Bot size={20} className="text-white" />
               </div>
               <div>
@@ -162,7 +162,7 @@ function Login() {
             </div>
             
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
                 <Globe size={20} className="text-white" />
               </div>
               <div>
@@ -176,7 +176,7 @@ function Login() {
             </div>
             
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg`}>
+              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
                 <Building size={20} className="text-white" />
               </div>
               <div>
@@ -198,7 +198,7 @@ function Login() {
           {/* Mobile Header */}
           <div className="lg:hidden text-center">
             <div className={`
-              mx-auto h-16 w-16 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
+              mx-auto h-16 w-16 bg-gradient-to-r ${theme.primaryGradient}
               ${theme.borderRadius} flex items-center justify-center shadow-xl mb-4
             `}>
               <Building size={32} className="text-white" />

@@ -155,7 +155,7 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
       </div>
     );
   }
@@ -165,10 +165,10 @@ function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
             Dashboard
           </h1>
-          <p className={`${theme.isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={theme.textSecondary}>
             Welcome back! Here's what's happening with {currentCompany?.name} in {currentPeriod?.name}
           </p>
         </div>
@@ -188,10 +188,10 @@ function Dashboard() {
             <Card key={kpi.title} hover className="p-6 relative overflow-hidden">
               <div className="flex items-center justify-between relative z-10">
                 <div>
-                  <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <p className={`text-sm ${theme.textMuted}`}>
                     {kpi.title}
                   </p>
-                  <p className={`text-2xl font-bold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`text-2xl font-bold ${theme.textPrimary}`}>
                     {kpi.value}
                   </p>
                   <div className="flex items-center mt-1">
@@ -207,7 +207,7 @@ function Dashboard() {
                 </div>
                 <div className={`
                   p-4 bg-gradient-to-r ${kpi.bgColor} ${theme.borderRadius} 
-                  shadow-lg transform hover:scale-110 transition-transform duration-200
+                  ${theme.shadowLevel} transform hover:scale-110 transition-transform duration-200
                 `}>
                   <Icon size={28} className="text-white" />
                 </div>
@@ -228,18 +228,18 @@ function Dashboard() {
         {/* Revenue Chart */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
               Revenue Trends
             </h3>
             <TrendingUp className="text-green-600" size={20} />
           </div>
           <div className={`
-            h-64 bg-gradient-to-br ${theme.isDark ? 'from-gray-700 to-gray-800' : 'from-green-50 to-blue-50'} 
-            rounded-lg flex items-center justify-center
+            h-64 bg-gradient-to-br from-[#6AC8A3]/10 via-[#76C0C8]/10 to-[#81CFEA]/10
+            ${theme.borderRadius} flex items-center justify-center border ${theme.borderColor}
           `}>
             <div className="text-center">
-              <TrendingUp size={48} className={`${theme.isDark ? 'text-gray-500' : 'text-gray-400'} mx-auto mb-2`} />
-              <p className={`${theme.isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <TrendingUp size={48} className={`${theme.textMuted} mx-auto mb-2`} />
+              <p className={theme.textMuted}>
                 Interactive Chart Coming Soon
               </p>
             </div>
@@ -249,25 +249,25 @@ function Dashboard() {
         {/* AI Insights */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
               AI Insights
             </h3>
             <div className="flex items-center space-x-2">
-              <span className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className={`text-sm ${theme.textMuted}`}>
                 Powered by AI
               </span>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse"></div>
             </div>
           </div>
           <div className="space-y-4">
             {aiInsights.map((insight, index) => (
-              <div key={index} className="border-l-4 border-blue-500 pl-4">
+              <div key={index} className="border-l-4 border-[#6AC8A3] pl-4">
                 <div className="flex items-center justify-between">
-                  <h4 className={`font-medium ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                  <h4 className={`font-medium ${theme.textPrimary}`}>
                     {insight.title}
                   </h4>
                   <span className={`
-                    px-2 py-1 text-xs rounded-full
+                    px-2 py-1 text-xs ${theme.borderRadius}
                     ${insight.confidence === 'high' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-yellow-100 text-yellow-800'
@@ -276,7 +276,7 @@ function Dashboard() {
                     {insight.confidence} confidence
                   </span>
                 </div>
-                <p className={`text-sm ${theme.isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                <p className={`text-sm ${theme.textMuted} mt-1`}>
                   {insight.insight}
                 </p>
               </div>
@@ -289,24 +289,25 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activities */}
         <Card className="p-6 lg:col-span-2">
-          <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
             Recent Activities
           </h3>
           <div className="space-y-3">
             {dashboardData.recentActivities.map((activity) => (
               <div key={activity.id} className={`
                 flex items-center space-x-3 p-3 
-                ${theme.isDark ? 'bg-gray-700' : 'bg-gray-50'} 
-                rounded-lg transition-colors hover:bg-opacity-80
+                ${theme.inputBg} ${theme.borderRadius} 
+                transition-all duration-300 hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3]
+                border ${theme.borderColor}
               `}>
                 <div className="flex-shrink-0">
-                  <CheckCircle size={16} className="text-green-600" />
+                  <CheckCircle size={16} className="text-[#6AC8A3]" />
                 </div>
                 <div className="flex-1">
-                  <p className={`text-sm ${theme.isDark ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`text-sm ${theme.textPrimary}`}>
                     {activity.message}
                   </p>
-                  <p className={`text-xs ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>
                     {activity.time}
                   </p>
                 </div>
@@ -317,14 +318,15 @@ function Dashboard() {
 
         {/* Quick Actions */}
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
             Quick Actions
           </h3>
           <div className="space-y-3">
             <button className={`
-              w-full p-3 text-left bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 
-              text-white ${theme.borderRadius} hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 transition-all
-              transform hover:scale-105 shadow-lg
+              w-full p-3 text-left bg-gradient-to-r ${theme.primaryGradient}
+              text-white ${theme.borderRadius} hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
+              transition-all duration-300 transform hover:scale-105 ${theme.shadowLevel}
+              hover:shadow-[#6AC8A3]/25
             `}>
               <div className="flex items-center space-x-2">
                 <ShoppingCart size={16} />
@@ -332,8 +334,9 @@ function Dashboard() {
               </div>
             </button>
             <button className={`
-              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
-              rounded-lg transition-all transform hover:scale-105
+              w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
+              ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
+              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <Package size={16} />
@@ -341,8 +344,9 @@ function Dashboard() {
               </div>
             </button>
             <button className={`
-              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
-              rounded-lg transition-all transform hover:scale-105
+              w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
+              ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
+              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <DollarSign size={16} />
@@ -350,8 +354,9 @@ function Dashboard() {
               </div>
             </button>
             <button className={`
-              w-full p-3 text-left ${theme.isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} 
-              rounded-lg transition-all transform hover:scale-105
+              w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
+              ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
+              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <Users size={16} />
