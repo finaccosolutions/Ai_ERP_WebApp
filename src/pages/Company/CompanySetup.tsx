@@ -17,7 +17,11 @@ import {
   Eye,
   EyeOff,
   Flag,
-  Coins
+  Coins,
+  ChevronDown,
+  Palette,
+  Database,
+  Users
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -33,6 +37,7 @@ interface CompanyFormData {
   displayName: string;
   email: string;
   phone: string;
+  phoneCountry: string;
   address: {
     street: string;
     city: string;
@@ -57,19 +62,107 @@ interface CompanyFormData {
   password: string;
   language: string;
   timezone: string;
+  // New company settings
+  companyType: string;
+  industry: string;
+  employeeCount: string;
+  annualRevenue: string;
+  defaultPaymentTerms: number;
+  autoNumbering: boolean;
+  multiCurrency: boolean;
+  inventoryTracking: boolean;
 }
 
 const countries = [
-  { code: 'IN', name: 'India', flag: '🇮🇳', currency: 'INR', taxType: 'GST', timezone: 'Asia/Kolkata' },
-  { code: 'US', name: 'United States', flag: '🇺🇸', currency: 'USD', taxType: 'Custom', timezone: 'America/New_York' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', currency: 'GBP', taxType: 'VAT', timezone: 'Europe/London' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦', currency: 'CAD', taxType: 'Custom', timezone: 'America/Toronto' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺', currency: 'AUD', taxType: 'GST', timezone: 'Australia/Sydney' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪', currency: 'EUR', taxType: 'VAT', timezone: 'Europe/Berlin' },
-  { code: 'FR', name: 'France', flag: '🇫🇷', currency: 'EUR', taxType: 'VAT', timezone: 'Europe/Paris' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵', currency: 'JPY', taxType: 'Custom', timezone: 'Asia/Tokyo' },
-  { code: 'SG', name: 'Singapore', flag: '🇸🇬', currency: 'SGD', taxType: 'GST', timezone: 'Asia/Singapore' },
-  { code: 'AE', name: 'UAE', flag: '🇦🇪', currency: 'AED', taxType: 'VAT', timezone: 'Asia/Dubai' },
+  { 
+    code: 'IN', 
+    name: 'India', 
+    flag: '🇮🇳', 
+    currency: 'INR', 
+    taxType: 'GST', 
+    timezone: 'Asia/Kolkata',
+    dialCode: '+91',
+    states: [
+      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
+      'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
+      'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+      'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
+      'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh'
+    ]
+  },
+  { 
+    code: 'US', 
+    name: 'United States', 
+    flag: '🇺🇸', 
+    currency: 'USD', 
+    taxType: 'Custom', 
+    timezone: 'America/New_York',
+    dialCode: '+1',
+    states: [
+      'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
+      'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
+      'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
+      'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+      'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+      'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+      'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
+      'Wisconsin', 'Wyoming'
+    ]
+  },
+  { 
+    code: 'GB', 
+    name: 'United Kingdom', 
+    flag: '🇬🇧', 
+    currency: 'GBP', 
+    taxType: 'VAT', 
+    timezone: 'Europe/London',
+    dialCode: '+44',
+    states: [
+      'England', 'Scotland', 'Wales', 'Northern Ireland'
+    ]
+  },
+  { 
+    code: 'CA', 
+    name: 'Canada', 
+    flag: '🇨🇦', 
+    currency: 'CAD', 
+    taxType: 'Custom', 
+    timezone: 'America/Toronto',
+    dialCode: '+1',
+    states: [
+      'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
+      'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
+      'Quebec', 'Saskatchewan', 'Yukon'
+    ]
+  },
+  { 
+    code: 'AU', 
+    name: 'Australia', 
+    flag: '🇦🇺', 
+    currency: 'AUD', 
+    taxType: 'GST', 
+    timezone: 'Australia/Sydney',
+    dialCode: '+61',
+    states: [
+      'New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia',
+      'Tasmania', 'Australian Capital Territory', 'Northern Territory'
+    ]
+  },
+  { 
+    code: 'DE', 
+    name: 'Germany', 
+    flag: '🇩🇪', 
+    currency: 'EUR', 
+    taxType: 'VAT', 
+    timezone: 'Europe/Berlin',
+    dialCode: '+49',
+    states: [
+      'Baden-Württemberg', 'Bavaria', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg',
+      'Hesse', 'Lower Saxony', 'Mecklenburg-Vorpommern', 'North Rhine-Westphalia',
+      'Rhineland-Palatinate', 'Saarland', 'Saxony', 'Saxony-Anhalt', 'Schleswig-Holstein',
+      'Thuringia'
+    ]
+  }
 ];
 
 const currencies = [
@@ -79,9 +172,6 @@ const currencies = [
   { code: 'GBP', name: 'British Pound', symbol: '£' },
   { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
   { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
 ];
 
 const languages = [
@@ -90,9 +180,31 @@ const languages = [
   { code: 'es', name: 'Spanish' },
   { code: 'fr', name: 'French' },
   { code: 'de', name: 'German' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'ar', name: 'Arabic' },
+];
+
+const companyTypes = [
+  'Private Limited Company',
+  'Public Limited Company',
+  'Partnership',
+  'Sole Proprietorship',
+  'Limited Liability Partnership (LLP)',
+  'One Person Company (OPC)',
+  'Non-Profit Organization',
+  'Other'
+];
+
+const industries = [
+  'Technology', 'Manufacturing', 'Retail', 'Healthcare', 'Finance', 'Education',
+  'Real Estate', 'Construction', 'Transportation', 'Food & Beverage',
+  'Professional Services', 'Media & Entertainment', 'Agriculture', 'Other'
+];
+
+const employeeCounts = [
+  '1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'
+];
+
+const revenueRanges = [
+  'Under $100K', '$100K - $500K', '$500K - $1M', '$1M - $5M', '$5M - $10M', 'Over $10M'
 ];
 
 function CompanySetup() {
@@ -106,12 +218,14 @@ function CompanySetup() {
   const [showPassword, setShowPassword] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPhoneCountryDropdown, setShowPhoneCountryDropdown] = useState(false);
 
   const [formData, setFormData] = useState<CompanyFormData>({
     name: '',
     displayName: '',
     email: '',
     phone: '',
+    phoneCountry: 'IN',
     address: {
       street: '',
       city: '',
@@ -135,7 +249,16 @@ function CompanySetup() {
     enablePassword: false,
     password: '',
     language: 'en',
-    timezone: 'Asia/Kolkata'
+    timezone: 'Asia/Kolkata',
+    // New fields
+    companyType: 'Private Limited Company',
+    industry: 'Technology',
+    employeeCount: '1-10',
+    annualRevenue: 'Under $100K',
+    defaultPaymentTerms: 30,
+    autoNumbering: true,
+    multiCurrency: false,
+    inventoryTracking: true
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -157,6 +280,7 @@ function CompanySetup() {
     const country = countries.find(c => c.code === countryCode);
     if (country) {
       updateFormData('address.country', countryCode);
+      updateFormData('address.state', ''); // Reset state when country changes
       updateFormData('currency', country.currency);
       updateFormData('timezone', country.timezone);
       updateFormData('taxConfig.type', country.taxType);
@@ -172,6 +296,18 @@ function CompanySetup() {
         updateFormData('fiscalYearStart', '2024-01-01');
         updateFormData('fiscalYearEnd', '2024-12-31');
       }
+
+      // Update tax rates based on country
+      const taxRates = {
+        'IN': [0, 5, 12, 18, 28], // GST rates
+        'AU': [0, 10], // GST rates
+        'GB': [0, 5, 20], // VAT rates
+        'DE': [0, 7, 19], // VAT rates
+        'US': [0, 5, 8.5, 10], // Sales tax varies by state
+        'CA': [0, 5, 13, 15] // GST/HST rates
+      };
+      
+      updateFormData('taxConfig.rates', taxRates[countryCode as keyof typeof taxRates] || [0, 10, 20]);
 
       // AI suggestion for tax rates
       try {
@@ -207,9 +343,9 @@ function CompanySetup() {
 
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = 'Company name is required';
-      if (!formData.email.trim()) newErrors.email = 'Email is required';
       if (!formData.address.street.trim()) newErrors['address.street'] = 'Address is required';
       if (!formData.address.city.trim()) newErrors['address.city'] = 'City is required';
+      if (!formData.address.country) newErrors['address.country'] = 'Country is required';
     }
 
     if (step === 2) {
@@ -246,6 +382,8 @@ function CompanySetup() {
 
     setLoading(true);
     try {
+      console.log('Creating company with data:', formData);
+      
       // Create company in database
       const { data: company, error: companyError } = await supabase
         .from('companies')
@@ -261,20 +399,34 @@ function CompanySetup() {
           address: formData.address,
           contact_info: {
             email: formData.email,
-            phone: formData.phone
+            phone: formData.phone,
+            phoneCountry: formData.phoneCountry
           },
           settings: {
             displayName: formData.displayName,
             decimalPlaces: formData.decimalPlaces,
             language: formData.language,
             enablePassword: formData.enablePassword,
-            password: formData.enablePassword ? formData.password : null // In production, hash this
+            password: formData.enablePassword ? formData.password : null,
+            companyType: formData.companyType,
+            industry: formData.industry,
+            employeeCount: formData.employeeCount,
+            annualRevenue: formData.annualRevenue,
+            defaultPaymentTerms: formData.defaultPaymentTerms,
+            autoNumbering: formData.autoNumbering,
+            multiCurrency: formData.multiCurrency,
+            inventoryTracking: formData.inventoryTracking
           }
         })
         .select()
         .single();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        console.error('Company creation error:', companyError);
+        throw companyError;
+      }
+
+      console.log('Company created successfully:', company);
 
       // Create user-company relationship
       const { error: userCompanyError } = await supabase
@@ -285,7 +437,10 @@ function CompanySetup() {
           is_active: true
         });
 
-      if (userCompanyError) throw userCompanyError;
+      if (userCompanyError) {
+        console.error('User-company relationship error:', userCompanyError);
+        throw userCompanyError;
+      }
 
       // Create default period
       const { error: periodError } = await supabase
@@ -299,14 +454,19 @@ function CompanySetup() {
           period_type: 'fiscal_year'
         });
 
-      if (periodError) throw periodError;
+      if (periodError) {
+        console.error('Period creation error:', periodError);
+        throw periodError;
+      }
 
       // Navigate to dashboard
       navigate('/');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating company:', error);
-      setErrors({ submit: 'Failed to create company. Please try again.' });
+      setErrors({ 
+        submit: `Failed to create company: ${error.message || 'Unknown error'}. Please try again.` 
+      });
     } finally {
       setLoading(false);
     }
@@ -315,17 +475,19 @@ function CompanySetup() {
   const steps = [
     { number: 1, title: 'Basic Details', icon: Building },
     { number: 2, title: 'Compliance & Settings', icon: Settings },
-    { number: 3, title: 'Financial Year', icon: Calendar }
+    { number: 3, title: 'Business Configuration', icon: Database }
   ];
 
   const selectedCountry = countries.find(c => c.code === formData.address.country);
+  const selectedPhoneCountry = countries.find(c => c.code === formData.phoneCountry);
   const selectedCurrency = currencies.find(c => c.code === formData.currency);
+  const availableStates = selectedCountry?.states || [];
 
   return (
-    <div className={`min-h-screen ${theme.panelBg} py-8`}>
-      <div className="max-w-4xl mx-auto px-4">
+    <div className={`min-h-screen ${theme.panelBg} py-4`}>
+      <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className={`
             inline-flex items-center justify-center w-16 h-16 
             bg-gradient-to-r ${theme.primaryGradient} rounded-2xl shadow-xl mb-4
@@ -341,7 +503,7 @@ function CompanySetup() {
         </div>
 
         {/* Progress Steps */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-4">
             {steps.map((step, index) => {
               const Icon = step.icon;
@@ -382,7 +544,7 @@ function CompanySetup() {
         </div>
 
         {/* Form Content */}
-        <Card className="p-8">
+        <Card className="p-6">
           {/* Step 1: Basic Details */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -414,27 +576,9 @@ function CompanySetup() {
                   placeholder="Short name for display"
                   icon={<Building size={18} className="text-gray-400" />}
                 />
-
-                <FormField
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={(value) => updateFormData('email', value)}
-                  placeholder="company@example.com"
-                  required
-                  error={errors.email}
-                  icon={<Mail size={18} className="text-gray-400" />}
-                />
-
-                <FormField
-                  label="Phone Number"
-                  value={formData.phone}
-                  onChange={(value) => updateFormData('phone', value)}
-                  placeholder="+1 234 567 8900"
-                  icon={<Phone size={18} className="text-gray-400" />}
-                />
               </div>
 
+              {/* Business Address Section */}
               <div className="space-y-4">
                 <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                   <MapPin size={20} className="mr-2 text-[#6AC8A3]" />
@@ -442,6 +586,52 @@ function CompanySetup() {
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Country First */}
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Country <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.address.country}
+                      onChange={(e) => handleCountryChange(e.target.value)}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                    >
+                      {countries.map(country => (
+                        <option key={country.code} value={country.code}>
+                          {country.flag} {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* State/Province based on country */}
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      State/Province
+                    </label>
+                    <select
+                      value={formData.address.state}
+                      onChange={(e) => updateFormData('address.state', e.target.value)}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                      disabled={availableStates.length === 0}
+                    >
+                      <option value="">Select State/Province</option>
+                      {availableStates.map(state => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="md:col-span-2">
                     <FormField
                       label="Street Address"
@@ -464,34 +654,6 @@ function CompanySetup() {
                   />
 
                   <FormField
-                    label="State/Province"
-                    value={formData.address.state}
-                    onChange={(value) => updateFormData('address.state', value)}
-                    placeholder="State or Province"
-                  />
-
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                      Country <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.address.country}
-                      onChange={(e) => handleCountryChange(e.target.value)}
-                      className={`
-                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                        ${theme.inputBg} ${theme.textPrimary}
-                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                      `}
-                    >
-                      {countries.map(country => (
-                        <option key={country.code} value={country.code}>
-                          {country.flag} {country.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <FormField
                     label="ZIP/Postal Code"
                     value={formData.address.zipCode}
                     onChange={(value) => updateFormData('address.zipCode', value)}
@@ -500,6 +662,97 @@ function CompanySetup() {
                 </div>
               </div>
 
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+                  <Phone size={20} className="mr-2 text-[#6AC8A3]" />
+                  Contact Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={(value) => updateFormData('email', value)}
+                    placeholder="company@example.com (optional)"
+                    icon={<Mail size={18} className="text-gray-400" />}
+                  />
+
+                  {/* Phone Number with Country Code */}
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Phone Number
+                    </label>
+                    <div className="flex">
+                      {/* Country Code Selector */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowPhoneCountryDropdown(!showPhoneCountryDropdown)}
+                          className={`
+                            flex items-center space-x-2 px-3 py-2 border ${theme.borderColor} 
+                            ${theme.borderRadius} border-r-0 rounded-r-none
+                            ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                          `}
+                        >
+                          <span className="text-lg">{selectedPhoneCountry?.flag}</span>
+                          <span className="text-sm">{selectedPhoneCountry?.dialCode}</span>
+                          <ChevronDown size={14} />
+                        </button>
+                        
+                        {showPhoneCountryDropdown && (
+                          <div className={`
+                            absolute top-full left-0 mt-1 w-64 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} 
+                            border ${theme.isDark ? 'border-gray-600' : 'border-gray-300'} 
+                            ${theme.borderRadius} ${theme.shadowLevel} z-50 max-h-60 overflow-y-auto
+                          `}>
+                            {countries.map((country) => (
+                              <button
+                                key={country.code}
+                                type="button"
+                                onClick={() => {
+                                  updateFormData('phoneCountry', country.code);
+                                  setShowPhoneCountryDropdown(false);
+                                }}
+                                className={`
+                                  w-full px-3 py-2 text-left hover:bg-gray-100 
+                                  ${theme.isDark ? 'hover:bg-gray-600 text-white' : 'hover:bg-gray-100'}
+                                  flex items-center space-x-3
+                                `}
+                              >
+                                <span className="text-lg">{country.flag}</span>
+                                <span className="text-sm">{country.dialCode}</span>
+                                <span className="text-sm">{country.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Phone Input */}
+                      <div className="relative flex-1">
+                        <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => updateFormData('phone', e.target.value)}
+                          placeholder="Enter phone number"
+                          className={`
+                            w-full pl-10 pr-3 py-2 border ${theme.borderColor} 
+                            ${theme.borderRadius} rounded-l-none border-l-0
+                            ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                          `}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Localization */}
               <div className="space-y-4">
                 <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                   <Globe size={20} className="mr-2 text-[#6AC8A3]" />
@@ -615,7 +868,7 @@ function CompanySetup() {
                 <div className="space-y-4">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                     <Shield size={20} className="mr-2 text-[#6AC8A3]" />
-                    Tax Configuration
+                    Tax Configuration ({selectedCountry?.name})
                   </h3>
 
                   <div className="flex items-center space-x-3">
@@ -739,22 +992,109 @@ function CompanySetup() {
             </div>
           )}
 
-          {/* Step 3: Financial Year */}
+          {/* Step 3: Business Configuration */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className={`text-2xl font-bold ${theme.textPrimary} flex items-center`}>
-                  <Calendar size={24} className="mr-3 text-[#6AC8A3]" />
-                  Financial Year & Security
+                  <Database size={24} className="mr-3 text-[#6AC8A3]" />
+                  Business Configuration & Settings
                 </h2>
-                <AIButton variant="suggest" onSuggest={() => console.log('AI Financial Year Suggestions')} />
+                <AIButton variant="suggest" onSuggest={() => console.log('AI Business Configuration Suggestions')} />
               </div>
 
               <div className="space-y-6">
+                {/* Company Details */}
+                <div className="space-y-4">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+                    <Building size={20} className="mr-2 text-[#6AC8A3]" />
+                    Company Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                        Company Type
+                      </label>
+                      <select
+                        value={formData.companyType}
+                        onChange={(e) => updateFormData('companyType', e.target.value)}
+                        className={`
+                          w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                        `}
+                      >
+                        {companyTypes.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                        Industry
+                      </label>
+                      <select
+                        value={formData.industry}
+                        onChange={(e) => updateFormData('industry', e.target.value)}
+                        className={`
+                          w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                        `}
+                      >
+                        {industries.map(industry => (
+                          <option key={industry} value={industry}>{industry}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                        Employee Count
+                      </label>
+                      <select
+                        value={formData.employeeCount}
+                        onChange={(e) => updateFormData('employeeCount', e.target.value)}
+                        className={`
+                          w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                        `}
+                      >
+                        {employeeCounts.map(count => (
+                          <option key={count} value={count}>{count}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                        Annual Revenue
+                      </label>
+                      <select
+                        value={formData.annualRevenue}
+                        onChange={(e) => updateFormData('annualRevenue', e.target.value)}
+                        className={`
+                          w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                        `}
+                      >
+                        {revenueRanges.map(range => (
+                          <option key={range} value={range}>{range}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Configuration */}
                 <div className="space-y-4">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                     <Calendar size={20} className="mr-2 text-[#6AC8A3]" />
-                    Financial Year Configuration
+                    Financial Year & Accounting
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -788,15 +1128,69 @@ function CompanySetup() {
                     />
                   </div>
 
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-800 mb-2">Financial Year Information</h4>
-                    <p className="text-sm text-blue-700">
-                      Based on your country ({selectedCountry?.name}), we've auto-configured your financial year.
-                      You can modify these dates if your business follows a different fiscal calendar.
-                    </p>
+                  <FormField
+                    label="Default Payment Terms (Days)"
+                    type="number"
+                    value={formData.defaultPaymentTerms.toString()}
+                    onChange={(value) => updateFormData('defaultPaymentTerms', parseInt(value) || 30)}
+                    placeholder="30"
+                  />
+                </div>
+
+                {/* System Settings */}
+                <div className="space-y-4">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+                    <Settings size={20} className="mr-2 text-[#6AC8A3]" />
+                    System Settings
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="autoNumbering"
+                          checked={formData.autoNumbering}
+                          onChange={(e) => updateFormData('autoNumbering', e.target.checked)}
+                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                        />
+                        <label htmlFor="autoNumbering" className={`text-sm font-medium ${theme.textPrimary}`}>
+                          Enable automatic numbering for documents
+                        </label>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="inventoryTracking"
+                          checked={formData.inventoryTracking}
+                          onChange={(e) => updateFormData('inventoryTracking', e.target.checked)}
+                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                        />
+                        <label htmlFor="inventoryTracking" className={`text-sm font-medium ${theme.textPrimary}`}>
+                          Enable inventory tracking
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="multiCurrency"
+                          checked={formData.multiCurrency}
+                          onChange={(e) => updateFormData('multiCurrency', e.target.checked)}
+                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                        />
+                        <label htmlFor="multiCurrency" className={`text-sm font-medium ${theme.textPrimary}`}>
+                          Enable multi-currency support
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
+                {/* Security Settings */}
                 <div className="space-y-4">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                     <Lock size={20} className="mr-2 text-[#6AC8A3]" />
@@ -851,6 +1245,7 @@ function CompanySetup() {
                   )}
                 </div>
 
+                {/* Summary */}
                 <div className="space-y-4">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
                     Summary
