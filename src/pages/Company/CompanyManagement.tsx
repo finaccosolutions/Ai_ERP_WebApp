@@ -1230,4 +1230,3 @@ function CompanyManagement() {
   );
 } 
 export default CompanyManagement;
-  
