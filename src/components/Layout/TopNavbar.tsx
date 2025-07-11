@@ -25,11 +25,12 @@ import CompanyNameDisplay from '../Company/CompanyNameDisplay';
 interface TopNavbarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  sidebarWidth: string; // New prop for sidebar width
   showAI: boolean;
   setShowAI: (show: boolean) => void;
 }
 
-function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbarProps) {
+function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowAI }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -211,7 +212,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
         {/* Right Section */}
         <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Company Name Display */}
-          <CompanyNameDisplay />
+          <CompanyNameDisplay sidebarOpen={sidebarOpen} sidebarWidth={sidebarWidth} />
 
           {/* Theme Toggle */}
           <button

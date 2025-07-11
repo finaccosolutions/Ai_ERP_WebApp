@@ -4,7 +4,13 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import CompanyPeriodModal from './CompanyPeriodModal';
 
-function CompanyNameDisplay() {
+interface CompanyNameDisplayProps {
+  // Add any props needed for the display component itself
+  sidebarOpen: boolean;
+  sidebarWidth: string;
+}
+
+function CompanyNameDisplay({ sidebarOpen, sidebarWidth }: CompanyNameDisplayProps) {
   const { currentCompany } = useCompany();
   const { theme } = useTheme();
   const [showModal, setShowModal] = useState(false);
@@ -31,11 +37,8 @@ function CompanyNameDisplay() {
         onClick={() => setShowModal(true)}
         className={`
           flex items-center space-x-3 px-4 py-2.5 rounded-xl transition-all duration-300
-          ${theme.isDark 
-            ? 'bg-slate-700 hover:bg-slate-600 text-white border border-slate-600' 
-            : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-200'
-          }
-          hover:border-[#6AC8A3] hover:shadow-md min-w-[200px] h-[42px]
+          bg-slate-800 text-white border border-slate-600 shadow-md
+          hover:bg-slate-700 hover:shadow-lg min-w-[200px] h-[42px]
         `}
       >
         <div className="flex items-center space-x-2 flex-1">
@@ -46,7 +49,7 @@ function CompanyNameDisplay() {
             {currentCompany ? getCountryFlag(currentCompany.country) : <Building size={16} />}
           </div>
           <div className="text-left">
-            <p className={`text-sm font-medium ${theme.textPrimary} truncate`}>
+            <p className={`text-sm font-medium text-white truncate`}>
               {currentCompany?.name || 'Select Company'}
             </p>
           </div>
@@ -56,6 +59,8 @@ function CompanyNameDisplay() {
 
       <CompanyPeriodModal 
         isOpen={showModal}
+        sidebarOpen={sidebarOpen}
+        sidebarWidth={sidebarWidth}
         onClose={() => setShowModal(false)}
       />
     </>

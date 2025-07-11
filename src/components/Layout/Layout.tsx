@@ -18,6 +18,7 @@ function Layout({ children }: LayoutProps) {
       <TopNavbar 
         sidebarOpen={sidebarOpen} 
         setSidebarOpen={setSidebarOpen}
+        sidebarWidth={sidebarOpen ? 'w-64' : 'w-16'}
         showAI={showAI}
         setShowAI={setShowAI}
       />

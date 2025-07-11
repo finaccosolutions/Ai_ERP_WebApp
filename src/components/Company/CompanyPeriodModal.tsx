@@ -19,9 +19,11 @@ import Button from '../UI/Button';
 interface CompanyPeriodModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sidebarOpen: boolean;
+  sidebarWidth: string;
 }
 
-function CompanyPeriodModal({ isOpen, onClose }: CompanyPeriodModalProps) {
+function CompanyPeriodModal({ isOpen, onClose, sidebarOpen, sidebarWidth }: CompanyPeriodModalProps) {
   const { 
     currentCompany, 
     currentPeriod, 
@@ -35,6 +37,10 @@ function CompanyPeriodModal({ isOpen, onClose }: CompanyPeriodModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [view, setView] = useState<'companies' | 'periods'>('companies');
+
+  const sidebarPxWidth = sidebarOpen ? 256 : 64; // 64px for w-16, 256px for w-64
+  const topNavHeight = 64; // Height of the TopNavbar
+  const modalPadding = 16; // Padding around the modal
 
   useEffect(() => {
     if (isOpen) {
@@ -118,8 +124,13 @@ function CompanyPeriodModal({ isOpen, onClose }: CompanyPeriodModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <Card className={`w-full max-w-4xl h-[600px] ${theme.cardBg} flex flex-col`}>
+    <div className={`
+      fixed z-50 bg-black bg-opacity-50
+      top-[64px] bottom-0 right-0 p-4
+      ${sidebarOpen ? `left-[${sidebarPxWidth}px]` : 'left-0'}
+      flex items-center justify-center
+    `}>
+      <Card className={`w-full h-full max-w-7xl ${theme.cardBg} flex flex-col`} style={{ maxHeight: `calc(100vh - ${topNavHeight}px - ${modalPadding * 2}px)` }}>
         {/* Header */}
         <div className={`
           flex items-center justify-between p-6 border-b ${theme.borderColor}
