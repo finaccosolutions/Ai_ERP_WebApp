@@ -14,7 +14,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Bot
+  Sparkles
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
@@ -55,52 +55,44 @@ function Sidebar({ open, setOpen }: SidebarProps) {
       
       <div className={`
         fixed left-0 top-16 h-[calc(100vh-4rem)] z-30 transition-all duration-300 ease-in-out
-        ${open ? 'w-72' : 'w-16'} 
-        bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900
-        border-r border-slate-700/50 shadow-2xl backdrop-blur-sm
+        ${open ? 'w-64' : 'w-16'} 
+        ${theme.sidebarBg}
+        border-r border-slate-700/30 shadow-xl backdrop-blur-sm
         flex flex-col
       `}>
         {/* Header Section */}
-        <div className="relative p-4 border-b border-slate-700/50">
+        <div className="relative p-3 border-b border-slate-700/30">
           {/* Toggle Button - Redesigned */}
           <button
             onClick={() => setOpen(!open)}
             className={`
-              absolute ${open ? '-right-4' : '-right-4'} top-1/2 transform -translate-y-1/2
-              w-8 h-8 bg-gradient-to-r from-slate-700 to-slate-600
-              border-2 border-slate-500 rounded-full shadow-lg
+              absolute ${open ? '-right-3' : '-right-3'} top-1/2 transform -translate-y-1/2
+              w-6 h-6 bg-gradient-to-r ${theme.primaryGradient}
+              border border-slate-600 rounded-full shadow-lg
               flex items-center justify-center transition-all duration-300
-              hover:from-[#6AC8A3] hover:to-[#5BB394] hover:border-[#6AC8A3]
-              hover:shadow-lg hover:shadow-[#6AC8A3]/25 z-40
-              text-slate-300 hover:text-white
+              hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
+              hover:shadow-lg hover:shadow-[#5DBF99]/25 z-40
+              text-white hover:scale-110
             `}
           >
-            {open ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            {open ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
           </button>
 
           {/* AI Status Indicator */}
           {open && isAIEnabled && (
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-[#6AC8A3]/20 to-[#5BB394]/20 rounded-lg border border-[#6AC8A3]/30">
-                <Bot size={16} className="text-[#6AC8A3]" />
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="flex items-center space-x-2 px-2.5 py-1.5 bg-gradient-to-r from-[#6AC8A3]/20 to-[#7AD4B0]/20 rounded-lg border border-[#6AC8A3]/30">
+                <Sparkles size={12} className="text-[#6AC8A3]" />
                 <span className="text-xs text-[#6AC8A3] font-medium">AI Active</span>
-                <div className="w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse"></div>
+                <div className="w-1.5 h-1.5 bg-[#6AC8A3] rounded-full animate-pulse"></div>
               </div>
-            </div>
-          )}
-
-          {/* Company Info */}
-          {open && (
-            <div className="text-center">
-              <h3 className="text-sm font-semibold text-white">ERP Pro</h3>
-              <p className="text-xs text-slate-400">Business Management</p>
             </div>
           )}
         </div>
 
         {/* Navigation - Scrollable */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600 hover:scrollbar-thumb-slate-500">
-          <div className="p-3 space-y-1">
+          <div className="p-2 space-y-1">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || 
@@ -114,7 +106,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     group relative flex items-center px-3 py-3 rounded-xl
                     transition-all duration-300 ease-in-out
                     ${isActive 
-                      ? 'bg-gradient-to-r from-[#6AC8A3] to-[#5BB394] text-white shadow-lg shadow-[#6AC8A3]/25' 
+                      ? 'bg-gradient-to-r ${theme.primaryGradient} text-white shadow-lg shadow-[#6AC8A3]/25' 
                       : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
                     }
                     ${!open ? 'justify-center' : ''}
@@ -134,7 +126,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     
                     {/* Active indicator for collapsed state */}
                     {!open && isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#6AC8A3] to-[#5BB394] rounded-lg opacity-20 scale-150" />
+                      <div className="absolute inset-0 bg-gradient-to-r ${theme.primaryGradient} rounded-lg opacity-20 scale-150" />
                     )}
                   </div>
 
@@ -178,7 +170,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
 
         {/* Footer */}
         {open && (
-          <div className="p-4 border-t border-slate-700/50">
+          <div className="p-3 border-t border-slate-700/30">
             <div className="text-center">
               <p className="text-xs text-slate-400">Version 2.0.1</p>
               {isAIEnabled && (

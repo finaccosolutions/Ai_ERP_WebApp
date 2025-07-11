@@ -297,11 +297,11 @@ function Dashboard() {
               <div key={activity.id} className={`
                 flex items-center space-x-3 p-3 
                 ${theme.inputBg} ${theme.borderRadius} 
-                transition-all duration-300 hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3]
+                transition-all duration-300 hover:bg-[#5DBF99]/10 hover:border-[#5DBF99]
                 border ${theme.borderColor}
               `}>
                 <div className="flex-shrink-0">
-                  <CheckCircle size={16} className="text-[#6AC8A3]" />
+                  <CheckCircle size={16} className="text-[#5DBF99]" />
                 </div>
                 <div className="flex-1">
                   <p className={`text-sm ${theme.textPrimary}`}>
@@ -325,8 +325,8 @@ function Dashboard() {
             <button className={`
               w-full p-3 text-left bg-gradient-to-r ${theme.primaryGradient}
               text-white ${theme.borderRadius} hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
-              transition-all duration-300 transform hover:scale-105 ${theme.shadowLevel}
-              hover:shadow-[#6AC8A3]/25
+              transition-all duration-300 transform hover:scale-105 shadow-md
+              hover:shadow-[#5DBF99]/25
             `}>
               <div className="flex items-center space-x-2">
                 <ShoppingCart size={16} />
@@ -336,7 +336,7 @@ function Dashboard() {
             <button className={`
               w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
               ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
-              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
+              hover:bg-[#5DBF99]/10 hover:border-[#5DBF99] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <Package size={16} />
@@ -346,7 +346,7 @@ function Dashboard() {
             <button className={`
               w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
               ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
-              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
+              hover:bg-[#5DBF99]/10 hover:border-[#5DBF99] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <DollarSign size={16} />
@@ -356,7 +356,7 @@ function Dashboard() {
             <button className={`
               w-full p-3 text-left ${theme.inputBg} ${theme.textPrimary}
               ${theme.borderRadius} transition-all duration-300 transform hover:scale-105
-              hover:bg-[#6AC8A3]/10 hover:border-[#6AC8A3] border ${theme.borderColor}
+              hover:bg-[#5DBF99]/10 hover:border-[#5DBF99] border ${theme.borderColor}
             `}>
               <div className="flex items-center space-x-2">
                 <Users size={16} />

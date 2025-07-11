@@ -33,12 +33,12 @@ function Button({
     primary: `
       bg-gradient-to-r ${theme.primaryGradient} text-white 
       hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
-      ${theme.shadowLevel} hover:${theme.shadowHover}
+      shadow-md hover:shadow-lg
       hover:shadow-[#6AC8A3]/25
     `,
     secondary: `
       ${theme.cardBg} ${theme.textPrimary} hover:bg-slate-300 
-      ${theme.isDark ? 'hover:bg-slate-600' : ''} ${theme.shadowLevel}
+      ${theme.isDark ? 'hover:bg-slate-600' : ''} shadow-md
     `,
     outline: `
       border-2 ${theme.borderColor} ${theme.textPrimary} 

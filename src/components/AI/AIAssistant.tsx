@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Bot, 
+  MessageSquare, 
   Send, 
   Mic, 
   Upload, 
@@ -8,7 +8,7 @@ import {
   Sparkles, 
   Brain,
   FileText,
-  MessageCircle,
+  Bot,
   MicIcon,
   Camera,
   Search,
@@ -301,7 +301,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
           bg-gradient-to-r ${theme.primaryGradient}
         `}>
           <div className="flex items-center space-x-2">
-            <Bot size={20} className="text-white" />
+            <MessageSquare size={20} className="text-white" />
             <h3 className="font-semibold text-white">AI Assistant</h3>
             <span className="text-xs text-white/80 capitalize">({context})</span>
           </div>
@@ -316,7 +316,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         {/* Tabs */}
         <div className={`flex border-b ${theme.borderColor}`}>
           {[
-            { id: 'chat', icon: MessageCircle, label: 'Chat' },
+            { id: 'chat', icon: Bot, label: 'Chat' },
             { id: 'voice', icon: Mic, label: 'Voice' },
             { id: 'document', icon: FileText, label: 'Document' },
             { id: 'search', icon: Search, label: 'Search' }

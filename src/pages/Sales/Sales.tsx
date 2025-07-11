@@ -148,7 +148,7 @@ function Sales() {
                 absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors
                 ${isVoiceActive 
                   ? 'text-red-500 animate-pulse' 
-                  : 'text-gray-400 hover:text-[#6AC8A3]'
+                  : 'text-gray-400 hover:text-[#5DBF99]'
                 }
               `}
             >
@@ -162,10 +162,10 @@ function Sales() {
       </Card>
 
       {/* AI Insights Banner */}
-      <Card className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-l-4 border-l-[#6AC8A3]">
+      <Card className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-l-4 border-l-[#5DBF99]">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Bot size={24} className="text-[#6AC8A3]" />
+            <Bot size={24} className="text-[#5DBF99]" />
             <div>
               <h3 className="font-semibold text-gray-900">AI Sales Insights</h3>
               <p className="text-sm text-gray-600">3 new insights available based on recent activity</p>
@@ -201,11 +201,11 @@ function Sales() {
                 
                 {/* AI Enhancement Indicator */}
                 <div className="absolute top-2 right-2">
-                  <div className="w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse" title="AI Enhanced" />
+                  <div className="w-2 h-2 bg-[#5DBF99] rounded-full animate-pulse" title="AI Enhanced" />
                 </div>
                 
                 {/* Hover Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#6AC8A3]/5 to-transparent 
+                <div className="absolute inset-0 bg-gradient-to-r from-[#5DBF99]/5 to-transparent 
                                opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </Card>
             </Link>
@@ -267,7 +267,7 @@ function Sales() {
         {/* AI Insights */}
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+            <Bot size={20} className="mr-2 text-[#5DBF99]" />
             AI Insights
           </h3>
           <div className="space-y-4">

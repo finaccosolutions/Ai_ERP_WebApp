@@ -30,13 +30,13 @@ interface ThemeContextType {
 }
 
 const lightTheme: ThemeSettings = {
-  // Main gradient: Soft green → Muted teal → Cool blue
-  primaryGradient: 'from-[#6AC8A3] via-[#76C0C8] to-[#81CFEA]',
-  primaryGradientHover: 'from-[#5BB394] via-[#67B1B9] to-[#72C0DB]',
+  // Main gradient: Your specified green colors with subtle transition
+  primaryGradient: 'from-[#5DBF99] via-[#6AC8A3] to-[#7AD4B0]',
+  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]',
   
   // Backgrounds
-  sidebarBg: 'bg-slate-900',
-  topNavBg: 'bg-slate-900',
+  sidebarBg: 'bg-gradient-to-b from-slate-800 to-slate-900',
+  topNavBg: 'bg-gradient-to-r from-slate-800 to-slate-900',
   panelBg: 'bg-slate-200',
   cardBg: 'bg-slate-100',
   
@@ -52,7 +52,7 @@ const lightTheme: ThemeSettings = {
   inputFocus: 'ring-[#6AC8A3] border-[#6AC8A3]',
   
   // Hover effects
-  hoverAccent: '#6AC8A3',
+  hoverAccent: '#5DBF99',
   
   // Design elements
   borderRadius: 'rounded-xl',
@@ -63,13 +63,13 @@ const lightTheme: ThemeSettings = {
 };
 
 const darkTheme: ThemeSettings = {
-  // Main gradient: Darker version for dark mode
-  primaryGradient: 'from-[#5BB394] via-[#67B1B9] to-[#72C0DB]',
-  primaryGradientHover: 'from-[#4CA485] via-[#58A2AA] to-[#63B1CC]',
+  // Main gradient: Darker version with your colors
+  primaryGradient: 'from-[#5DBF99] via-[#6AC8A3] to-[#7AD4B0]',
+  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]',
   
   // Backgrounds
-  sidebarBg: 'bg-slate-900',
-  topNavBg: 'bg-slate-800',
+  sidebarBg: 'bg-gradient-to-b from-slate-900 to-black',
+  topNavBg: 'bg-gradient-to-r from-slate-900 to-slate-800',
   panelBg: 'bg-slate-800',
   cardBg: 'bg-slate-700',
   
@@ -85,7 +85,7 @@ const darkTheme: ThemeSettings = {
   inputFocus: 'ring-[#6AC8A3] border-[#6AC8A3]',
   
   // Hover effects
-  hoverAccent: '#6AC8A3',
+  hoverAccent: '#5DBF99',
   
   // Design elements
   borderRadius: 'rounded-xl',

@@ -5,13 +5,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Custom theme colors
-        'theme-green': '#6AC8A3',
-        'theme-teal': '#76C0C8',
-        'theme-blue': '#81CFEA',
-        'theme-green-dark': '#5BB394',
-        'theme-teal-dark': '#67B1B9',
-        'theme-blue-dark': '#72C0DB',
+        // Updated theme colors with your gradient
+        'theme-green-light': '#7AD4B0',
+        'theme-green-medium': '#6AC8A3', 
+        'theme-green-base': '#5DBF99',
+        'theme-green-dark': '#4FB085',
+        'theme-green-darker': '#41A171',
         gray: {
           750: '#374151',
           850: '#1F2937',
@@ -35,9 +34,9 @@ export default {
         }
       },
       boxShadow: {
-        'theme': '0 10px 25px -3px rgba(106, 200, 163, 0.1), 0 4px 6px -2px rgba(106, 200, 163, 0.05)',
-        'theme-lg': '0 20px 25px -5px rgba(106, 200, 163, 0.1), 0 10px 10px -5px rgba(106, 200, 163, 0.04)',
-        'theme-xl': '0 25px 50px -12px rgba(106, 200, 163, 0.25)',
+        'theme': '0 10px 25px -3px rgba(93, 191, 153, 0.1), 0 4px 6px -2px rgba(93, 191, 153, 0.05)',
+        'theme-lg': '0 20px 25px -5px rgba(93, 191, 153, 0.1), 0 10px 10px -5px rgba(93, 191, 153, 0.04)',
+        'theme-xl': '0 25px 50px -12px rgba(93, 191, 153, 0.25)',
       }
     },
   },
