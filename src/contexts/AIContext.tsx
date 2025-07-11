@@ -17,8 +17,8 @@ interface AIContextType {
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
 
-const GEMINI_API_KEY = 'AIzaSyDYY-jiLmJ68-6HL0HiDgxRLexdrpdvPhg';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 export function AIProvider({ children }: { children: React.ReactNode }) {
   const [isAIEnabled, setIsAIEnabled] = useState(true);
@@ -31,7 +31,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
   const callGeminiAPI = async (prompt: string) => {
     try {
       // Check if API key is valid
-      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-api-key-here') {
+      if (!GEMINI_API_KEY) {
         throw new Error('Gemini API key not configured');
       }
 
@@ -50,7 +50,15 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        if (response.status === 503) {
+          throw new Error('Gemini API is temporarily unavailable. Please try again later.');
+        } else if (response.status === 401) {
+          throw new Error('Invalid API key. Please check your Gemini API configuration.');
+        } else if (response.status === 429) {
+          throw new Error('API rate limit exceeded. Please try again later.');
+        } else {
+          throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+        }
       }
 
       const data = await response.json();

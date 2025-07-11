@@ -20,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAI } from '../../contexts/AIContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import CompanySelector from '../Company/CompanySelector';
+import CompanyNameDisplay from '../Company/CompanyNameDisplay';
 
 interface TopNavbarProps {
   sidebarOpen: boolean;
@@ -210,10 +210,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
 
         {/* Right Section */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Company & Period Selector */}
-          <div className="hidden md:block">
-            <CompanySelector />
-          </div>
+          {/* Company Name Display */}
+          <CompanyNameDisplay />
 
           {/* Theme Toggle */}
           <button
