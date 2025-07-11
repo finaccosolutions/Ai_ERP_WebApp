@@ -1,3 +1,4 @@
+// src/pages/Company/CompanyManagement.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Building,
@@ -23,7 +24,11 @@ import {
   Settings,
   Users,
   Shield,
-  Clock
+  Clock,
+  FolderOpen,
+  Eye as ViewIcon,
+  ArrowLeft,
+  LayoutDashboard
 } from 'lucide-react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -32,6 +37,7 @@ import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface Company {
   id: string;
@@ -89,15 +95,17 @@ function CompanyManagement() {
     refreshCompanies,
     refreshPeriods,
   } = useCompany();
-  const { theme } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'periods' | 'security' | 'users'>('general');
+  const [displayMode, setDisplayMode] = useState<'none' | 'overview' | 'view' | 'edit' | 'periods'>('none');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -124,7 +132,7 @@ function CompanyManagement() {
       rates: [0, 5, 12, 18, 28]
     },
     enablePassword: false,
-    companyPassword: '', // Renamed to avoid conflict with state password
+    companyPassword: '',
     language: 'en',
     timezone: '',
     fiscalYearStart: '',
@@ -144,7 +152,8 @@ function CompanyManagement() {
 
   useEffect(() => {
     if (companies.length > 0 && !selectedCompany) {
-      setSelectedCompany(currentCompany || companies[0]);
+      // Do not pre-select any company on initial load
+      // setSelectedCompany(currentCompany || companies[0]);
     }
   }, [companies, selectedCompany, currentCompany]);
 
@@ -183,7 +192,7 @@ function CompanyManagement() {
 
   const handleCompanySelect = (company: Company) => {
     setSelectedCompany(company);
-    setActiveTab('general'); // Reset to general tab when selecting new company
+    setDisplayMode('overview'); // Show overview by default
     setSuccessMessage('');
     setFormErrors({});
   };
@@ -250,6 +259,10 @@ function CompanyManagement() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyFormData.email)) newErrors.email = 'Invalid email format';
     if (companyFormData.enablePassword && !companyFormData.companyPassword.trim()) newErrors.companyPassword = 'Password is required';
     if (companyFormData.enablePassword && companyFormData.companyPassword.length < 6) newErrors.companyPassword = 'Password must be at least 6 characters';
+    if (!companyFormData.fiscalYearStart) newErrors.fiscalYearStart = 'Fiscal year start date is required';
+    if (!companyFormData.fiscalYearEnd) newErrors.fiscalYearEnd = 'Fiscal year end date is required';
+    if (!companyFormData.timezone) newErrors.timezone = 'Timezone is required';
+
 
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -289,6 +302,7 @@ function CompanyManagement() {
 
       await refreshCompanies();
       setSuccessMessage('Company settings updated successfully!');
+      setDisplayMode('overview'); // Go back to overview after saving
     } catch (error: any) {
       console.error('Error updating company:', error);
       setFormErrors({ submit: error.message || 'Failed to update company settings.' });
@@ -315,6 +329,7 @@ function CompanyManagement() {
 
       await refreshCompanies();
       setSelectedCompany(null); // Clear selected company after deletion
+      setDisplayMode('none'); // Go back to none
       setSuccessMessage('Company deleted successfully!');
     } catch (error: any) {
       console.error('Error deleting company:', error);
@@ -324,14 +339,17 @@ function CompanyManagement() {
     }
   };
 
-  const handleSetCurrentCompany = async (company: Company) => {
+  const handleOpenCompany = async (company: Company, periodId?: string) => {
     if (company.settings?.enablePassword && company.id !== currentCompany?.id) {
       setSelectedCompany(company); // Set for password modal context
-      setShowPassword(true);
+      setShowPasswordModal(true);
       return;
     }
     switchCompany(company.id);
-    setSuccessMessage(`Switched to ${company.name}`);
+    if (periodId) {
+      switchPeriod(periodId);
+    }
+    navigate('/'); // Navigate to dashboard
   };
 
   const handlePasswordSubmit = () => {
@@ -340,10 +358,10 @@ function CompanyManagement() {
     // In production, this should be properly validated against hashed password
     if (password === selectedCompany.settings?.password) {
       switchCompany(selectedCompany.id);
-      setShowPassword(false);
+      setShowPasswordModal(false);
       setPassword('');
       setPasswordError('');
-      setSuccessMessage(`Switched to ${selectedCompany.name}`);
+      navigate('/'); // Navigate to dashboard after successful password entry
     } else {
       setPasswordError('Incorrect password. Please try again.');
     }
@@ -571,6 +589,13 @@ function CompanyManagement() {
           <p className="text-sm text-gray-500 mt-2">
             {filteredCompanies.length} of {companies.length} companies
           </p>
+          <Button
+            onClick={() => navigate('/company/setup')}
+            icon={<Plus size={16} />}
+            className="w-full mt-4"
+          >
+            Create New Company
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -618,7 +643,21 @@ function CompanyManagement() {
 
       {/* Right Panel - Company Details & Management */}
       <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-        {selectedCompany ? (
+        {displayMode === 'none' && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Building size={64} className="mx-auto text-gray-300 mb-4" />
+              <h3 className={`text-xl font-medium ${theme.textPrimary} mb-2`}>
+                Select a Company
+              </h3>
+              <p className={`${theme.textMuted}`}>
+                Choose a company from the list on the left to manage its details and periods.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {selectedCompany && displayMode !== 'none' && (
           <>
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
@@ -629,24 +668,28 @@ function CompanyManagement() {
                 <p className={theme.textSecondary}>Manage company details, periods, and settings</p>
               </div>
               <div className="flex space-x-2">
-                {selectedCompany.id !== currentCompany?.id && (
+                {displayMode !== 'overview' && (
                   <Button
-                    onClick={() => handleSetCurrentCompany(selectedCompany)}
-                    disabled={loading}
-                    icon={<Check size={16} />}
+                    variant="outline"
+                    onClick={() => setDisplayMode('overview')}
+                    icon={<ArrowLeft size={16} />}
                   >
-                    Set as Current
+                    Back to Overview
                   </Button>
                 )}
                 <Button
                   variant="outline"
-                  onClick={() => handleDeleteCompany(selectedCompany.id)}
-                  disabled={loading || selectedCompany.id === currentCompany?.id}
-                  icon={<Trash2 size={16} />}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={() => navigate('/')}
+                  icon={<LayoutDashboard size={16} />}
                 >
-                  Delete Company
+                  Back to Dashboard
                 </Button>
+                <button
+                  onClick={() => setDisplayMode('none')} // Close window option
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
               </div>
             </div>
 
@@ -662,181 +705,389 @@ function CompanyManagement() {
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="flex space-x-8">
-                {[
-                  { id: 'general', label: 'General', icon: Building },
-                  { id: 'periods', label: 'Periods', icon: Calendar },
-                  { id: 'security', label: 'Security', icon: Shield },
-                  { id: 'users', label: 'Users', icon: Users }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`
-                        flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors
-                        ${activeTab === tab.id
-                          ? 'border-[#6AC8A3] text-[#6AC8A3]'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        }
-                      `}
-                    >
-                      <Icon size={16} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            {activeTab === 'general' && (
+            {/* Overview Mode */}
+            {displayMode === 'overview' && (
               <Card className="p-6">
                 <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
-                  General Information
+                  Company Overview
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    label="Company Name"
-                    value={companyFormData.name}
-                    onChange={(value) => updateCompanyFormData('name', value)}
-                    required
-                    error={formErrors.name}
-                  />
-                  <FormField
-                    label="Display Name"
-                    value={companyFormData.displayName}
-                    onChange={(value) => updateCompanyFormData('displayName', value)}
-                    placeholder="Short name for display"
-                  />
-                  <FormField
-                    label="Email Address"
-                    type="email"
-                    value={companyFormData.email}
-                    onChange={(value) => updateCompanyFormData('email', value)}
-                    required
-                    error={formErrors.email}
-                  />
-                  <FormField
-                    label="Phone Number"
-                    value={companyFormData.phone}
-                    onChange={(value) => updateCompanyFormData('phone', value)}
-                  />
-                  <div className="md:col-span-2">
-                    <FormField
-                      label="Street Address"
-                      value={companyFormData.address.street}
-                      onChange={(value) => updateCompanyFormData('address.street', value)}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Company Name</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.name}</p>
                   </div>
-                  <FormField
-                    label="City"
-                    value={companyFormData.address.city}
-                    onChange={(value) => updateCompanyFormData('address.city', value)}
-                  />
-                  <FormField
-                    label="State/Province"
-                    value={companyFormData.address.state}
-                    onChange={(value) => updateCompanyFormData('address.state', value)}
-                  />
-                  <FormField
-                    label="Country"
-                    value={companyFormData.address.country}
-                    onChange={(value) => updateCompanyFormData('address.country', value)}
-                  />
-                  <FormField
-                    label="ZIP/Postal Code"
-                    value={companyFormData.address.zipCode}
-                    onChange={(value) => updateCompanyFormData('address.zipCode', value)}
-                  />
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                      Currency
-                    </label>
-                    <div className={`
-                      px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                    `}>
-                      {companyFormData.currency}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Currency cannot be changed after company creation
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Display Name</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.settings?.displayName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Email</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.email}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Phone</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Country</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.country}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Currency</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.currency}</p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Fiscal Year</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>
+                      {formatDate(selectedCompany.fiscalYearStart)} - {formatDate(selectedCompany.fiscalYearEnd)}
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                      Decimal Places
-                    </label>
-                    <select
-                      value={companyFormData.decimalPlaces}
-                      onChange={(e) => updateCompanyFormData('decimalPlaces', parseInt(e.target.value))}
-                      className={`
-                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                        ${theme.inputBg} ${theme.textPrimary}
-                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                      `}
-                    >
-                      <option value={0}>0 (1,234)</option>
-                      <option value={1}>1 (1,234.5)</option>
-                      <option value={2}>2 (1,234.56)</option>
-                      <option value={3}>3 (1,234.567)</option>
-                      <option value={4}>4 (1,234.5678)</option>
-                    </select>
+                  <div>
+                    <p className={`text-sm ${theme.textMuted}`}>Timezone</p>
+                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.timezone}</p>
                   </div>
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                      Tax System
-                    </label>
-                    <div className={`
-                      px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                    `}>
-                      {companyFormData.taxConfig.type}
-                    </div>
-                  </div>
-                  <FormField
-                    label="Tax Registration Number"
-                    value={companyFormData.taxConfig.registrationNumber}
-                    onChange={(value) => updateCompanyFormData('taxConfig.registrationNumber', value)}
-                  />
-                  <FormField
-                    label="Fiscal Year Start"
-                    type="date"
-                    value={companyFormData.fiscalYearStart}
-                    onChange={(value) => updateCompanyFormData('fiscalYearStart', value)}
-                    required
-                  />
-                  <FormField
-                    label="Fiscal Year End"
-                    type="date"
-                    value={companyFormData.fiscalYearEnd}
-                    onChange={(value) => updateCompanyFormData('fiscalYearEnd', value)}
-                    required
-                  />
-                  <FormField
-                    label="Timezone"
-                    value={companyFormData.timezone}
-                    onChange={(value) => updateCompanyFormData('timezone', value)}
-                    placeholder="e.g., Asia/Kolkata"
-                    required
-                  />
                 </div>
-                <div className="flex justify-end mt-6">
+                <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={handleSaveCompany}
-                    disabled={loading}
-                    icon={<Save size={16} />}
+                    onClick={() => handleOpenCompany(selectedCompany)}
+                    icon={<FolderOpen size={16} />}
                   >
-                    {loading ? 'Saving...' : 'Save Changes'}
+                    Open Company
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDisplayMode('view')}
+                    icon={<ViewIcon size={16} />}
+                  >
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDisplayMode('edit')}
+                    icon={<Edit size={16} />}
+                  >
+                    Edit Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDisplayMode('periods')}
+                    icon={<Calendar size={16} />}
+                  >
+                    Manage Periods
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDeleteCompany(selectedCompany.id)}
+                    disabled={loading || selectedCompany.id === currentCompany?.id}
+                    icon={<Trash2 size={16} />}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Delete Company
                   </Button>
                 </div>
               </Card>
             )}
 
-            {activeTab === 'periods' && (
+            {/* View/Edit Mode */}
+            {(displayMode === 'view' || displayMode === 'edit' || displayMode === 'general' || displayMode === 'security' || displayMode === 'users') && (
+              <>
+                {/* Tabs for View/Edit Mode */}
+                <div className="border-b border-gray-200 mb-6">
+                  <nav className="flex space-x-8">
+                    {[
+                      { id: 'general', label: 'General', icon: Building },
+                      { id: 'security', label: 'Security', icon: Shield },
+                      { id: 'users', label: 'Users', icon: Users }
+                    ].map(tab => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setDisplayMode(tab.id as any)} // This will switch to the specific tab within view/edit
+                          className={`
+                            flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors
+                            ${displayMode === tab.id // Check if current displayMode matches tab id
+                              ? 'border-[#6AC8A3] text-[#6AC8A3]'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }
+                          `}
+                        >
+                          <Icon size={16} />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                {/* General Tab Content */}
+                {(displayMode === 'general' || displayMode === 'view' || displayMode === 'edit') && (
+                  <Card className="p-6">
+                    <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
+                      General Information
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        label="Company Name"
+                        value={companyFormData.name}
+                        onChange={(value) => updateCompanyFormData('name', value)}
+                        required
+                        error={formErrors.name}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="Display Name"
+                        value={companyFormData.displayName}
+                        onChange={(value) => updateCompanyFormData('displayName', value)}
+                        placeholder="Short name for display"
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="Email Address"
+                        type="email"
+                        value={companyFormData.email}
+                        onChange={(value) => updateCompanyFormData('email', value)}
+                        required
+                        error={formErrors.email}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="Phone Number"
+                        value={companyFormData.phone}
+                        onChange={(value) => updateCompanyFormData('phone', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <div className="md:col-span-2">
+                        <FormField
+                          label="Street Address"
+                          value={companyFormData.address.street}
+                          onChange={(value) => updateCompanyFormData('address.street', value)}
+                          readOnly={displayMode === 'view' || displayMode === 'general'}
+                        />
+                      </div>
+                      <FormField
+                        label="City"
+                        value={companyFormData.address.city}
+                        onChange={(value) => updateCompanyFormData('address.city', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="State/Province"
+                        value={companyFormData.address.state}
+                        onChange={(value) => updateCompanyFormData('address.state', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="Country"
+                        value={companyFormData.address.country}
+                        onChange={(value) => updateCompanyFormData('address.country', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="ZIP/Postal Code"
+                        value={companyFormData.address.zipCode}
+                        onChange={(value) => updateCompanyFormData('address.zipCode', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                          Currency
+                        </label>
+                        <div className={`
+                          px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          ${displayMode === 'view' || displayMode === 'general' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                        `}>
+                          {companyFormData.currency}
+                        </div>
+                        {(displayMode === 'edit' || displayMode === 'general') && (
+                          <p className="text-xs text-gray-500">
+                            Currency cannot be changed after company creation
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                          Decimal Places
+                        </label>
+                        <select
+                          value={companyFormData.decimalPlaces}
+                          onChange={(e) => updateCompanyFormData('decimalPlaces', parseInt(e.target.value))}
+                          className={`
+                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                            ${theme.inputBg} ${theme.textPrimary}
+                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                            ${displayMode === 'view' || displayMode === 'general' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                          `}
+                          disabled={displayMode === 'view' || displayMode === 'general'}
+                        >
+                          <option value={0}>0 (1,234)</option>
+                          <option value={1}>1 (1,234.5)</option>
+                          <option value={2}>2 (1,234.56)</option>
+                          <option value={3}>3 (1,234.567)</option>
+                          <option value={4}>4 (1,234.5678)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                          Tax System
+                        </label>
+                        <div className={`
+                          px-3 py-2 border ${theme.inputBorder} rounded-lg
+                          ${theme.inputBg} ${theme.textPrimary}
+                          ${displayMode === 'view' || displayMode === 'general' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                        `}>
+                          {companyFormData.taxConfig.type}
+                        </div>
+                      </div>
+                      <FormField
+                        label="Tax Registration Number"
+                        value={companyFormData.taxConfig.registrationNumber}
+                        onChange={(value) => updateCompanyFormData('taxConfig.registrationNumber', value)}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                      />
+                      <FormField
+                        label="Fiscal Year Start"
+                        type="date"
+                        value={companyFormData.fiscalYearStart}
+                        onChange={(value) => updateCompanyFormData('fiscalYearStart', value)}
+                        required
+                        error={formErrors.fiscalYearStart}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                        aiHelper={true}
+                        context="company_fiscal_year_start"
+                      />
+                      <FormField
+                        label="Fiscal Year End"
+                        type="date"
+                        value={companyFormData.fiscalYearEnd}
+                        onChange={(value) => updateCompanyFormData('fiscalYearEnd', value)}
+                        required
+                        error={formErrors.fiscalYearEnd}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                        aiHelper={true}
+                        context="company_fiscal_year_end"
+                      />
+                      <FormField
+                        label="Timezone"
+                        value={companyFormData.timezone}
+                        onChange={(value) => updateCompanyFormData('timezone', value)}
+                        placeholder="e.g., Asia/Kolkata"
+                        required
+                        error={formErrors.timezone}
+                        readOnly={displayMode === 'view' || displayMode === 'general'}
+                        aiHelper={true}
+                        context="company_timezone"
+                      />
+                    </div>
+                    {displayMode === 'edit' && (
+                      <div className="flex justify-end mt-6">
+                        <Button
+                          onClick={handleSaveCompany}
+                          disabled={loading}
+                          icon={<Save size={16} />}
+                        >
+                          {loading ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                {/* Security Tab Content */}
+                {displayMode === 'security' && (
+                  <Card className="p-6">
+                    <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
+                      Security Settings
+                    </h2>
+                    <div className="space-y-6">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="enablePassword"
+                          checked={companyFormData.enablePassword}
+                          onChange={(e) => updateCompanyFormData('enablePassword', e.target.checked)}
+                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                          disabled={displayMode === 'view'}
+                        />
+                        <label htmlFor="enablePassword" className={`text-sm font-medium ${theme.textPrimary}`}>
+                          Enable password protection for this company
+                        </label>
+                      </div>
+                      {companyFormData.enablePassword && (
+                        <div className="pl-7 space-y-4">
+                          <div className="max-w-md">
+                            <div className="relative">
+                              <FormField
+                                label="Company Password"
+                                type={showPassword ? "text" : "password"}
+                                value={companyFormData.companyPassword}
+                                onChange={(value) => updateCompanyFormData('companyPassword', value)}
+                                placeholder="Enter company password"
+                                error={formErrors.companyPassword}
+                                readOnly={displayMode === 'view'}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+                                disabled={displayMode === 'view'}
+                              >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 className="font-medium text-yellow-800 mb-2">Security Notice</h4>
+                            <p className="text-sm text-yellow-700">
+                              When enabled, users will need to enter this password each time they access this company's data.
+                              Make sure to share this password securely with authorized team members.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {displayMode === 'edit' && (
+                      <div className="flex justify-end mt-6">
+                        <Button
+                          onClick={handleSaveCompany}
+                          disabled={loading}
+                          icon={<Save size={16} />}
+                        >
+                          {loading ? 'Saving...' : 'Save Security Settings'}
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                {/* Users Tab Content */}
+                {displayMode === 'users' && (
+                  <Card className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className={`text-xl font-semibold ${theme.textPrimary}`}>
+                        User Management
+                      </h2>
+                      <Button icon={<Plus size={16} />}>
+                        Invite User
+                      </Button>
+                    </div>
+                    <div className="text-center py-12">
+                      <Users size={48} className="mx-auto text-gray-400 mb-4" />
+                      <h3 className={`text-lg font-medium ${theme.textPrimary} mb-2`}>
+                        User Management Coming Soon
+                      </h3>
+                      <p className={`${theme.textMuted}`}>
+                        Multi-user support and role management will be available in the next update.
+                      </p>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {/* Periods Mode */}
+            {displayMode === 'periods' && (
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className={`text-xl font-semibold ${theme.textPrimary} flex items-center`}>
@@ -995,6 +1246,14 @@ function CompanyManagement() {
                               Set Active
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenCompany(selectedCompany, period.id)}
+                            icon={<FolderOpen size={14} />}
+                          >
+                            Open
+                          </Button>
                           {!period.isClosedPeriod && (
                             <Button
                               size="sm"
@@ -1050,107 +1309,12 @@ function CompanyManagement() {
                 </div>
               </Card>
             )}
-
-            {activeTab === 'security' && (
-              <Card className="p-6">
-                <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
-                  Security Settings
-                </h2>
-                <div className="space-y-6">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="enablePassword"
-                      checked={companyFormData.enablePassword}
-                      onChange={(e) => updateCompanyFormData('enablePassword', e.target.checked)}
-                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                    />
-                    <label htmlFor="enablePassword" className={`text-sm font-medium ${theme.textPrimary}`}>
-                      Enable password protection for this company
-                    </label>
-                  </div>
-                  {companyFormData.enablePassword && (
-                    <div className="pl-7 space-y-4">
-                      <div className="max-w-md">
-                        <div className="relative">
-                          <FormField
-                            label="Company Password"
-                            type={showPassword ? "text" : "password"}
-                            value={companyFormData.companyPassword}
-                            onChange={(value) => updateCompanyFormData('companyPassword', value)}
-                            placeholder="Enter company password"
-                            error={formErrors.companyPassword}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <h4 className="font-medium text-yellow-800 mb-2">Security Notice</h4>
-                        <p className="text-sm text-yellow-700">
-                          When enabled, users will need to enter this password each time they access this company's data.
-                          Make sure to share this password securely with authorized team members.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end mt-6">
-                  <Button
-                    onClick={handleSaveCompany}
-                    disabled={loading}
-                    icon={<Save size={16} />}
-                  >
-                    {loading ? 'Saving...' : 'Save Security Settings'}
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === 'users' && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className={`text-xl font-semibold ${theme.textPrimary}`}>
-                    User Management
-                  </h2>
-                  <Button icon={<Plus size={16} />}>
-                    Invite User
-                  </Button>
-                </div>
-                <div className="text-center py-12">
-                  <Users size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className={`text-lg font-medium ${theme.textPrimary} mb-2`}>
-                    User Management Coming Soon
-                  </h3>
-                  <p className={`${theme.textMuted}`}>
-                    Multi-user support and role management will be available in the next update.
-                  </p>
-                </div>
-              </Card>
-            )}
           </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Building size={64} className="mx-auto text-gray-300 mb-4" />
-              <h3 className={`text-xl font-medium ${theme.textPrimary} mb-2`}>
-                Select a Company
-              </h3>
-              <p className={`${theme.textMuted}`}>
-                Choose a company from the list on the left to manage its details and periods.
-              </p>
-            </div>
-          </div>
         )}
       </div>
 
       {/* Password Modal */}
-      {showPassword && selectedCompany && (
+      {showPasswordModal && selectedCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
           <Card className={`w-full max-w-md ${theme.cardBg}`}>
             <div className="p-6">
@@ -1173,7 +1337,7 @@ function CompanyManagement() {
                 </div>
                 <button
                   onClick={() => {
-                    setShowPassword(false);
+                    setShowPasswordModal(false);
                     setPassword('');
                     setPasswordError('');
                   }}
@@ -1205,7 +1369,7 @@ function CompanyManagement() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setShowPassword(false);
+                      setShowPasswordModal(false);
                       setPassword('');
                       setPasswordError('');
                     }}
@@ -1228,5 +1392,5 @@ function CompanyManagement() {
       )}
     </div>
   );
-} 
+}
 export default CompanyManagement;
