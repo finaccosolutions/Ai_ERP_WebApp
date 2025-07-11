@@ -18,18 +18,33 @@ import HR from './pages/HR/HR';
 import CRM from './pages/CRM/CRM';
 import Admin from './pages/Admin/Admin';
 import { useAuth } from './hooks/useAuth';
+import CompanySetup from './pages/Company/CompanySetup';
+import CompanySettings from './pages/Company/CompanySettings';
+import { useCompany } from './contexts/CompanyContext';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
+  const { companies, currentCompany } = useCompany();
 
   if (!isAuthenticated) {
     return <Login />;
   }
 
+  // If user has no companies, show company setup
+  if (companies.length === 0) {
+    return <CompanySetup />;
+  }
+
+  // If no company is selected, show company selector
+  if (!currentCompany) {
+    return <CompanySetup />;
+  }
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/company/setup" element={<CompanySetup />} />
+        <Route path="/company/settings" element={<CompanySettings />} />
         <Route path="/sales/*" element={<Sales />} />
         <Route path="/purchase/*" element={<Purchase />} />
         <Route path="/accounting/*" element={<Accounting />} />

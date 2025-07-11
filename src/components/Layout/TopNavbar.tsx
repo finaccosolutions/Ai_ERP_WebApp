@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAI } from '../../contexts/AIContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import CompanySelector from '../Company/CompanySelector';
 
 interface TopNavbarProps {
   sidebarOpen: boolean;
@@ -31,13 +32,11 @@ interface TopNavbarProps {
 function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showCompanyMenu, setShowCompanyMenu] = useState(false);
-  const [showPeriodMenu, setShowPeriodMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isVoiceSearch, setIsVoiceSearch] = useState(false);
   
   const { user, logout } = useAuth();
-  const { currentCompany, currentPeriod, companies, periods, switchCompany, switchPeriod } = useCompany();
+  const { currentCompany, currentPeriod } = useCompany();
   const { isAIEnabled, toggleAI, smartSearch, voiceCommand } = useAI();
   const { theme, toggleDarkMode } = useTheme();
 
@@ -211,93 +210,10 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, showAI, setShowAI }: TopNavbar
 
         {/* Right Section */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Company Selector */}
-          {currentCompany && (
-            <div className="relative hidden md:block">
-              <button
-                onClick={() => setShowCompanyMenu(!showCompanyMenu)}
-                className={`
-                  flex items-center space-x-2 px-3 py-2 text-sm text-white
-                  hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
-                  rounded-xl transition-all duration-300
-                `}
-              >
-                <Hexagon size={14} />
-                <span className="hidden lg:inline">{currentCompany.name}</span>
-              </button>
-              {showCompanyMenu && (
-                <div className={`
-                  absolute right-0 mt-2 w-56 ${theme.cardBg} border ${theme.borderColor}
-                  ${theme.borderRadius} ${theme.shadowLevel} z-50
-                `}>
-                  <div className="py-1">
-                    {companies.map(company => (
-                      <button
-                        key={company.id}
-                        onClick={() => {
-                          switchCompany(company.id);
-                          setShowCompanyMenu(false);
-                        }}
-                        className={`
-                          w-full px-4 py-2 text-left text-sm transition-all duration-300
-                          ${theme.textPrimary} hover:bg-[#5DBF99] hover:text-white
-                          ${company.id === currentCompany.id ? 'bg-[#5DBF99] text-white' : ''}
-                        `}
-                      >
-                        {company.name}
-                        <div className="text-xs opacity-75">{company.country} • {company.currency}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Period Selector */}
-          {currentPeriod && (
-            <div className="relative hidden md:block">
-              <button
-                onClick={() => setShowPeriodMenu(!showPeriodMenu)}
-                className={`
-                  flex items-center space-x-2 px-3 py-2 text-sm text-white
-                  hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
-                  rounded-xl transition-all duration-300
-                `}
-              >
-                <Calendar size={14} />
-                <span className="hidden lg:inline">{currentPeriod.name}</span>
-              </button>
-              {showPeriodMenu && (
-                <div className={`
-                  absolute right-0 mt-2 w-48 ${theme.cardBg} border ${theme.borderColor}
-                  ${theme.borderRadius} ${theme.shadowLevel} z-50
-                `}>
-                  <div className="py-1">
-                    {periods.map(period => (
-                      <button
-                        key={period.id}
-                        onClick={() => {
-                          switchPeriod(period.id);
-                          setShowPeriodMenu(false);
-                        }}
-                        className={`
-                          w-full px-4 py-2 text-left text-sm transition-all duration-300
-                          ${theme.textPrimary} hover:bg-[#5DBF99] hover:text-white
-                          ${period.id === currentPeriod.id ? 'bg-[#5DBF99] text-white' : ''}
-                        `}
-                      >
-                        {period.name}
-                        <div className="text-xs opacity-75">
-                          {new Date(period.startDate).toLocaleDateString()} - {new Date(period.endDate).toLocaleDateString()}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Company & Period Selector */}
+          <div className="hidden md:block">
+            <CompanySelector />
+          </div>
 
           {/* Theme Toggle */}
           <button

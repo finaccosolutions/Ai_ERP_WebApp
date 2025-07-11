@@ -14,6 +14,26 @@ interface Company {
   taxConfig: {
     type: 'GST' | 'VAT' | 'Custom';
     rates: number[];
+    enabled: boolean;
+    registrationNumber: string;
+  };
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    zipCode: string;
+  };
+  contactInfo: {
+    email: string;
+    phone: string;
+  };
+  settings: {
+    displayName: string;
+    decimalPlaces: number;
+    language: string;
+    enablePassword: boolean;
+    password?: string;
   };
 }
 
@@ -23,6 +43,8 @@ interface Period {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  isClosedPeriod: boolean;
+  periodType: 'fiscal_year' | 'quarter' | 'month';
 }
 
 interface CompanyContextType {
@@ -33,6 +55,8 @@ interface CompanyContextType {
   switchCompany: (companyId: string) => void;
   switchPeriod: (periodId: string) => void;
   addCompany: (company: Omit<Company, 'id'>) => void;
+  refreshCompanies: () => void;
+  refreshPeriods: () => void;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
@@ -48,7 +72,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated && user) {
       loadUserCompanies();
     }
-  }, []);
+  }, [isAuthenticated, user]);
 
   const loadUserCompanies = async () => {
     try {
@@ -66,7 +90,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
             fiscal_year_end,
             timezone,
             logo,
-            tax_config
+            tax_config,
+            address,
+            contact_info,
+            settings
           )
         `)
         .eq('user_id', user?.id)
@@ -86,7 +113,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         fiscalYearEnd: uc.companies.fiscal_year_end,
         timezone: uc.companies.timezone,
         logo: uc.companies.logo,
-        taxConfig: uc.companies.tax_config
+        taxConfig: uc.companies.tax_config || { type: 'GST', rates: [0, 5, 12, 18, 28], enabled: true, registrationNumber: '' },
+        address: uc.companies.address || { street: '', city: '', state: '', country: '', zipCode: '' },
+        contactInfo: uc.companies.contact_info || { email: '', phone: '' },
+        settings: uc.companies.settings || { displayName: '', decimalPlaces: 2, language: 'en', enablePassword: false }
       })) || [];
 
       setCompanies(companiesData);
@@ -124,7 +154,9 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         name: p.name,
         startDate: p.start_date,
         endDate: p.end_date,
-        isActive: p.is_active
+        isActive: p.is_active,
+        isClosedPeriod: p.is_closed || false,
+        periodType: p.period_type || 'fiscal_year'
       })) || [];
 
       setPeriods(periods);
@@ -165,6 +197,16 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     console.log('Add company:', company);
   };
 
+  const refreshCompanies = () => {
+    loadUserCompanies();
+  };
+
+  const refreshPeriods = () => {
+    if (currentCompany) {
+      loadCompanyPeriods(currentCompany.id);
+    }
+  };
+
   return (
     <CompanyContext.Provider value={{
       currentCompany,
@@ -173,7 +215,9 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       periods,
       switchCompany,
       switchPeriod,
-      addCompany
+      addCompany,
+      refreshCompanies,
+      refreshPeriods
     }}>
       {children}
     </CompanyContext.Provider>
