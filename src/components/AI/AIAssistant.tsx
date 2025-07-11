@@ -8,7 +8,14 @@ import {
   Sparkles, 
   Brain,
   FileText,
-  MessageCircle
+  MessageCircle,
+  MicIcon,
+  Camera,
+  Search,
+  Calculator,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 import { useAI } from '../../contexts/AIContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -16,6 +23,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  context?: string; // Current module context
+  data?: any; // Current form/page data
 }
 
 interface Message {
@@ -24,34 +33,61 @@ interface Message {
   content: string;
   timestamp: Date;
   confidence?: 'high' | 'medium' | 'low';
+  actionable?: boolean;
+  action?: any;
 }
 
-function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
+function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'voice' | 'document' | 'search'>('chat');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { suggestWithAI, processDocument, voiceCommand } = useAI();
+  const { 
+    suggestWithAI, 
+    processDocument, 
+    voiceCommand, 
+    createVoucherFromText,
+    smartSearch,
+    auditAnalysis,
+    complianceCheck,
+    predictiveAnalysis
+  } = useAI();
   const { theme } = useTheme();
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
+      const welcomeMessage = getContextualWelcome();
       setMessages([{
         id: '1',
         type: 'ai',
-        content: 'Hello! I\'m your AI assistant. I can help you with:\n\n• Creating invoices and orders\n• Analyzing business data\n• Processing documents\n• Voice commands\n• Smart suggestions\n\nHow can I help you today?',
+        content: welcomeMessage,
         timestamp: new Date(),
         confidence: 'high'
       }]);
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen, context]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const getContextualWelcome = () => {
+    const contextMessages = {
+      sales: 'Hello! I can help you with:\n\n• Creating sales invoices from voice commands\n• Suggesting customer details\n• Processing uploaded invoices\n• Analyzing sales trends\n• GST compliance checks\n\nTry: "Create invoice for 10 units of Product A to ABC Corp"',
+      purchase: 'Hi! I can assist with:\n\n• Creating purchase orders\n• Vendor suggestions\n• 3-way matching (PO+GRN+Bill)\n• Processing vendor invoices\n• Payment recommendations\n\nTry: "Create PO for office supplies from XYZ Vendor"',
+      accounting: 'Welcome! I can help with:\n\n• Creating journal entries from descriptions\n• Suggesting account heads\n• Bank reconciliation\n• Tax calculations\n• Audit analysis\n\nTry: "Create journal entry for office rent payment 50000"',
+      inventory: 'Hello! I can assist with:\n\n• Stock level predictions\n• Reorder suggestions\n• Batch tracking\n• Valuation analysis\n• Movement tracking\n\nTry: "Show me items below reorder level"',
+      reports: 'Hi! I can help generate:\n\n• Custom reports from natural language\n• Trend analysis\n• Compliance reports\n• Predictive insights\n• Data visualization\n\nTry: "Show me top 5 customers by revenue this quarter"',
+      compliance: 'Welcome! I can assist with:\n\n• GST return preparation\n• Compliance checks\n• Deadline reminders\n• Tax calculations\n• Audit support\n\nTry: "Check my GST compliance for this month"',
+      general: 'Hello! I\'m your AI assistant. I can help you with:\n\n• Creating vouchers and invoices\n• Processing documents\n• Smart search and reports\n• Compliance checks\n• Voice commands\n• Predictive analysis\n\nWhat would you like to do today?'
+    };
+
+    return contextMessages[context as keyof typeof contextMessages] || contextMessages.general;
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -64,27 +100,73 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsProcessing(true);
 
     try {
-      // Process the message with AI
-      const response = await suggestWithAI({ query: input, context: 'chat' });
+      let response;
       
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: response.response || 'I can help you with that. Could you provide more details?',
-        timestamp: new Date(),
-        confidence: response.confidence || 'medium'
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
+      // Determine the type of request and route to appropriate AI function
+      if (currentInput.toLowerCase().includes('create') && (currentInput.toLowerCase().includes('invoice') || currentInput.toLowerCase().includes('voucher'))) {
+        response = await createVoucherFromText(currentInput);
+        if (response) {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'ai',
+            content: `I'll help you create a ${response.voucherType}:\n\n**Party:** ${response.party || 'Not specified'}\n**Amount:** ₹${response.amount || 0}\n**Narration:** ${response.narration}\n\nShall I proceed with creating this entry?`,
+            timestamp: new Date(),
+            confidence: response.confidence,
+            actionable: true,
+            action: response
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        }
+      } else if (currentInput.toLowerCase().includes('show') || currentInput.toLowerCase().includes('report') || currentInput.toLowerCase().includes('analysis')) {
+        response = await smartSearch(currentInput);
+        if (response) {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'ai',
+            content: `I understand you want to ${response.searchType}. Here's what I found:\n\n**Search Type:** ${response.searchType}\n**Filters:** ${JSON.stringify(response.filters || {})}\n\nWould you like me to generate this report?`,
+            timestamp: new Date(),
+            confidence: response.confidence,
+            actionable: true,
+            action: response
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        }
+      } else if (currentInput.toLowerCase().includes('compliance') || currentInput.toLowerCase().includes('gst') || currentInput.toLowerCase().includes('tax')) {
+        response = await complianceCheck({ query: currentInput, context: data });
+        if (response) {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'ai',
+            content: `**Compliance Status:** ${response.complianceStatus}\n\n**Issues Found:** ${response.issues?.length || 0}\n\n${response.suggestions?.map((s: string) => `• ${s}`).join('\n') || 'No specific suggestions'}\n\nWould you like a detailed compliance report?`,
+            timestamp: new Date(),
+            confidence: response.confidence,
+            actionable: true,
+            action: response
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        }
+      } else {
+        // General AI suggestion
+        response = await suggestWithAI({ query: currentInput, context, data });
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: response?.suggestion || 'I can help you with that. Could you provide more specific details about what you\'d like to do?',
+          timestamp: new Date(),
+          confidence: response?.confidence || 'medium'
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'I apologize, but I encountered an error. Please try again.',
+        content: 'I apologize, but I encountered an error. Please try again or rephrase your request.',
         timestamp: new Date(),
         confidence: 'low'
       };
@@ -100,7 +182,15 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     try {
       // Mock voice recognition - in production, use Web Speech API
       setTimeout(async () => {
-        const mockCommand = "Create a sales invoice for customer ABC Corp";
+        const mockCommands = [
+          "Create a GST invoice for 10 units of Product X to ABC Traders",
+          "Show me unpaid invoices over 30 days old",
+          "What's my TDS liability this quarter",
+          "Create journal entry for office rent payment 50000",
+          "Show me top 5 customers by revenue"
+        ];
+        
+        const mockCommand = mockCommands[Math.floor(Math.random() * mockCommands.length)];
         const result = await voiceCommand(mockCommand);
         
         const userMessage: Message = {
@@ -113,9 +203,11 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
-          content: `I'll help you create a sales invoice for ABC Corp. Let me gather the necessary information...`,
+          content: `I heard: "${mockCommand}"\n\n**Action:** ${result?.action || 'process'}\n**Module:** ${result?.module || context}\n**Preview:** ${result?.preview || 'Processing your request...'}\n\nShall I proceed?`,
           timestamp: new Date(),
-          confidence: 'high'
+          confidence: result?.confidence || 'high',
+          actionable: true,
+          action: result
         };
 
         setMessages(prev => [...prev, userMessage, aiMessage]);
@@ -142,20 +234,32 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
         timestamp: new Date()
       };
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: `I've analyzed your document. Here's what I found:\n\n• Amount: $${result.amount}\n• Date: ${result.date}\n• Vendor: ${result.vendor}\n• Items: ${result.items.length} items\n\nWould you like me to create an entry based on this information?`,
-        timestamp: new Date(),
-        confidence: result.confidence
-      };
-
-      setMessages(prev => [...prev, userMessage, aiMessage]);
+      if (result) {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: `I've analyzed your ${result.documentType}:\n\n**Amount:** ₹${result.amount?.toLocaleString()}\n**Date:** ${result.date}\n**Party:** ${result.vendor || result.customer}\n**GST Number:** ${result.gstNumber || 'Not found'}\n**Items:** ${result.items?.length || 0} items\n**Tax:** ₹${result.tax?.total || 0}\n\nWould you like me to create an entry based on this information?`,
+          timestamp: new Date(),
+          confidence: result.confidence,
+          actionable: true,
+          action: result
+        };
+        setMessages(prev => [...prev, userMessage, aiMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: 'I couldn\'t process this document. Please try again with a clearer image or different file format.',
+          timestamp: new Date(),
+          confidence: 'low'
+        };
+        setMessages(prev => [...prev, userMessage, errorMessage]);
+      }
     } catch (error) {
       const errorMessage: Message = {
         id: Date.now().toString(),
         type: 'ai',
-        content: 'I couldn\'t process this document. Please try again with a different file.',
+        content: 'Error processing document. Please try again.',
         timestamp: new Date(),
         confidence: 'low'
       };
@@ -167,10 +271,19 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
 
   const getConfidenceColor = (confidence?: 'high' | 'medium' | 'low') => {
     switch (confidence) {
-      case 'high': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'high': return 'text-green-600 bg-green-100';
+      case 'medium': return 'text-yellow-600 bg-yellow-100';
+      case 'low': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getConfidenceIcon = (confidence?: 'high' | 'medium' | 'low') => {
+    switch (confidence) {
+      case 'high': return <CheckCircle size={12} />;
+      case 'medium': return <AlertTriangle size={12} />;
+      case 'low': return <AlertTriangle size={12} />;
+      default: return <Bot size={12} />;
     }
   };
 
@@ -179,24 +292,50 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-4">
       <div className={`
-        w-96 h-96 bg-white ${theme.borderRadius} ${theme.shadowLevel} 
-        flex flex-col border border-gray-200
+        w-96 h-[600px] ${theme.cardBg} ${theme.borderRadius} ${theme.shadowLevel} 
+        flex flex-col border ${theme.borderColor}
       `}>
         {/* Header */}
         <div className={`
-          flex items-center justify-between p-4 border-b border-gray-200
+          flex items-center justify-between p-4 border-b ${theme.borderColor}
           bg-gradient-to-r ${theme.primaryGradient}
         `}>
           <div className="flex items-center space-x-2">
             <Bot size={20} className="text-white" />
             <h3 className="font-semibold text-white">AI Assistant</h3>
+            <span className="text-xs text-white/80 capitalize">({context})</span>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200"
+            className="text-white hover:text-gray-200 transition-colors"
           >
             <X size={20} />
           </button>
+        </div>
+
+        {/* Tabs */}
+        <div className={`flex border-b ${theme.borderColor}`}>
+          {[
+            { id: 'chat', icon: MessageCircle, label: 'Chat' },
+            { id: 'voice', icon: Mic, label: 'Voice' },
+            { id: 'document', icon: FileText, label: 'Document' },
+            { id: 'search', icon: Search, label: 'Search' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`
+                flex-1 flex items-center justify-center space-x-1 py-2 text-xs transition-all
+                ${activeTab === tab.id 
+                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white` 
+                  : `${theme.textMuted} hover:${theme.textPrimary}`
+                }
+              `}
+            >
+              <tab.icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Messages */}
@@ -211,29 +350,47 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
                   max-w-xs px-3 py-2 rounded-lg text-sm
                   ${message.type === 'user'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-800'
+                    : `${theme.inputBg} ${theme.textPrimary} border ${theme.borderColor}`
                   }
                 `}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
+                
                 {message.confidence && (
-                  <div className={`text-xs mt-1 ${getConfidenceColor(message.confidence)}`}>
-                    Confidence: {message.confidence}
+                  <div className={`
+                    flex items-center space-x-1 text-xs mt-2 px-2 py-1 rounded-full
+                    ${getConfidenceColor(message.confidence)}
+                  `}>
+                    {getConfidenceIcon(message.confidence)}
+                    <span>Confidence: {message.confidence}</span>
                   </div>
                 )}
+                
+                {message.actionable && (
+                  <div className="mt-2 space-x-2">
+                    <button className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
+                      Accept
+                    </button>
+                    <button className="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600">
+                      Modify
+                    </button>
+                  </div>
+                )}
+                
                 <div className="text-xs mt-1 opacity-70">
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
             </div>
           ))}
+          
           {isProcessing && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 px-3 py-2 rounded-lg">
+              <div className={`${theme.inputBg} px-3 py-2 rounded-lg border ${theme.borderColor}`}>
                 <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               </div>
             </div>
@@ -242,64 +399,138 @@ function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Ask me anything..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!input.trim() || isProcessing}
-              className={`
-                p-2 bg-gradient-to-r ${theme.primaryGradient} text-white 
-                rounded-lg hover:opacity-90 disabled:opacity-50
-              `}
-            >
-              <Send size={16} />
-            </button>
-          </div>
-          
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center space-x-2">
+        <div className={`p-4 border-t ${theme.borderColor}`}>
+          {activeTab === 'chat' && (
+            <>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Ask me anything..."
+                  className={`
+                    flex-1 px-3 py-2 border ${theme.inputBorder} rounded-lg 
+                    focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                    ${theme.inputBg} ${theme.textPrimary}
+                  `}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!input.trim() || isProcessing}
+                  className={`
+                    p-2 bg-gradient-to-r ${theme.primaryGradient} text-white 
+                    rounded-lg hover:opacity-90 disabled:opacity-50 transition-all
+                  `}
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleVoiceCommand}
+                    disabled={isListening}
+                    className={`
+                      p-2 rounded-lg transition-colors
+                      ${isListening 
+                        ? 'bg-red-100 text-red-600 animate-pulse' 
+                        : `${theme.inputBg} ${theme.textMuted} hover:${theme.textPrimary}`
+                      }
+                    `}
+                  >
+                    <Mic size={16} />
+                  </button>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`p-2 ${theme.inputBg} ${theme.textMuted} rounded-lg hover:${theme.textPrimary} transition-colors`}
+                  >
+                    <Upload size={16} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                  <Sparkles size={12} />
+                  <span>AI Powered</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'voice' && (
+            <div className="text-center space-y-4">
               <button
                 onClick={handleVoiceCommand}
                 disabled={isListening}
                 className={`
-                  p-2 rounded-lg transition-colors
+                  w-20 h-20 rounded-full transition-all transform hover:scale-105
                   ${isListening 
-                    ? 'bg-red-100 text-red-600 animate-pulse' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-red-500 text-white animate-pulse' 
+                    : `bg-gradient-to-r ${theme.primaryGradient} text-white hover:opacity-90`
                   }
+                  flex items-center justify-center
                 `}
               >
-                <Mic size={16} />
+                <MicIcon size={32} />
               </button>
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                className="hidden"
-              />
+              <p className={`text-sm ${theme.textMuted}`}>
+                {isListening ? 'Listening...' : 'Tap to speak'}
+              </p>
+              <div className="text-xs text-gray-500">
+                <p>Try saying:</p>
+                <p>"Create invoice for ABC Corp"</p>
+                <p>"Show me sales report"</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'document' && (
+            <div className="text-center space-y-4">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                className={`
+                  w-full p-8 border-2 border-dashed ${theme.borderColor} rounded-lg
+                  hover:border-blue-500 transition-colors
+                  flex flex-col items-center space-y-2
+                `}
               >
-                <Upload size={16} />
+                <Upload size={32} className={theme.textMuted} />
+                <p className={`text-sm ${theme.textPrimary}`}>Upload Document</p>
+                <p className="text-xs text-gray-500">
+                  PDF, Images, Bank Statements
+                </p>
               </button>
             </div>
-            
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
-              <Sparkles size={12} />
-              <span>AI Powered</span>
+          )}
+
+          {activeTab === 'search' && (
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Smart search: 'Show sales in June 2024'"
+                className={`
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg 
+                  focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  ${theme.inputBg} ${theme.textPrimary}
+                `}
+              />
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button className="p-2 bg-blue-100 text-blue-800 rounded">Sales Reports</button>
+                <button className="p-2 bg-green-100 text-green-800 rounded">Outstanding</button>
+                <button className="p-2 bg-purple-100 text-purple-800 rounded">Tax Reports</button>
+                <button className="p-2 bg-orange-100 text-orange-800 rounded">Analytics</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

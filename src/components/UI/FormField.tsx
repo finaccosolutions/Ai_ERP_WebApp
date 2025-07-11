@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import AIFormHelper from './AIFormHelper';
 
 interface FormFieldProps {
   label: string;
@@ -11,6 +12,10 @@ interface FormFieldProps {
   icon?: React.ReactNode;
   error?: string;
   className?: string;
+  aiHelper?: boolean;
+  context?: string;
+  onAISuggestion?: (suggestion: any) => void;
+  onAITeach?: (correction: any) => void;
 }
 
 function FormField({ 
@@ -22,16 +27,31 @@ function FormField({
   required = false, 
   icon,
   error,
-  className = ''
+  className = '',
+  aiHelper = false,
+  context,
+  onAISuggestion,
+  onAITeach
 }: FormFieldProps) {
   const { theme } = useTheme();
 
   return (
     <div className={`relative ${className}`}>
-      <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        {aiHelper && (
+          <AIFormHelper
+            fieldName={label}
+            fieldValue={value}
+            context={context}
+            onSuggestion={onAISuggestion}
+            onTeach={onAITeach}
+          />
+        )}
+      </div>
       
       <div className="relative">
         {icon && (
@@ -53,8 +73,15 @@ function FormField({
             transition-all duration-300 hover:border-[#6AC8A3]
             placeholder:${theme.textMuted}
             ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
+            ${onAISuggestion ? 'pr-10' : ''}
           `}
         />
+        
+        {onAISuggestion && value && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="AI suggestion available" />
+          </div>
+        )}
       </div>
       
       {error && (
