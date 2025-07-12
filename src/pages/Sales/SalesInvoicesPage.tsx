@@ -11,8 +11,10 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
+// Interface for Invoice Items
 interface InvoiceItem {
   id: string;
+  itemId: string; // Stores the UUID of the selected item from the 'items' table
   itemCode: string;
   itemName: string;
   description: string;
@@ -26,15 +28,16 @@ interface InvoiceItem {
   hsnCode: string;
 }
 
+// Interface for Ledger Entries (for Voucher Mode and Tax Ledgers)
 interface LedgerEntry {
   id: string;
-  accountId: string;
+  accountId: string; // Stores the UUID of the selected account from 'chart_of_accounts'
   accountName: string;
   debit: number;
   credit: number;
   notes: string;
-  isTaxLedger?: boolean;
-  taxRate?: number; // For tax ledgers
+  isTaxLedger?: boolean; // Flag to identify if it's a tax ledger
+  taxRate?: number; // Tax rate associated with the ledger, if applicable
 }
 
 function SalesInvoicesPage() {
@@ -44,7 +47,8 @@ function SalesInvoicesPage() {
   const { user } = useAuth();
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list'); // 'create' or 'list'
-  const [invoiceMode, setInvoiceMode] = useState<'item_mode' | 'voucher_mode'>('item_mode'); // 'item_mode' or 'voucher_mode'
+  // Controls whether the form is in 'item_mode' (for detailed item entry) or 'voucher_mode' (for direct ledger entry)
+  const [invoiceMode, setInvoiceMode] = useState<'item_mode' | 'voucher_mode'>('item_mode'); 
 
   const [invoice, setInvoice] = useState({
     id: '', // For editing existing invoice
@@ -64,11 +68,15 @@ function SalesInvoicesPage() {
     totalAmount: 0,
     paidAmount: 0,
     outstandingAmount: 0,
+    salesAccountId: '', // New: For sales ledger selection
+    salesAccountName: '', // New: For sales ledger selection
   });
 
+  // State for managing invoice items (used in 'item_mode')
   const [items, setItems] = useState<InvoiceItem[]>([
     {
       id: 'item-1',
+      itemId: '',
       itemCode: '',
       itemName: '',
       description: '',
@@ -83,8 +91,14 @@ function SalesInvoicesPage() {
     }
   ]);
 
+  // State for managing ledger entries (used in 'voucher_mode')
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([
     { id: 'ledger-1', accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
+  ]);
+
+  // State for managing additional ledger entries (used in 'item_mode' for other postings)
+  const [additionalLedgerEntries, setAdditionalLedgerEntries] = useState<LedgerEntry[]>([
+    { id: 'add-ledger-1', accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
   ]);
 
   const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
@@ -92,11 +106,12 @@ function SalesInvoicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Master data for dropdowns
+  // Master data for dropdowns (fetched from Supabase)
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [chartOfAccounts, setChartOfAccounts] = useState<any[]>([]);
 
+  // Effect hook to fetch data when view mode or company changes
   useEffect(() => {
     if (viewMode === 'list') {
       fetchSalesInvoices();
@@ -104,16 +119,16 @@ function SalesInvoicesPage() {
     fetchMasterData();
   }, [viewMode, currentCompany?.id]);
 
+  // Effect hook to recalculate totals when items or ledger entries change
   useEffect(() => {
-    // Recalculate totals when items or ledger entries change
     if (invoiceMode === 'item_mode') {
       calculateInvoiceTotals(items);
     } else {
       calculateVoucherModeTotals(ledgerEntries);
     }
-  }, [items, ledgerEntries, invoiceMode]);
+  }, [items, ledgerEntries, invoiceMode, additionalLedgerEntries]); // Added additionalLedgerEntries
 
-
+  // Fetches master data (customers, items, chart of accounts) from Supabase
   const fetchMasterData = async () => {
     if (!currentCompany?.id) return;
     try {
@@ -158,6 +173,7 @@ function SalesInvoicesPage() {
     }
   };
 
+  // Fetches existing sales invoices from Supabase
   const fetchSalesInvoices = async () => {
     if (!currentCompany?.id) return;
     setLoading(true);
@@ -179,6 +195,7 @@ function SalesInvoicesPage() {
     }
   };
 
+  // Resets the form to its initial state
   const resetForm = () => {
     setInvoice({
       id: '',
@@ -198,10 +215,13 @@ function SalesInvoicesPage() {
       totalAmount: 0,
       paidAmount: 0,
       outstandingAmount: 0,
+      salesAccountId: '',
+      salesAccountName: '',
     });
     setItems([
       {
         id: 'item-1',
+        itemId: '',
         itemCode: '',
         itemName: '',
         description: '',
@@ -218,11 +238,15 @@ function SalesInvoicesPage() {
     setLedgerEntries([
       { id: 'ledger-1', accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
     ]);
-    setInvoiceMode('item_mode');
+    setAdditionalLedgerEntries([
+      { id: 'add-ledger-1', accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
+    ]);
+    setInvoiceMode('item_mode'); // Default to item mode on reset
     setError(null);
     setSuccessMessage(null);
   };
 
+  // Calculates totals for a single invoice item
   const calculateItemTotals = (item: InvoiceItem) => {
     const amount = item.quantity * item.rate;
     const taxAmount = (amount * item.taxRate) / 100;
@@ -236,6 +260,7 @@ function SalesInvoicesPage() {
     };
   };
 
+  // Updates an item in the items array and recalculates its totals
   const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
@@ -245,15 +270,17 @@ function SalesInvoicesPage() {
     
     setItems(newItems);
 
-    // Auto-add new row if last row is being edited and has data
+    // Dynamic row addition: If the last row is being edited and has data, add a new empty row
     if (index === newItems.length - 1 && (newItems[index].itemName || newItems[index].quantity > 0 || newItems[index].rate > 0)) {
       addItem();
     }
   };
 
+  // Adds a new empty item row
   const addItem = () => {
     setItems(prev => [...prev, {
       id: `item-${Date.now()}`,
+      itemId: '',
       itemCode: '',
       itemName: '',
       description: '',
@@ -268,6 +295,7 @@ function SalesInvoicesPage() {
     }]);
   };
 
+  // Removes an item row, ensuring at least one row remains
   const removeItem = (index: number) => {
     if (items.length > 1) {
       const newItems = items.filter((_, i) => i !== index);
@@ -275,6 +303,7 @@ function SalesInvoicesPage() {
     }
   };
 
+  // Calculates overall invoice totals based on items (for 'item_mode')
   const calculateInvoiceTotals = (itemList: InvoiceItem[]) => {
     const subtotal = itemList.reduce((sum, item) => sum + item.amount, 0);
     const totalTax = itemList.reduce((sum, item) => sum + item.taxAmount, 0);
@@ -289,6 +318,7 @@ function SalesInvoicesPage() {
     }));
   };
 
+  // Updates a ledger entry in the ledgerEntries array (for voucher mode)
   const updateLedgerEntry = (index: number, field: keyof LedgerEntry, value: any) => {
     const newLedgerEntries = [...ledgerEntries];
     newLedgerEntries[index] = { ...newLedgerEntries[index], [field]: value };
@@ -302,13 +332,14 @@ function SalesInvoicesPage() {
     
     setLedgerEntries(newLedgerEntries);
 
-    // Auto-add new row if last row is being edited and has data
+    // Dynamic row addition: If the last row is being edited and has data, add a new empty row
     if (index === newLedgerEntries.length - 1 && (newLedgerEntries[index].accountName || newLedgerEntries[index].debit > 0 || newLedgerEntries[index].credit > 0)) {
       addLedgerEntry();
     }
     calculateVoucherModeTotals(newLedgerEntries);
   };
 
+  // Adds a new empty ledger entry row (for voucher mode)
   const addLedgerEntry = () => {
     setLedgerEntries(prev => [...prev, {
       id: `ledger-${Date.now()}`,
@@ -320,6 +351,7 @@ function SalesInvoicesPage() {
     }]);
   };
 
+  // Removes a ledger entry row, ensuring at least one row remains (for voucher mode)
   const removeLedgerEntry = (index: number) => {
     if (ledgerEntries.length > 1) {
       const newLedgerEntries = ledgerEntries.filter((_, i) => i !== index);
@@ -328,23 +360,65 @@ function SalesInvoicesPage() {
     }
   };
 
+  // Calculates overall invoice totals based on ledger entries (for 'voucher_mode')
   const calculateVoucherModeTotals = (entries: LedgerEntry[]) => {
     const totalDebit = entries.reduce((sum, entry) => sum + entry.debit, 0);
     const totalCredit = entries.reduce((sum, entry) => sum + entry.credit, 0);
     
     setInvoice(prev => ({
       ...prev,
-      totalAmount: totalDebit, // Or totalCredit, assuming balanced entry
-      subtotal: totalDebit, // Simplified for display
-      totalTax: 0, // Tax handled per ledger
+      totalAmount: totalDebit, // Assuming a balanced entry, total amount is either total debit or total credit
+      subtotal: totalDebit, // Simplified for display in summary
+      totalTax: 0, // Tax is handled per ledger entry in this mode
       outstandingAmount: totalDebit - prev.paidAmount
     }));
   };
 
+  // Updates an additional ledger entry (for item mode)
+  const updateAdditionalLedgerEntry = (index: number, field: keyof LedgerEntry, value: any) => {
+    const newAdditionalLedgerEntries = [...additionalLedgerEntries];
+    newAdditionalLedgerEntries[index] = { ...newAdditionalLedgerEntries[index], [field]: value };
+
+    if (field === 'debit' && value > 0) {
+      newAdditionalLedgerEntries[index].credit = 0;
+    } else if (field === 'credit' && value > 0) {
+      newAdditionalLedgerEntries[index].debit = 0;
+    }
+
+    setAdditionalLedgerEntries(newAdditionalLedgerEntries);
+
+    // Dynamic row addition
+    if (index === newAdditionalLedgerEntries.length - 1 && (newAdditionalLedgerEntries[index].accountName || newAdditionalLedgerEntries[index].debit > 0 || newAdditionalLedgerEntries[index].credit > 0)) {
+      addAdditionalLedgerEntry();
+    }
+  };
+
+  // Adds a new empty additional ledger entry row (for item mode)
+  const addAdditionalLedgerEntry = () => {
+    setAdditionalLedgerEntries(prev => [...prev, {
+      id: `add-ledger-${Date.now()}`,
+      accountId: '',
+      accountName: '',
+      debit: 0,
+      credit: 0,
+      notes: ''
+    }]);
+  };
+
+  // Removes an additional ledger entry row (for item mode)
+  const removeAdditionalLedgerEntry = (index: number) => {
+    if (additionalLedgerEntries.length > 1) {
+      const newAdditionalLedgerEntries = additionalLedgerEntries.filter((_, i) => i !== index);
+      setAdditionalLedgerEntries(newAdditionalLedgerEntries);
+    }
+  };
+
+  // Handles changes to the main invoice fields
   const handleInvoiceChange = (field: keyof typeof invoice, value: any) => {
     setInvoice(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handles saving the invoice (both item and voucher mode)
   const handleSaveInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentCompany?.id || !user?.id) {
@@ -372,6 +446,8 @@ function SalesInvoicesPage() {
         total_amount: invoice.totalAmount,
         paid_amount: invoice.paidAmount,
         outstanding_amount: invoice.outstandingAmount,
+        // New sales account fields
+        sales_account_id: invoice.salesAccountId,
       };
 
       let salesInvoiceId = invoice.id;
@@ -405,6 +481,7 @@ function SalesInvoicesPage() {
           ...item,
           invoice_id: salesInvoiceId,
           // Ensure correct Supabase column names
+          item_id: item.itemId, // Save itemId
           item_code: item.itemCode,
           item_name: item.itemName,
           tax_rate: item.taxRate,
@@ -413,15 +490,15 @@ function SalesInvoicesPage() {
         }));
         const { error: itemsError } = await supabase.from('sales_invoice_items').insert(itemsToSave);
         if (itemsError) throw itemsError;
+
+        // Handle additional ledger entries for item mode
+        // In a real application, these would go into journal_entries/journal_entry_items
+        console.log('Saving additional ledger entries for item mode:', additionalLedgerEntries);
+
       } else if (invoiceMode === 'voucher_mode' && salesInvoiceId) {
         // Handle ledger entries for voucher mode
-        // This would typically go into a journal_entries and journal_entry_items table
-        // For simplicity, we'll log it here, but in a real app, you'd save to accounting tables
-        console.log('Saving ledger entries:', ledgerEntries);
-        // Example: Save to journal_entries and journal_entry_items
-        // const { data: journalEntry, error: jeError } = await supabase.from('journal_entries').insert({...}).select();
-        // if (jeError) throw jeError;
-        // await supabase.from('journal_entry_items').insert(ledgerEntries.map(entry => ({ journal_id: journalEntry.id, ...entry })));
+        // In a real application, these would typically be saved to 'journal_entries' and 'journal_entry_items' tables
+        console.log('Saving ledger entries for voucher mode:', ledgerEntries);
       }
 
       resetForm();
@@ -435,6 +512,7 @@ function SalesInvoicesPage() {
     }
   };
 
+  // Handles editing an existing invoice
   const handleEditInvoice = (inv: any) => {
     setInvoice({
       id: inv.id,
@@ -454,6 +532,8 @@ function SalesInvoicesPage() {
       totalAmount: inv.total_amount,
       paidAmount: inv.paid_amount,
       outstandingAmount: inv.outstanding_amount,
+      salesAccountId: inv.sales_account_id || '', // Populate sales account
+      salesAccountName: inv.sales_account_name || '', // Populate sales account name
     });
     // Fetch items for this invoice
     supabase.from('sales_invoice_items')
@@ -463,6 +543,7 @@ function SalesInvoicesPage() {
         if (!error && data) {
           setItems(data.map(item => ({
             id: item.id,
+            itemId: item.item_id, // Populate itemId
             itemCode: item.item_code,
             itemName: item.item_name,
             description: item.description,
@@ -486,9 +567,14 @@ function SalesInvoicesPage() {
           setInvoiceMode('voucher_mode'); // Fallback to voucher mode
         }
       });
+    // Fetch additional ledger entries if needed (requires separate table/logic)
+    setAdditionalLedgerEntries([
+      { id: 'add-ledger-1', accountId: '', accountName: '', debit: 0, credit: 0, notes: '' }
+    ]);
     setViewMode('create');
   };
 
+  // Handles deleting an invoice
   const handleDeleteInvoice = async (id: string) => {
     if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return;
     setLoading(true);
@@ -507,7 +593,7 @@ function SalesInvoicesPage() {
     }
   };
 
-  // AI Suggestion handlers (simplified for this context)
+  // Callback for MasterSelectField when a customer is selected
   const handleCustomerSelect = (id: string, name: string, additionalData: any) => {
     setInvoice(prev => ({
       ...prev,
@@ -518,11 +604,12 @@ function SalesInvoicesPage() {
     }));
   };
 
+  // Callback for MasterSelectField when an item is selected
   const handleItemSelect = (index: number, id: string, name: string, additionalData: any) => {
     const newItems = [...items];
     newItems[index] = {
       ...newItems[index],
-      itemId: id,
+      itemId: id, // Set itemId
       itemName: name,
       itemCode: additionalData?.itemCode || '',
       description: additionalData?.description || '',
@@ -534,37 +621,95 @@ function SalesInvoicesPage() {
     calculateInvoiceTotals(newItems);
   };
 
-  const handleLedgerSelect = (index: number, id: string, name: string, additionalData: any) => {
-    const newLedgerEntries = [...ledgerEntries];
-    newLedgerEntries[index] = {
-      ...newLedgerEntries[index],
-      accountId: id,
-      accountName: name,
-      isTaxLedger: additionalData?.accountType === 'tax', // Example classification
-      taxRate: additionalData?.taxRate || 0
-    };
-    setLedgerEntries(newLedgerEntries);
+  // Callback for MasterSelectField when a ledger account is selected (for voucher mode and additional ledgers)
+  const handleLedgerSelect = (index: number, id: string, name: string, additionalData: any, isAdditional: boolean = false) => {
+    if (isAdditional) {
+      const newAdditionalLedgerEntries = [...additionalLedgerEntries];
+      newAdditionalLedgerEntries[index] = {
+        ...newAdditionalLedgerEntries[index],
+        accountId: id,
+        accountName: name,
+        isTaxLedger: additionalData?.accountType === 'tax',
+        taxRate: additionalData?.taxRate || 0
+      };
+      setAdditionalLedgerEntries(newAdditionalLedgerEntries);
+    } else {
+      const newLedgerEntries = [...ledgerEntries];
+      newLedgerEntries[index] = {
+        ...newLedgerEntries[index],
+        accountId: id, // Set accountId
+        accountName: name,
+        isTaxLedger: additionalData?.accountType === 'tax', // Example classification
+        taxRate: additionalData?.taxRate || 0
+      };
+      setLedgerEntries(newLedgerEntries);
+    }
   };
 
-  // Determine tax ledgers based on company country
+  // Callback for MasterSelectField for Sales Account
+  const handleSalesAccountSelect = (id: string, name: string, additionalData: any) => {
+    setInvoice(prev => ({
+      ...prev,
+      salesAccountId: id,
+      salesAccountName: name,
+    }));
+  };
+
+  // Determines and returns default tax ledgers based on company's tax configuration
   const getTaxLedgers = () => {
-    if (currentCompany?.country === 'India' && currentCompany?.taxConfig?.type === 'GST') {
-      const gstAccounts = chartOfAccounts.filter(acc => acc.accountName.includes('GST') || acc.accountType === 'tax');
-      const cgst = gstAccounts.find(acc => acc.accountName.includes('CGST'));
-      const sgst = gstAccounts.find(acc => acc.accountName.includes('SGST'));
-      const igst = gstAccounts.find(acc => acc.accountName.includes('IGST'));
+    if (!currentCompany || !chartOfAccounts.length) return [];
+
+    const taxLedgers: LedgerEntry[] = [];
+    const companyTaxConfig = currentCompany.taxConfig;
+
+    // Only show tax section if tax is enabled in company master
+    if (!companyTaxConfig?.enabled) return [];
+
+    // Example for India's GST
+    if (currentCompany.country === 'India' && companyTaxConfig?.type === 'GST') {
+      // Filter chart of accounts for potential tax accounts
+      const gstAccounts = chartOfAccounts.filter(acc => 
+        acc.account_name.toLowerCase().includes('gst') || 
+        acc.account_name.toLowerCase().includes('tax') || 
+        acc.account_type === 'expense' || // Broaden search for tax accounts
+        acc.account_type === 'income'
+      );
       
-      const taxLedgers: LedgerEntry[] = [];
-      if (cgst) taxLedgers.push({ id: `cgst-${cgst.id}`, accountId: cgst.id, accountName: cgst.name, debit: 0, credit: 0, notes: 'CGST', isTaxLedger: true, taxRate: currentCompany.taxConfig.rates[3] || 18 }); // Assuming 18% is default
-      if (sgst) taxLedgers.push({ id: `sgst-${sgst.id}`, accountId: sgst.id, accountName: sgst.name, debit: 0, credit: 0, notes: 'SGST', isTaxLedger: true, taxRate: currentCompany.taxConfig.rates[3] || 18 });
-      if (igst) taxLedgers.push({ id: `igst-${igst.id}`, accountId: igst.id, accountName: igst.name, debit: 0, credit: 0, notes: 'IGST', isTaxLedger: true, taxRate: currentCompany.taxConfig.rates[3] || 18 });
+      // Find specific GST accounts
+      const cgstAccount = gstAccounts.find(acc => acc.account_name.toLowerCase().includes('cgst'));
+      const sgstAccount = gstAccounts.find(acc => acc.account_name.toLowerCase().includes('sgst'));
+      const igstAccount = gstAccounts.find(acc => acc.account_name.toLowerCase().includes('igst'));
       
-      return taxLedgers;
+      // Use a default tax rate from company config, or a fallback
+      const defaultTaxRate = companyTaxConfig.rates?.[3] || 18; // Assuming 18% is a common default
+
+      if (cgstAccount) taxLedgers.push({ id: `cgst-${cgstAccount.id}`, accountId: cgstAccount.id, accountName: cgstAccount.name, debit: 0, credit: 0, notes: 'CGST', isTaxLedger: true, taxRate: defaultTaxRate });
+      if (sgstAccount) taxLedgers.push({ id: `sgst-${sgstAccount.id}`, accountId: sgstAccount.id, accountName: sgstAccount.name, debit: 0, credit: 0, notes: 'SGST', isTaxLedger: true, taxRate: defaultTaxRate });
+      if (igstAccount) taxLedgers.push({ id: `igst-${igstAccount.id}`, accountId: igstAccount.id, accountName: igstAccount.name, debit: 0, credit: 0, notes: 'IGST', isTaxLedger: true, taxRate: defaultTaxRate });
     }
-    return [];
+    // TODO: Add logic for other countries/tax types (e.g., VAT) if needed
+    
+    return taxLedgers;
   };
 
   const taxLedgers = getTaxLedgers();
+
+  // Calculates the total tax amount for a specific tax rate across all items
+  const calculateTaxAmountForRate = (rate: number) => {
+    // If in item mode, calculate based on item tax amounts
+    if (invoiceMode === 'item_mode') {
+      return items.reduce((sum, item) => {
+        if (item.taxRate === rate) {
+          return sum + item.taxAmount;
+        }
+        return sum;
+      }, 0);
+    } 
+    // If in voucher mode, tax amount would typically be entered directly as a ledger entry
+    // or derived from the sales ledger amount if a fixed tax rate applies to all sales.
+    // For now, return 0 or implement specific logic if needed.
+    return 0; 
+  };
 
   return (
     <div className="space-y-6">
@@ -602,6 +747,7 @@ function SalesInvoicesPage() {
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
               {invoice.id ? 'Edit Sales Invoice' : 'Create New Sales Invoice'}
             </h3>
+            {/* Option to switch between Item Invoice Mode and Voucher Mode */}
             <div className="flex items-center space-x-2">
               <span className={`text-sm font-medium ${theme.textPrimary}`}>Mode:</span>
               <select
@@ -657,12 +803,13 @@ function SalesInvoicesPage() {
             <Card className="p-6">
               <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Customer Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* MasterSelectField for Customer Name */}
                 <MasterSelectField
                   label="Customer Name"
                   value={invoice.customerName}
                   onValueChange={(val) => handleInvoiceChange('customerName', val)}
                   onSelect={handleCustomerSelect}
-                  options={customers}
+                  options={customers} // Provides list of customers from DB
                   placeholder="Start typing customer name..."
                   required
                 />
@@ -671,7 +818,7 @@ function SalesInvoicesPage() {
                   value={invoice.customerGSTIN}
                   onChange={(value) => handleInvoiceChange('customerGSTIN', value)}
                   placeholder="22AAAAA0000A1Z5"
-                  readOnly // Usually populated from customer master
+                  readOnly // Populated automatically from customer master
                 />
                 <FormField
                   label="Place of Supply"
@@ -679,112 +826,229 @@ function SalesInvoicesPage() {
                   onChange={(value) => handleInvoiceChange('placeOfSupply', value)}
                   placeholder="State/UT"
                   required
-                  readOnly // Usually populated from customer master
+                  readOnly // Populated automatically from customer master
                 />
               </div>
             </Card>
 
-            {/* Invoice Items (Conditional) */}
-            {invoiceMode === 'item_mode' && (
-              <Card className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Invoice Items</h4>
-                  <div className="flex space-x-2">
-                    <AIButton variant="suggest" onSuggest={() => console.log('AI Item Suggestions')} size="sm" />
-                    <Button size="sm" icon={<Plus size={16} />} onClick={addItem}>Add Item</Button>
-                  </div>
-                </div>
+            {/* Sales Ledger Selection (Always visible) */}
+            <Card className="p-6">
+              <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Sales Account</h4>
+              <MasterSelectField
+                label="Sales Ledger"
+                value={invoice.salesAccountName}
+                onValueChange={(val) => handleInvoiceChange('salesAccountName', val)}
+                onSelect={handleSalesAccountSelect}
+                options={chartOfAccounts.filter(acc => acc.accountType === 'income')} // Filter for income accounts
+                placeholder="Select sales account"
+                required
+              />
+              {invoiceMode === 'voucher_mode' && (
+                <FormField
+                  label="Sales Amount"
+                  type="number"
+                  value={invoice.totalAmount.toString()} // In voucher mode, this is the total amount
+                  onChange={(val) => handleInvoiceChange('totalAmount', parseFloat(val) || 0)}
+                  readOnly={invoiceMode === 'item_mode'} // Read-only in item mode
+                  className="mt-4"
+                />
+              )}
+            </Card>
 
-                <div className="space-y-4">
-                  {items.map((item, index) => (
-                    <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                        <div className="md:col-span-2">
-                          <MasterSelectField
-                            label="Item Name"
-                            value={item.itemName}
-                            onValueChange={(val) => updateItem(index, 'itemName', val)}
-                            onSelect={(id, name, data) => handleItemSelect(index, id, name, data)}
-                            options={stockItems}
-                            placeholder="Product/Service name"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="HSN/SAC Code"
-                            value={item.hsnCode}
-                            onChange={(value) => updateItem(index, 'hsnCode', value)}
-                            placeholder="8471"
-                            readOnly // Usually populated from item master
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Quantity"
-                            type="number"
-                            value={item.quantity.toString()}
-                            onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Rate"
-                            type="number"
-                            value={item.rate.toString()}
-                            onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Tax Rate (%)"
-                            type="number"
-                            value={item.taxRate.toString()}
-                            onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
-                            readOnly // Usually populated from item master
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={<Trash2 size={16} />}
-                            onClick={() => removeItem(index)}
-                            disabled={items.length === 1}
-                            className="text-red-600 hover:text-red-800"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Amount</label>
-                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
-                            ₹{item.amount.toLocaleString()}
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax Amount</label>
-                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
-                            ₹{item.taxAmount.toLocaleString()}
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Line Total</label>
-                          <div className={`px-3 py-2 bg-green-50 border border-green-200 rounded-lg font-semibold`}>
-                            ₹{item.lineTotal.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
+            {/* Invoice Items Section (Visible only in 'item_mode') */}
+            {invoiceMode === 'item_mode' && (
+              <>
+                <Card className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Invoice Items</h4>
+                    <div className="flex space-x-2">
+                      <AIButton variant="suggest" onSuggest={() => console.log('AI Item Suggestions')} size="sm" />
+                      <Button size="sm" icon={<Plus size={16} />} onClick={addItem}>Add Item</Button>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                  </div>
+
+                  <div className="space-y-4">
+                    {items.map((item, index) => (
+                      <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                        {/* Adjusted grid for single row display */}
+                        <div className="grid grid-cols-1 md:grid-cols-8 gap-4 items-end">
+                          <div className="md:col-span-2">
+                            <MasterSelectField
+                              label="Item Name"
+                              value={item.itemName}
+                              onValueChange={(val) => updateItem(index, 'itemName', val)}
+                              onSelect={(id, name, data) => handleItemSelect(index, id, name, data)}
+                              options={stockItems}
+                              placeholder="Product/Service name"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="HSN/SAC Code"
+                              value={item.hsnCode}
+                              onChange={(value) => updateItem(index, 'hsnCode', value)}
+                              placeholder="8471"
+                              // Removed readOnly to allow user input
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="Quantity"
+                              type="number"
+                              value={item.quantity.toString()}
+                              onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="Unit"
+                              value={item.unit}
+                              onChange={(value) => updateItem(index, 'unit', value)}
+                              placeholder="Nos"
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="Rate"
+                              type="number"
+                              value={item.rate.toString()}
+                              onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
+                              required
+                            />
+                          </div>
+                          {/* Reordered: Amount then Tax Rate */}
+                          <div>
+                            <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Amount</label>
+                            <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
+                              ₹{item.amount.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <FormField
+                              label="Tax Rate (%)"
+                              type="number"
+                              value={item.taxRate.toString()}
+                              onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
+                              // Removed readOnly to allow user input
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 size={16} />}
+                              onClick={() => removeItem(index)}
+                              disabled={items.length === 1}
+                              className="text-red-600 hover:text-red-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Dedicated Tax Section (below stock items, for 'item_mode') */}
+                {taxLedgers.length > 0 && ( // Only show if tax is enabled and ledgers are found
+                  <Card className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Tax Details</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {taxLedgers.map((taxLedger, index) => (
+                        <div key={taxLedger.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax Ledger</label>
+                              <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
+                                {taxLedger.accountName}
+                              </div>
+                            </div>
+                            <div>
+                              <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax Rate (%)</label>
+                              <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
+                                {taxLedger.taxRate}%
+                              </div>
+                            </div>
+                            <div>
+                              <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax Amount</label>
+                              <div className={`px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg font-semibold`}>
+                                {/* Displays tax amount matching the percentage from stock items */}
+                                ₹{calculateTaxAmountForRate(taxLedger.taxRate || 0).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Additional Ledger Entries Section (for item mode) */}
+                <Card className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Other Ledger Entries</h4>
+                    <Button size="sm" icon={<Plus size={16} />} onClick={addAdditionalLedgerEntry}>Add Ledger</Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {additionalLedgerEntries.map((entry, index) => (
+                      <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          <div className="md:col-span-2">
+                            <MasterSelectField
+                              label="Account Name"
+                              value={entry.accountName}
+                              onValueChange={(val) => updateAdditionalLedgerEntry(index, 'accountName', val)}
+                              onSelect={(id, name, data) => handleLedgerSelect(index, id, name, data, true)} // Pass true for additional
+                              options={chartOfAccounts}
+                              placeholder="Select account"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="Debit"
+                              type="number"
+                              value={entry.debit.toString()}
+                              onChange={(val) => updateAdditionalLedgerEntry(index, 'debit', parseFloat(val) || 0)}
+                            />
+                          </div>
+                          <div>
+                            <FormField
+                              label="Credit"
+                              type="number"
+                              value={entry.credit.toString()}
+                              onChange={(val) => updateAdditionalLedgerEntry(index, 'credit', parseFloat(val) || 0)}
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 size={16} />}
+                              onClick={() => removeAdditionalLedgerEntry(index)}
+                              disabled={additionalLedgerEntries.length === 1}
+                              className="text-red-600 hover:text-red-800"
+                            />
+                          </div>
+                        </div>
+                        <FormField
+                          label="Notes"
+                          value={entry.notes}
+                          onChange={(val) => updateAdditionalLedgerEntry(index, 'notes', val)}
+                          placeholder="Entry notes"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </>
             )}
 
-            {/* Ledger Entries (Conditional) */}
+            {/* Ledger Entries Section (Visible only in 'voucher_mode') */}
             {invoiceMode === 'voucher_mode' && (
               <Card className="p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -797,12 +1061,13 @@ function SalesInvoicesPage() {
                     <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
                       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="md:col-span-2">
+                          {/* MasterSelectField for Account Name */}
                           <MasterSelectField
                             label="Account Name"
                             value={entry.accountName}
                             onValueChange={(val) => updateLedgerEntry(index, 'accountName', val)}
                             onSelect={(id, name, data) => handleLedgerSelect(index, id, name, data)}
-                            options={chartOfAccounts}
+                            options={chartOfAccounts} // Provides list of accounts from DB
                             placeholder="Select account"
                             required
                           />
@@ -824,12 +1089,13 @@ function SalesInvoicesPage() {
                           />
                         </div>
                         <div className="flex items-end">
+                          {/* Delete icon for each ledger line */}
                           <Button
                             variant="ghost"
                             size="sm"
                             icon={<Trash2 size={16} />}
                             onClick={() => removeLedgerEntry(index)}
-                            disabled={ledgerEntries.length === 1}
+                            disabled={ledgerEntries.length === 1} // Disable if only one row
                             className="text-red-600 hover:text-red-800"
                           />
                         </div>
@@ -867,6 +1133,7 @@ function SalesInvoicesPage() {
                     </>
                   ) : (
                     <>
+                      {/* Display total debit/credit for voucher mode */}
                       <div className="flex justify-between">
                         <span className={theme.textMuted}>Total Debit:</span>
                         <span className={theme.textPrimary}>₹{ledgerEntries.reduce((sum, entry) => sum + entry.debit, 0).toLocaleString()}</span>

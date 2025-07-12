@@ -105,7 +105,7 @@ function MasterSelectField({
               onClick={() => handleOptionClick(option)}
               className={`
                 w-full text-left px-4 py-2 text-sm
-                ${theme.textPrimary} hover:bg-[#6AC8A3}/10
+                ${theme.textPrimary} hover:bg-[#6AC8A3]/10
               `}
             >
               {option.name}
