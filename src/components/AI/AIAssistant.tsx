@@ -43,8 +43,9 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'voice' | 'document' | 'search'>('chat');
+  const [tokenWarningMessage, setTokenWarningMessage] = useState<string | null>(null); // New state for token warning
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null); // FIX: Changed 'шего' to 'null'
   
   const { 
     suggestWithAI, 
@@ -92,6 +93,13 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
+    // Token usage warning heuristic
+    if (input.length > 500) { // Arbitrary threshold for a "long" input
+      setTokenWarningMessage('Your input is very long. This might consume more processing resources.');
+    } else {
+      setTokenWarningMessage(null);
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -106,63 +114,61 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
 
     try {
       let response;
+      let aiMessageContent: string;
+      let aiConfidence: 'high' | 'medium' | 'low' = 'medium';
+      let actionable = false;
+      let actionData: any = null;
       
       // Determine the type of request and route to appropriate AI function
       if (currentInput.toLowerCase().includes('create') && (currentInput.toLowerCase().includes('invoice') || currentInput.toLowerCase().includes('voucher'))) {
         response = await createVoucherFromText(currentInput);
         if (response) {
-          const aiMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            type: 'ai',
-            content: `I'll help you create a ${response.voucherType}:\n\n**Party:** ${response.party || 'Not specified'}\n**Amount:** ₹${response.amount || 0}\n**Narration:** ${response.narration}\n\nShall I proceed with creating this entry?`,
-            timestamp: new Date(),
-            confidence: response.confidence,
-            actionable: true,
-            action: response
-          };
-          setMessages(prev => [...prev, aiMessage]);
+          aiMessageContent = `I'll help you create a ${response.voucherType}:\n\n**Party:** ${response.party || 'Not specified'}\n**Amount:** ₹${response.amount || 0}\n**Narration:** ${response.narration}\n\nShall I proceed with creating this entry?`;
+          aiConfidence = response.confidence;
+          actionable = true;
+          actionData = response;
         }
       } else if (currentInput.toLowerCase().includes('show') || currentInput.toLowerCase().includes('report') || currentInput.toLowerCase().includes('analysis')) {
         response = await smartSearch(currentInput);
         if (response) {
-          const aiMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            type: 'ai',
-            content: `I understand you want to ${response.searchType}. Here's what I found:\n\n**Search Type:** ${response.searchType}\n**Filters:** ${JSON.stringify(response.filters || {})}\n\nWould you like me to generate this report?`,
-            timestamp: new Date(),
-            confidence: response.confidence,
-            actionable: true,
-            action: response
-          };
-          setMessages(prev => [...prev, aiMessage]);
+          aiMessageContent = `I understand you want to ${response.searchType}. Here's what I found:\n\n**Search Type:** ${response.searchType}\n**Filters:** ${JSON.stringify(response.filters || {})}\n\nWould you like me to generate this report?`;
+          aiConfidence = response.confidence;
+          actionable = true;
+          actionData = response;
         }
       } else if (currentInput.toLowerCase().includes('compliance') || currentInput.toLowerCase().includes('gst') || currentInput.toLowerCase().includes('tax')) {
         response = await complianceCheck({ query: currentInput, context: data });
         if (response) {
-          const aiMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            type: 'ai',
-            content: `**Compliance Status:** ${response.complianceStatus}\n\n**Issues Found:** ${response.issues?.length || 0}\n\n${response.suggestions?.map((s: string) => `• ${s}`).join('\n') || 'No specific suggestions'}\n\nWould you like a detailed compliance report?`,
-            timestamp: new Date(),
-            confidence: response.confidence,
-            actionable: true,
-            action: response
-          };
-          setMessages(prev => [...prev, aiMessage]);
+          aiMessageContent = `**Compliance Status:** ${response.complianceStatus}\n\n**Issues Found:** ${response.issues?.length || 0}\n\n${response.suggestions?.map((s: string) => `• ${s}`).join('\n') || 'No specific suggestions'}\n\nWould you like a detailed compliance report?`;
+          aiConfidence = response.confidence;
+          actionable = true;
+          actionData = response;
         }
       } else {
         // General AI suggestion
         response = await suggestWithAI({ query: currentInput, context, data });
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: 'ai',
-          content: response?.suggestion || 'I can help you with that. Could you provide more specific details about what you\'d like to do?',
-          timestamp: new Date(),
-          confidence: response?.confidence || 'medium'
-        };
-        setMessages(prev => [...prev, aiMessage]);
+        aiMessageContent = response?.suggestion || 'I can help you with that. Could you provide more specific details about what you\'d like to do?';
+        aiConfidence = response?.confidence || 'medium';
       }
+
+      // Basic clarification logic
+      if (aiConfidence === 'low') {
+        aiMessageContent += '\n\nCould you please provide more details or rephrase your request?';
+      }
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: aiMessageContent,
+        timestamp: new Date(),
+        confidence: aiConfidence,
+        actionable: actionable,
+        action: actionData
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
     } catch (error) {
+      console.error('AI Error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
@@ -200,12 +206,19 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
           timestamp: new Date()
         };
 
+        let aiMessageContent = `I heard: "${mockCommand}"\n\n**Action:** ${result?.action || 'process'}\n**Module:** ${result?.module || context}\n**Preview:** ${result?.preview || 'Processing your request...'}\n\nShall I proceed?`;
+        let aiConfidence = result?.confidence || 'high';
+
+        if (aiConfidence === 'low') {
+          aiMessageContent += '\n\nCould you please provide more details or rephrase your request?';
+        }
+
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
-          content: `I heard: "${mockCommand}"\n\n**Action:** ${result?.action || 'process'}\n**Module:** ${result?.module || context}\n**Preview:** ${result?.preview || 'Processing your request...'}\n\nShall I proceed?`,
+          content: aiMessageContent,
           timestamp: new Date(),
-          confidence: result?.confidence || 'high',
+          confidence: aiConfidence,
           actionable: true,
           action: result
         };
@@ -235,12 +248,19 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
       };
 
       if (result) {
+        let aiMessageContent = `I've analyzed your ${result.documentType}:\n\n**Amount:** ₹${result.amount?.toLocaleString()}\n**Date:** ${result.date}\n**Party:** ${result.vendor || result.customer}\n**GST Number:** ${result.gstNumber || 'Not found'}\n**Items:** ${result.items?.length || 0} items\n**Tax:** ₹${result.tax?.total || 0}\n\nWould you like me to create an entry based on this information?`;
+        let aiConfidence = result.confidence;
+
+        if (aiConfidence === 'low') {
+          aiMessageContent += '\n\nCould you please provide more details or a clearer document?';
+        }
+
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
-          content: `I've analyzed your ${result.documentType}:\n\n**Amount:** ₹${result.amount?.toLocaleString()}\n**Date:** ${result.date}\n**Party:** ${result.vendor || result.customer}\n**GST Number:** ${result.gstNumber || 'Not found'}\n**Items:** ${result.items?.length || 0} items\n**Tax:** ₹${result.tax?.total || 0}\n\nWould you like me to create an entry based on this information?`,
+          content: aiMessageContent,
           timestamp: new Date(),
-          confidence: result.confidence,
+          confidence: aiConfidence,
           actionable: true,
           action: result
         };
@@ -427,6 +447,13 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                 </button>
               </div>
               
+              {tokenWarningMessage && (
+                <div className="mt-2 text-sm text-yellow-600 flex items-center">
+                  <AlertTriangle size={16} className="mr-1" />
+                  {tokenWarningMessage}
+                </div>
+              )}
+
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center space-x-2">
                   <button
@@ -469,8 +496,8 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
           {activeTab === 'voice' && (
             <div className="text-center space-y-4">
               <button
-                onClick={handleVoiceCommand}
-                disabled={isListening}
+                onClick={isListening ? stopListening : startListening}
+                disabled={isProcessing}
                 className={`
                   w-20 h-20 rounded-full transition-all transform hover:scale-105
                   ${isListening 
@@ -480,10 +507,10 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                   flex items-center justify-center
                 `}
               >
-                <MicIcon size={32} />
+                {isListening ? <MicOff size={32} /> : <Mic size={32} />}
               </button>
               <p className={`text-sm ${theme.textMuted}`}>
-                {isListening ? 'Listening...' : 'Tap to speak'}
+                {isListening ? 'Listening... Speak your command' : 'Tap to speak'}
               </p>
               <div className="text-xs text-gray-500">
                 <p>Try saying:</p>

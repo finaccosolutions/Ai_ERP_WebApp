@@ -90,9 +90,8 @@ function Dashboard() {
   useEffect(() => {
     if (currentCompany) {
       loadDashboardData();
-      if (isAIEnabled) {
-        generateAIInsights();
-      }
+      // Removed automatic generateAIInsights() call here
+      // It will now only be called explicitly via the AI Analyze button
     }
   }, [currentCompany, currentPeriod, dateRange]);
 
@@ -657,7 +656,7 @@ function Dashboard() {
               />
               <AIButton 
                 variant="analyze" 
-                onSuggest={generateAIInsights} 
+                onSuggest={generateAIInsights} // This button now explicitly triggers AI insights
               />
             </>
           )}

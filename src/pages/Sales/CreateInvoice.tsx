@@ -178,48 +178,46 @@ function CreateInvoice() {
     }
   };
 
-  const handleCustomerSuggestion = async (value: string) => {
-    if (value.length > 2) {
-      try {
-        const suggestions = await suggestWithAI({
-          type: 'customer_lookup',
-          query: value,
-          context: 'sales_invoice'
-        });
-        
-        if (suggestions?.customer) {
-          setInvoice(prev => ({
-            ...prev,
-            customerName: suggestions.customer.name,
-            customerGSTIN: suggestions.customer.gstin || '',
-            placeOfSupply: suggestions.customer.state || ''
-          }));
-        }
-      } catch (error) {
-        console.error('Customer suggestion error:', error);
+  // Modified to be explicitly called by AIFormHelper
+  const handleCustomerSuggestion = async (suggestedValue: string) => {
+    try {
+      const suggestions = await suggestWithAI({
+        type: 'customer_lookup',
+        query: suggestedValue,
+        context: 'sales_invoice'
+      });
+      
+      if (suggestions?.customer) {
+        setInvoice(prev => ({
+          ...prev,
+          customerName: suggestions.customer.name,
+          customerGSTIN: suggestions.customer.gstin || '',
+          placeOfSupply: suggestions.customer.state || ''
+        }));
       }
+    } catch (error) {
+      console.error('Customer suggestion error:', error);
     }
   };
 
-  const handleItemSuggestion = async (index: number, field: string, value: string) => {
-    if (field === 'itemName' && value.length > 2) {
-      try {
-        const suggestions = await suggestWithAI({
-          type: 'item_lookup',
-          query: value,
-          context: 'sales_invoice'
-        });
-        
-        if (suggestions?.item) {
-          updateItem(index, 'itemName', suggestions.item.name);
-          updateItem(index, 'itemCode', suggestions.item.code || '');
-          updateItem(index, 'rate', suggestions.item.rate || 0);
-          updateItem(index, 'hsnCode', suggestions.item.hsnCode || '');
-          updateItem(index, 'taxRate', suggestions.item.taxRate || 18);
-        }
-      } catch (error) {
-        console.error('Item suggestion error:', error);
+  // Modified to be explicitly called by AIFormHelper
+  const handleItemSuggestion = async (index: number, suggestedValue: string) => {
+    try {
+      const suggestions = await suggestWithAI({
+        type: 'item_lookup',
+        query: suggestedValue,
+        context: 'sales_invoice'
+      });
+      
+      if (suggestions?.item) {
+        updateItem(index, 'itemName', suggestions.item.name);
+        updateItem(index, 'itemCode', suggestions.item.code || '');
+        updateItem(index, 'rate', suggestions.item.rate || 0);
+        updateItem(index, 'hsnCode', suggestions.item.hsnCode || '');
+        updateItem(index, 'taxRate', suggestions.item.taxRate || 18);
       }
+    } catch (error) {
+      console.error('Item suggestion error:', error);
     }
   };
 
@@ -284,15 +282,12 @@ function CreateInvoice() {
               <FormField
                 label="Customer Name"
                 value={invoice.customerName}
-                onChange={(value) => {
-                  setInvoice(prev => ({ ...prev, customerName: value }));
-                  handleCustomerSuggestion(value);
-                }}
+                onChange={(value) => setInvoice(prev => ({ ...prev, customerName: value }))}
                 placeholder="Start typing customer name..."
                 required
                 aiHelper={true}
                 context="customer_selection"
-                onAISuggestion={handleCustomerSuggestion}
+                onAISuggestion={handleCustomerSuggestion} // Passed to AIFormHelper
               />
               <FormField
                 label="Customer GSTIN"
@@ -332,15 +327,12 @@ function CreateInvoice() {
                       <FormField
                         label="Item Name"
                         value={item.itemName}
-                        onChange={(value) => {
-                          updateItem(index, 'itemName', value);
-                          handleItemSuggestion(index, 'itemName', value);
-                        }}
+                        onChange={(value) => updateItem(index, 'itemName', value)}
                         placeholder="Product/Service name"
                         required
                         aiHelper={true}
                         context="item_selection"
-                        onAISuggestion={(value) => handleItemSuggestion(index, 'itemName', value)}
+                        onAISuggestion={(value) => handleItemSuggestion(index, value)} // Passed to AIFormHelper
                       />
                     </div>
                     <div>
