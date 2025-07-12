@@ -1,21 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  MessageSquare, 
-  Send, 
-  Mic, 
-  Upload, 
-  X, 
-  Sparkles, 
+import {
+  MessageSquare,
+  Send,
+  Mic,
+  Upload,
+  X,
+  Sparkles,
   Brain,
   FileText,
   Bot,
-  MicIcon,
-  Camera,
+  MicOff, // Added MicOff for clarity
   Search,
-  Calculator,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle
+  AlertTriangle, // Added for token warning message
 } from 'lucide-react';
 import { useAI } from '../../contexts/AIContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -32,7 +28,6 @@ interface Message {
   type: 'user' | 'ai';
   content: string;
   timestamp: Date;
-  confidence?: 'high' | 'medium' | 'low';
   actionable?: boolean;
   action?: any;
 }
@@ -43,19 +38,17 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'voice' | 'document' | 'search'>('chat');
-  const [tokenWarningMessage, setTokenWarningMessage] = useState<string | null>(null); // New state for token warning
+  const [tokenWarningMessage, setTokenWarningMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null); // FIX: Changed 'шего' to 'null'
-  
-  const { 
-    suggestWithAI, 
-    processDocument, 
-    voiceCommand, 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    suggestWithAI,
+    processDocument,
+    voiceCommand,
     createVoucherFromText,
     smartSearch,
-    auditAnalysis,
     complianceCheck,
-    predictiveAnalysis
   } = useAI();
   const { theme } = useTheme();
 
@@ -67,7 +60,6 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         type: 'ai',
         content: welcomeMessage,
         timestamp: new Date(),
-        confidence: 'high'
       }]);
     }
   }, [isOpen, context]);
@@ -94,7 +86,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
     if (!input.trim()) return;
 
     // Token usage warning heuristic
-    if (input.length > 500) { // Arbitrary threshold for a "long" input
+    if (input.length > 500) {
       setTokenWarningMessage('Your input is very long. This might consume more processing resources.');
     } else {
       setTokenWarningMessage(null);
@@ -113,47 +105,50 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
     setIsProcessing(true);
 
     try {
-      let response;
+      let aiResponseData;
       let aiMessageContent: string;
-      let aiConfidence: 'high' | 'medium' | 'low' = 'medium';
       let actionable = false;
       let actionData: any = null;
-      
-      // Determine the type of request and route to appropriate AI function
+
       if (currentInput.toLowerCase().includes('create') && (currentInput.toLowerCase().includes('invoice') || currentInput.toLowerCase().includes('voucher'))) {
-        response = await createVoucherFromText(currentInput);
-        if (response) {
-          aiMessageContent = `I'll help you create a ${response.voucherType}:\n\n**Party:** ${response.party || 'Not specified'}\n**Amount:** ₹${response.amount || 0}\n**Narration:** ${response.narration}\n\nShall I proceed with creating this entry?`;
-          aiConfidence = response.confidence;
+        aiResponseData = await createVoucherFromText(currentInput);
+        if (aiResponseData) {
+          aiMessageContent = `I'll help you create a ${aiResponseData.voucherType}:\n\n**Party:** ${aiResponseData.party || 'Not specified'}\n**Amount:** ₹${aiResponseData.amount || 0}\n**Narration:** ${aiResponseData.narration}\n\nShall I proceed with creating this entry?`;
           actionable = true;
-          actionData = response;
+          actionData = aiResponseData;
+        } else {
+          aiMessageContent = 'I could not understand your request to create a voucher. Please try again with more details.';
         }
       } else if (currentInput.toLowerCase().includes('show') || currentInput.toLowerCase().includes('report') || currentInput.toLowerCase().includes('analysis')) {
-        response = await smartSearch(currentInput);
-        if (response) {
-          aiMessageContent = `I understand you want to ${response.searchType}. Here's what I found:\n\n**Search Type:** ${response.searchType}\n**Filters:** ${JSON.stringify(response.filters || {})}\n\nWould you like me to generate this report?`;
-          aiConfidence = response.confidence;
+        aiResponseData = await smartSearch(currentInput);
+        if (aiResponseData) {
+          aiMessageContent = `I understand you want to ${aiResponseData.searchType}. Here's what I found:\n\n**Search Type:** ${aiResponseData.searchType}\n**Filters:** ${JSON.stringify(aiResponseData.filters || {})}\n\nWould you like me to generate this report?`;
           actionable = true;
-          actionData = response;
+          actionData = aiResponseData;
+        } else {
+          aiMessageContent = 'I could not process your search or report request. Please try again.';
         }
       } else if (currentInput.toLowerCase().includes('compliance') || currentInput.toLowerCase().includes('gst') || currentInput.toLowerCase().includes('tax')) {
-        response = await complianceCheck({ query: currentInput, context: data });
-        if (response) {
-          aiMessageContent = `**Compliance Status:** ${response.complianceStatus}\n\n**Issues Found:** ${response.issues?.length || 0}\n\n${response.suggestions?.map((s: string) => `• ${s}`).join('\n') || 'No specific suggestions'}\n\nWould you like a detailed compliance report?`;
-          aiConfidence = response.confidence;
+        aiResponseData = await complianceCheck({ query: currentInput, context: data });
+        if (aiResponseData) {
+          aiMessageContent = `**Compliance Status:** ${aiResponseData.complianceStatus}\n\n**Issues Found:** ${aiResponseData.issues?.length || 0}\n\n${aiResponseData.suggestions?.map((s: string) => `• ${s}`).join('\n') || 'No specific suggestions'}\n\nWould you like a detailed compliance report?`;
           actionable = true;
-          actionData = response;
+          actionData = aiResponseData;
+        } else {
+          aiMessageContent = 'I could not perform the compliance check. Please try again.';
         }
       } else {
-        // General AI suggestion
-        response = await suggestWithAI({ query: currentInput, context, data });
-        aiMessageContent = response?.suggestion || 'I can help you with that. Could you provide more specific details about what you\'d like to do?';
-        aiConfidence = response?.confidence || 'medium';
-      }
+        // General AI suggestion handling, including greetings
+        aiResponseData = await suggestWithAI({ query: currentInput, context, data });
 
-      // Basic clarification logic
-      if (aiConfidence === 'low') {
-        aiMessageContent += '\n\nCould you please provide more details or rephrase your request?';
+        // Since suggestWithAI is now guaranteed to return a structured object with a 'suggestions' array
+        if (aiResponseData && aiResponseData.suggestions && aiResponseData.suggestions.length > 0) {
+          aiMessageContent = aiResponseData.suggestions[0].suggestion || 'I received a response, but it was empty. Can you please rephrase?';
+          // You can add logic here to set 'actionable' and 'actionData' based on the suggestion's actions if needed
+        } else {
+          // Fallback if for some reason 'suggestions' array is empty or not as expected (should be rare now)
+          aiMessageContent = 'I am having trouble generating a response right now. Please try again.';
+        }
       }
 
       const aiMessage: Message = {
@@ -161,7 +156,6 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         type: 'ai',
         content: aiMessageContent,
         timestamp: new Date(),
-        confidence: aiConfidence,
         actionable: actionable,
         action: actionData
       };
@@ -174,7 +168,6 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         type: 'ai',
         content: 'I apologize, but I encountered an error. Please try again or rephrase your request.',
         timestamp: new Date(),
-        confidence: 'low'
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -184,7 +177,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
 
   const handleVoiceCommand = async () => {
     setIsListening(true);
-    
+
     try {
       // Mock voice recognition - in production, use Web Speech API
       setTimeout(async () => {
@@ -195,10 +188,10 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
           "Create journal entry for office rent payment 50000",
           "Show me top 5 customers by revenue"
         ];
-        
+
         const mockCommand = mockCommands[Math.floor(Math.random() * mockCommands.length)];
         const result = await voiceCommand(mockCommand);
-        
+
         const userMessage: Message = {
           id: Date.now().toString(),
           type: 'user',
@@ -207,18 +200,12 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         };
 
         let aiMessageContent = `I heard: "${mockCommand}"\n\n**Action:** ${result?.action || 'process'}\n**Module:** ${result?.module || context}\n**Preview:** ${result?.preview || 'Processing your request...'}\n\nShall I proceed?`;
-        let aiConfidence = result?.confidence || 'high';
-
-        if (aiConfidence === 'low') {
-          aiMessageContent += '\n\nCould you please provide more details or rephrase your request?';
-        }
 
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
           content: aiMessageContent,
           timestamp: new Date(),
-          confidence: aiConfidence,
           actionable: true,
           action: result
         };
@@ -236,10 +223,10 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
     if (!file) return;
 
     setIsProcessing(true);
-    
+
     try {
       const result = await processDocument(file);
-      
+
       const userMessage: Message = {
         id: Date.now().toString(),
         type: 'user',
@@ -249,18 +236,12 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
 
       if (result) {
         let aiMessageContent = `I've analyzed your ${result.documentType}:\n\n**Amount:** ₹${result.amount?.toLocaleString()}\n**Date:** ${result.date}\n**Party:** ${result.vendor || result.customer}\n**GST Number:** ${result.gstNumber || 'Not found'}\n**Items:** ${result.items?.length || 0} items\n**Tax:** ₹${result.tax?.total || 0}\n\nWould you like me to create an entry based on this information?`;
-        let aiConfidence = result.confidence;
-
-        if (aiConfidence === 'low') {
-          aiMessageContent += '\n\nCould you please provide more details or a clearer document?';
-        }
 
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'ai',
           content: aiMessageContent,
           timestamp: new Date(),
-          confidence: aiConfidence,
           actionable: true,
           action: result
         };
@@ -271,7 +252,6 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
           type: 'ai',
           content: 'I couldn\'t process this document. Please try again with a clearer image or different file format.',
           timestamp: new Date(),
-          confidence: 'low'
         };
         setMessages(prev => [...prev, userMessage, errorMessage]);
       }
@@ -281,29 +261,10 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
         type: 'ai',
         content: 'Error processing document. Please try again.',
         timestamp: new Date(),
-        confidence: 'low'
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const getConfidenceColor = (confidence?: 'high' | 'medium' | 'low') => {
-    switch (confidence) {
-      case 'high': return 'text-green-600 bg-green-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getConfidenceIcon = (confidence?: 'high' | 'medium' | 'low') => {
-    switch (confidence) {
-      case 'high': return <CheckCircle size={12} />;
-      case 'medium': return <AlertTriangle size={12} />;
-      case 'low': return <AlertTriangle size={12} />;
-      default: return <Bot size={12} />;
     }
   };
 
@@ -312,7 +273,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-4">
       <div className={`
-        w-96 h-[600px] ${theme.cardBg} ${theme.borderRadius} ${theme.shadowLevel} 
+        w-96 h-[600px] ${theme.cardBg} ${theme.borderRadius} ${theme.shadowLevel}
         flex flex-col border ${theme.borderColor}
       `}>
         {/* Header */}
@@ -346,8 +307,8 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
               onClick={() => setActiveTab(tab.id as any)}
               className={`
                 flex-1 flex items-center justify-center space-x-1 py-2 text-xs transition-all
-                ${activeTab === tab.id 
-                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white` 
+                ${activeTab === tab.id
+                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white`
                   : `${theme.textMuted} hover:${theme.textPrimary}`
                 }
               `}
@@ -375,17 +336,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                 `}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
-                
-                {message.confidence && (
-                  <div className={`
-                    flex items-center space-x-1 text-xs mt-2 px-2 py-1 rounded-full
-                    ${getConfidenceColor(message.confidence)}
-                  `}>
-                    {getConfidenceIcon(message.confidence)}
-                    <span>Confidence: {message.confidence}</span>
-                  </div>
-                )}
-                
+
                 {message.actionable && (
                   <div className="mt-2 space-x-2">
                     <button className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
@@ -396,14 +347,14 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                     </button>
                   </div>
                 )}
-                
+
                 <div className="text-xs mt-1 opacity-70">
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
             </div>
           ))}
-          
+
           {isProcessing && (
             <div className="flex justify-start">
               <div className={`${theme.inputBg} px-3 py-2 rounded-lg border ${theme.borderColor}`}>
@@ -430,7 +381,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Ask me anything..."
                   className={`
-                    flex-1 px-3 py-2 border ${theme.inputBorder} rounded-lg 
+                    flex-1 px-3 py-2 border ${theme.inputBorder} rounded-lg
                     focus:ring-2 focus:ring-blue-500 focus:border-transparent
                     ${theme.inputBg} ${theme.textPrimary}
                   `}
@@ -439,14 +390,14 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                   onClick={handleSendMessage}
                   disabled={!input.trim() || isProcessing}
                   className={`
-                    p-2 bg-gradient-to-r ${theme.primaryGradient} text-white 
+                    p-2 bg-gradient-to-r ${theme.primaryGradient} text-white
                     rounded-lg hover:opacity-90 disabled:opacity-50 transition-all
                   `}
                 >
                   <Send size={16} />
                 </button>
               </div>
-              
+
               {tokenWarningMessage && (
                 <div className="mt-2 text-sm text-yellow-600 flex items-center">
                   <AlertTriangle size={16} className="mr-1" />
@@ -461,15 +412,15 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                     disabled={isListening}
                     className={`
                       p-2 rounded-lg transition-colors
-                      ${isListening 
-                        ? 'bg-red-100 text-red-600 animate-pulse' 
+                      ${isListening
+                        ? 'bg-red-100 text-red-600 animate-pulse'
                         : `${theme.inputBg} ${theme.textMuted} hover:${theme.textPrimary}`
                       }
                     `}
                   >
                     <Mic size={16} />
                   </button>
-                  
+
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -484,7 +435,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                     <Upload size={16} />
                   </button>
                 </div>
-                
+
                 <div className="flex items-center space-x-1 text-xs text-gray-500">
                   <Sparkles size={12} />
                   <span>AI Powered</span>
@@ -500,8 +451,8 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                 disabled={isProcessing}
                 className={`
                   w-20 h-20 rounded-full transition-all transform hover:scale-105
-                  ${isListening 
-                    ? 'bg-red-500 text-white animate-pulse' 
+                  ${isListening
+                    ? 'bg-red-500 text-white animate-pulse'
                     : `bg-gradient-to-r ${theme.primaryGradient} text-white hover:opacity-90`
                   }
                   flex items-center justify-center
@@ -545,7 +496,7 @@ function AIAssistant({ isOpen, onClose, context = 'general', data }: AIAssistant
                 type="text"
                 placeholder="Smart search: 'Show sales in June 2024'"
                 className={`
-                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg 
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   focus:ring-2 focus:ring-blue-500 focus:border-transparent
                   ${theme.inputBg} ${theme.textPrimary}
                 `}

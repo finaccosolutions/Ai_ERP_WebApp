@@ -21,20 +21,20 @@ function AIFormHelper({ fieldName, fieldValue, context, onSuggestion, onTeach }:
   const handleAskAI = async () => {
     setIsLoading(true);
     try {
-      const prompt = `Explain why the field "${fieldName}" is required in ${context || 'this form'}. 
-                     Current value: ${fieldValue || 'empty'}. 
+      const prompt = `Explain why the field "${fieldName}" is required in ${context || 'this form'}.
+                     Current value: ${fieldValue || 'empty'}.
                      Provide helpful guidance for the user.`;
-      
-      const response = await suggestWithAI({ 
-        field: fieldName, 
-        value: fieldValue, 
+
+      const response = await suggestWithAI({
+        field: fieldName,
+        value: fieldValue,
         context,
         question: 'why_required'
       });
-      
+
       setSuggestion(response);
     } catch (error) {
-      setSuggestion({ 
+      setSuggestion({
         explanation: 'This field is required for proper data entry and compliance.',
         confidence: 'low'
       });
@@ -46,18 +46,18 @@ function AIFormHelper({ fieldName, fieldValue, context, onSuggestion, onTeach }:
   const handleSuggestValue = async () => {
     setIsLoading(true);
     try {
-      const response = await suggestWithAI({ 
-        field: fieldName, 
+      const response = await suggestWithAI({
+        field: fieldName,
         context,
         action: 'suggest_value'
       });
-      
+
       setSuggestion(response);
       if (onSuggestion && response?.suggestedValue) {
         onSuggestion(response.suggestedValue);
       }
     } catch (error) {
-      setSuggestion({ 
+      setSuggestion({
         explanation: 'Unable to generate suggestion at this time.',
         confidence: 'low'
       });
@@ -74,10 +74,10 @@ function AIFormHelper({ fieldName, fieldValue, context, onSuggestion, onTeach }:
         context,
         timestamp: new Date().toISOString()
       };
-      
+
       await teachAI(correction);
       onTeach(correction);
-      
+
       setSuggestion({
         explanation: 'Thank you! I\'ve learned from this correction.',
         confidence: 'high',
@@ -195,11 +195,6 @@ function AIFormHelper({ fieldName, fieldValue, context, onSuggestion, onTeach }:
                         <p className="text-xs font-medium">Suggested:</p>
                         <p className="text-sm">{suggestion.suggestedValue}</p>
                       </div>
-                    )}
-                    {suggestion.confidence && (
-                      <p className="text-xs mt-1 opacity-75">
-                        Confidence: {suggestion.confidence}
-                      </p>
                     )}
                   </div>
                 </div>

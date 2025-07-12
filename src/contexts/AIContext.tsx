@@ -62,7 +62,17 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+      
+      // Safely access the text content from the Gemini API response
+      if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0 &&
+          data.candidates[0].content && data.candidates[0].content.parts &&
+          Array.isArray(data.candidates[0].content.parts) && data.candidates[0].content.parts.length > 0 &&
+          data.candidates[0].content.parts[0].text) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        console.warn('Gemini API response did not contain expected text content structure:', data);
+        return null; // Return null if the expected structure is not found
+      }
     } catch (error) {
       console.error('Gemini API Error:', error);
       // Return a fallback response instead of throwing to prevent app crashes
@@ -71,32 +81,90 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
   };
 
   const suggestWithAI = async (data: any) => {
-    if (!isAIEnabled) return data;
+    if (!isAIEnabled) {
+      return {
+        suggestions: [{
+          suggestion: 'AI is currently disabled. Please enable it to get suggestions.',
+          confidence: 'low',
+          type: 'info'
+        }],
+        metadata: {}
+      };
+    }
 
     try {
-      const prompt = `As an ERP AI assistant, analyze this data and provide suggestions for improvement or auto-completion. Focus on accuracy and compliance. Data: ${JSON.stringify(data)}. Return only JSON format with suggestions, confidence level, and any warnings.`;
+      const prompt = `As an ERP AI assistant, analyze this data and provide suggestions for improvement or auto-completion. Focus on accuracy and compliance. Data: ${JSON.stringify(data)}. Return only JSON format with suggestions (array of objects with 'suggestion' string, 'confidence' string, 'type' string, and optional 'warning' string), and any metadata.`;
       const response = await callGeminiAPI(prompt);
-      
+
       if (!response) {
-        return { 
-          suggestion: 'AI service temporarily unavailable', 
-          confidence: 'low',
-          warnings: ['AI suggestions not available']
+        return {
+          suggestions: [{
+            suggestion: 'AI service temporarily unavailable. Please try again later.',
+            confidence: 'low',
+            type: 'error'
+          }],
+          metadata: {
+            error: 'API call failed or returned no content'
+          }
         };
       }
-      
+
       try {
-        return JSON.parse(response);
-      } catch {
-        return { 
-          suggestion: response, 
-          confidence: 'medium',
-          warnings: []
+        let cleanedResponse = response.trim();
+
+        // Attempt to remove common markdown wrappers
+        const jsonStartMarkers = ['```json', '```javascript', '```typescript', '```'];
+        for (const marker of jsonStartMarkers) {
+          if (cleanedResponse.startsWith(marker)) {
+            cleanedResponse = cleanedResponse.substring(marker.length).trim();
+            break;
+          }
+        }
+        if (cleanedResponse.endsWith('```')) {
+          cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - '```'.length).trim();
+        }
+
+        // Fallback to finding first { and last }
+        const firstCurly = cleanedResponse.indexOf('{');
+        const lastCurly = cleanedResponse.lastIndexOf('}');
+
+        if (firstCurly !== -1 && lastCurly !== -1 && lastCurly > firstCurly) {
+          cleanedResponse = cleanedResponse.substring(firstCurly, lastCurly + 1);
+        }
+
+        const parsedResponse = JSON.parse(cleanedResponse);
+        // Ensure parsedResponse always has a 'suggestions' array
+        if (!parsedResponse.suggestions || !Array.isArray(parsedResponse.suggestions)) {
+          parsedResponse.suggestions = [];
+        }
+        return parsedResponse;
+      } catch (jsonError) {
+        console.error('JSON parsing error in suggestWithAI:', jsonError);
+        return {
+          suggestions: [{
+            suggestion: 'AI response could not be parsed. Please try again or rephrase your query. (Parsing failed)',
+            confidence: 'low',
+            type: 'error',
+            rawResponse: response // Include raw response for debugging
+          }],
+          metadata: {
+            error: 'JSON parsing failed',
+            originalResponse: response // Add original response for debugging
+          }
         };
       }
-    } catch (error) {
-      console.error('AI Suggestion Error:', error);
-      return data;
+    } catch (error: any) {
+      console.error('AI Suggestion Error (outer catch):', error);
+      return {
+        suggestions: [{
+          suggestion: `An unexpected error occurred during AI suggestion: ${error.message || 'Unknown error'}. Please try again.`,
+          confidence: 'low',
+          type: 'error'
+        }],
+        metadata: {
+          error: error.message || 'Unknown error'
+        }
+      };
     }
   };
 
@@ -143,7 +211,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
         return {
           documentType: 'invoice',
           amount: 15000.00,
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split('T'),
           vendor: 'ABC Suppliers Pvt Ltd',
           gstNumber: '27AABCU9603R1ZX',
           items: [

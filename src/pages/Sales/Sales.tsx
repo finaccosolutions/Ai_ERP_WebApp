@@ -36,7 +36,7 @@ import {
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
-import CreateInvoice from './CreateInvoice';
+import CreateInvoice from './CreateInvoice'; // This will be removed later if CreateInvoice is integrated into SalesInvoicesPage
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase'; // Import supabase
@@ -48,7 +48,7 @@ import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
 import DeliveryChallansPage from './DeliveryChallansPage';
-import SalesInvoicesListPage from './SalesInvoicesListPage'; // Renamed for clarity
+import SalesInvoicesPage from './SalesInvoicesPage'; // Renamed for clarity
 import CreditNotesPage from './CreditNotesPage';
 import ReceiptsPage from './ReceiptsPage';
 import SalesReturnsPage from './SalesReturnsPage';
@@ -129,6 +129,20 @@ function Sales() {
       // Optionally set all counts to 'N/A' or 'Error'
     }
   };
+
+  // Define a set of light color palettes for the cards
+  const moduleColors = [
+    { cardBg: 'bg-blue-50', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
+    { cardBg: 'bg-green-50', textColor: 'text-green-800', iconBg: 'bg-green-500' },
+    { cardBg: 'bg-purple-50', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
+    { cardBg: 'bg-orange-50', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
+    { cardBg: 'bg-teal-50', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
+    { cardBg: 'bg-indigo-50', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
+    { cardBg: 'bg-pink-50', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
+    { cardBg: 'bg-red-50', textColor: 'text-red-800', iconBg: 'bg-red-500' },
+    { cardBg: 'bg-yellow-50', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
+  ];
+
 
   // Consolidated and categorized sales modules
   const salesCategories = [
@@ -232,7 +246,7 @@ function Sales() {
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
         <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
-        <Route path="/invoices" element={<SalesInvoicesListPage />} /> {/* Point to list page */}
+        <Route path="/invoices" element={<SalesInvoicesPage />} /> {/* Point to list page */}
         <Route path="/invoices/create" element={<CreateInvoice />} /> {/* Keep create page separate */}
         <Route path="/credit-notes" element={<CreditNotesPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />
@@ -321,22 +335,23 @@ function Sales() {
           <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {category.modules.map((module) => {
+            {category.modules.map((module, moduleIndex) => {
               const Icon = module.icon;
+              const colors = moduleColors[moduleIndex % moduleColors.length]; // Get colors for this module
               return (
                 <Link key={module.name} to={module.path} className="flex"> {/* Added flex to make cards equal height */}
-                  <Card hover className="p-6 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between"> {/* Added flex-1 and flex-col */}
+                  <Card hover className={`p-6 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}> {/* Apply cardBg */}
                     <div>
-                      <h3 className={`text-lg font-semibold ${theme.textPrimary} group-hover:text-[#6AC8A3] transition-colors`}>
+                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#6AC8A3] transition-colors`}> {/* Apply textColor */}
                         {module.name}
                       </h3>
                       <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
                     </div>
                     <div className="flex items-center justify-between mt-4"> {/* Moved count and icon to bottom */}
-                      <p className={`text-2xl font-bold ${theme.textPrimary}`}>{module.count}</p>
+                      <p className={`text-2xl font-bold ${colors.textColor}`}>{module.count}</p> {/* Apply textColor */}
                       <div className={`
                         p-3 rounded-xl shadow-lg
-                        bg-gradient-to-r from-[#5DBF99] via-[#6AC8A3] to-[#7AD4B0]
+                        ${colors.iconBg} text-white
                         group-hover:scale-110 transition-transform duration-300
                         relative z-10
                       `}>
@@ -344,9 +359,7 @@ function Sales() {
                       </div>
                     </div>
 
-                    {/* Hover Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#5DBF99]/5 to-transparent
-                                   opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* Removed the specific hover effect div to use Card's default hover */}
                   </Card>
                 </Link>
               );
