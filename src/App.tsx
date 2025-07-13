@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
 import { AIProvider } from './contexts/AIContext';
+import { NotificationProvider } from './contexts/NotificationContext'; // Import NotificationProvider
 import Layout from './components/Layout/Layout';
 import Login from './pages/Auth/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -69,7 +70,9 @@ function App() {
         <AuthProvider>
           <CompanyProvider>
             <AIProvider>
-              <AppContent />
+              <NotificationProvider> {/* Add NotificationProvider here */}
+                <AppContent />
+              </NotificationProvider>
             </AIProvider>
           </CompanyProvider>
         </AuthProvider>

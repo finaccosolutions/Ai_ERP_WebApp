@@ -51,6 +51,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
+import { useNotification } from '../../contexts/NotificationContext'; // Import useNotification
 
 // --- ALL STATIC DATA DEFINED HERE, ABOVE THE COMPONENT FUNCTION ---
 const countries = [
@@ -269,24 +270,6 @@ const industries = [
   { id: 'other', name: 'Other' }
 ];
 
-const employeeCounts = [
-  { id: '1-10', name: '1-10' },
-  { id: '11-50', name: '11-50' },
-  { id: '51-200', name: '51-200' },
-  { id: '201-500', name: '201-500' },
-  { id: '501-1000', name: '501-1000' },
-  { id: '1000+', name: '1000+' }
-];
-
-const revenueRanges = [
-  { id: 'under_100k', name: 'Under $100K' },
-  { id: '100k-500k', name: '$100K - $500K' },
-  { id: '500k-1m', name: '$500K - $1M' },
-  { id: '1m-5m', name: '$1M - $5M' },
-  { id: '5m-10m', name: '$5M - $10M' },
-  { id: 'over_10m', name: 'Over $10M' }
-];
-
 const gstRegistrationTypes = [
   { id: 'regular', name: 'Regular' },
   { id: 'composition', name: 'Composition' },
@@ -347,6 +330,7 @@ interface Company {
       tcsApplicable?: boolean;
     };
     vatDetails?: {
+      registrationNumber?: string;
       registrationType?: string;
       filingCycle?: string;
     };
@@ -391,6 +375,7 @@ interface Company {
     employeeCount?: string;
     annualRevenue?: string;
     inventoryTracking?: boolean;
+    companyUsername?: string; // Added companyUsername
   };
 }
 
@@ -409,6 +394,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
   const { user } = useAuth();
   const { suggestWithAI } = useAI();
   const { refreshCompanies } = useCompany();
+  const { showNotification } = useNotification(); // Use notification hook
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -434,13 +420,15 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
 
     // Calculate fiscal year start date based on country's fiscal year start month
     const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-    let fiscalYearStartDate = new Date(currentYear, fiscalYearStartMonth, 1);
+    // Use Date.UTC to prevent timezone issues
+    let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
     // If current month is before fiscal year start month, use previous year
-    if (new Date().getMonth() < fiscalYearStartMonth) {
-      fiscalYearStartDate = new Date(currentYear - 1, fiscalYearStartMonth, 1);
+    if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth for consistency
+      fiscalYearStartDate = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1));
     }
 
-    const fiscalYearEndDate = new Date(fiscalYearStartDate.getFullYear() + 1, fiscalYearStartDate.getMonth(), 0);
+    // Calculate fiscal year end date (last day of the month before fiscalYearStartMonth in the next year)
+    const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
 
     // Determine initial tax rates based on default country
     const initialTaxRates: { [key: string]: number[] } = {
@@ -468,18 +456,18 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
       registrationNo: '',
       country: defaultCountry.id,
       state: '',
-      city: '', // Not compulsory
+      city: '',
       addressLine1: '',
       addressLine2: '',
-      zipCode: '', // Not compulsory
+      zipCode: '',
       languagePreference: languages[0].id,
       companyLogo: null, // File object for upload
       timezone: defaultCountry.timezone,
 
       contactPersonName: '',
-      designation: '', // Not compulsory
-      email: '', // Not compulsory
-      mobile: '', // Not compulsory
+      designation: '',
+      email: '',
+      mobile: '',
       phoneCountry: defaultCountry.id, // Default to selected company country
       alternateContactNumber: '',
 
@@ -512,18 +500,13 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
       enableBatchTracking: false,
       enableCostCenterAllocation: false,
       enableMultiUserAccess: false,
-      allowAiSuggestions: true,
       companyPassword: '',
       enableCompanyPassword: false,
-      allowSplitByPeriod: false,
       enableBarcodeSupport: false,
-      allowAutoVoucherCreationAI: true,
+      companyUsername: '', // Added companyUsername
 
       // Fields from old Business Configuration, now in Preferences
       companyType: companyTypes[0].id,
-      employeeCount: employeeCounts[0].id,
-      annualRevenue: revenueRanges[0].id,
-      // defaultPaymentTerms and autoNumbering removed as requested
       inventoryTracking: true
     };
   });
@@ -543,17 +526,16 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         const currentYear = new Date().getFullYear();
         const defaultCountry = countries.find(c => c.id === companyToEdit.country) || countries[0]; // Fallback to India if country not found
         const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-        fiscalYearStartDateObj = new Date(currentYear, fiscalYearStartMonth, 1);
-        if (new Date().getMonth() < fiscalYearStartMonth) {
-          fiscalYearStartDateObj = new Date(currentYear - 1, fiscalYearStartMonth, 1);
+        fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
+        if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
+          fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
         }
         initialFiscalYearStartDate = fiscalYearStartDateObj.toISOString().split('T')[0];
       }
 
       // Calculate fiscal year end date based on the *valid* fiscalYearStartDateObj
-      const fiscalYearEndDateObj = new Date(fiscalYearStartDateObj.getFullYear() + 1, fiscalYearStartDateObj.getMonth(), fiscalYearStartDateObj.getDate());
-      fiscalYearEndDateObj.setDate(fiscalYearEndDateObj.getDate() - 1); // Subtract one day to get end of fiscal year
-
+      const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
+      
       setFormData({
         companyName: companyToEdit.name || '',
         legalName: companyToEdit.settings?.legalName || '',
@@ -575,7 +557,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         email: companyToEdit.contact_info?.email || '',
         mobile: companyToEdit.contact_info?.mobile || '',
         phoneCountry: companyToEdit.contact_info?.phoneCountry || companyToEdit.country || countries[0].id,
-        alternateContactNumber: companyToEdit.contact_info?.alternatePhone || '',
+        alternateContactNumber: '',
 
         taxSystem: companyToEdit.tax_config?.type || (selectedCountryData ? selectedCountryData.taxType : countries[0].taxType),
         taxConfig: {
@@ -605,17 +587,13 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         enableBatchTracking: companyToEdit.settings?.batchTracking ?? false,
         enableCostCenterAllocation: companyToEdit.settings?.costCenterAllocation ?? false,
         enableMultiUserAccess: companyToEdit.settings?.multiUserAccess ?? false,
-        allowAiSuggestions: companyToEdit.settings?.aiSuggestions ?? true,
         companyPassword: companyToEdit.settings?.password || '',
         enableCompanyPassword: companyToEdit.settings?.enablePassword ?? false,
-        allowSplitByPeriod: companyToEdit.settings?.splitByPeriod ?? false,
         enableBarcodeSupport: companyToEdit.settings?.barcodeSupport ?? false,
-        allowAutoVoucherCreationAI: companyToEdit.settings?.autoVoucherCreationAI ?? true,
+        companyUsername: companyToEdit.settings?.companyUsername || '', // Added companyUsername
 
         companyType: companyToEdit.settings?.companyType || companyTypes[0].id,
-        employeeCount: companyToEdit.settings?.employeeCount || employeeCounts[0].id,
-        annualRevenue: companyToEdit.settings?.annualRevenue || revenueRanges[0].id,
-        inventoryTracking: companyToEdit.settings?.inventoryTracking ?? true
+        inventoryTracking: true
       });
       setLogoFile(null); // Clear logo file for existing company, only set if new upload
       setErrors({}); // Clear errors when loading new company
@@ -625,11 +603,11 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
       const currentYear = new Date().getFullYear();
       const defaultCountry = countries.find(c => c.id === 'IN')!;
       const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-      let fiscalYearStartDate = new Date(currentYear, fiscalYearStartMonth, 1);
-      if (new Date().getMonth() < fiscalYearStartMonth) {
-        fiscalYearStartDate = new Date(currentYear - 1, fiscalYearStartMonth, 1);
+      let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
+      if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
+        fiscalYearStartDate = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
       }
-      const fiscalYearEndDate = new Date(fiscalYearStartDate.getFullYear() + 1, fiscalYearStartDate.getMonth(), 0);
+      const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
 
       setFormData({
         companyName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id,
@@ -642,9 +620,9 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         booksStartDate: fiscalYearStartDate.toISOString().split('T')[0], fiscalYearStartDate: fiscalYearStartDate.toISOString().split('T')[0],
         fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0], defaultCurrency: defaultCountry.currency, decimalPlaces: 2,
         multiCurrencySupport: false, autoRounding: false, dateFormat: dateFormats[0].id, enableBatchTracking: false,
-        enableCostCenterAllocation: false, enableMultiUserAccess: false, allowAiSuggestions: true, companyPassword: '',
-        enableCompanyPassword: false, allowSplitByPeriod: false, enableBarcodeSupport: false, allowAutoVoucherCreationAI: true,
-        companyType: companyTypes[0].id, employeeCount: employeeCounts[0].id, annualRevenue: revenueRanges[0].id, inventoryTracking: true
+        enableCostCenterAllocation: false, enableMultiUserAccess: false, companyPassword: '',
+        enableCompanyPassword: false, enableBarcodeSupport: false, companyUsername: '',
+        companyType: companyTypes[0].id, inventoryTracking: true
       });
       setLogoFile(null); // Clear logo file for new company
       setErrors({}); // Clear errors for new company
@@ -660,27 +638,28 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
       const currentYear = new Date().getFullYear();
       const fiscalYearStartMonth = selectedCountryData.fiscalYearStartMonth;
 
-      let fiscalYearStartDateObj = new Date(formData.fiscalYearStartDate); // Use formData.fiscalYearStartDate
-
-      // If formData.fiscalYearStartDate is invalid, use a default based on country
-      if (isNaN(fiscalYearStartDateObj.getTime())) {
-        fiscalYearStartDateObj = new Date(currentYear, fiscalYearStartMonth, 1);
-        if (new Date().getMonth() < fiscalYearStartMonth) {
-          fiscalYearStartDateObj = new Date(currentYear - 1, fiscalYearStartMonth, 1);
-        }
+      let fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
+      // If current month is before fiscal year start month, use previous year
+      if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
+        fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
       }
 
-      const fiscalYearEndDateObj = new Date(fiscalYearStartDateObj.getFullYear() + 1, fiscalYearStartDateObj.getMonth(), fiscalYearStartDateObj.getDate());
-      fiscalYearEndDateObj.setDate(fiscalYearEndDateObj.getDate() - 1); // Subtract one day to get end of fiscal year
+      const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
+
+      // Log the calculated dates for debugging
+      console.log('Calculated Fiscal Year Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+      console.log('Calculated Fiscal Year End Date:', fiscalYearEndDateObj.toISOString().split('T')[0]);
+      console.log('Calculated Books Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+
 
       setFormData((prev: any) => ({
         ...prev,
         timezone: selectedCountryData.timezone,
         defaultCurrency: selectedCountryData.currency,
         taxSystem: selectedCountryData.taxType,
-        fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // Ensure it's a valid string
-        fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0],
-        booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // Ensure books start date matches fiscal year start
+        fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the start date
+        fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0], // This is the end date
+        booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the books start date
         phoneCountry: selectedCountryData.id, // Auto-update phone country code
         // Reset state if country changes and previous state is not valid for new country
         state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
@@ -712,7 +691,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         },
       }));
     }
-  }, [formData.country, formData.fiscalYearStartDate]); // Re-run when country or fiscalYearStartDate changes
+  }, [formData.country]); // Re-run when country changes
 
   // Update booksStartDate if fiscalYearStartDate is manually changed
   useEffect(() => {
@@ -723,64 +702,61 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
   }, [formData.fiscalYearStartDate]);
 
 
-  const validateForm = (): boolean => {
+  const validateForm = (data: any, currentTabId: string): Record<string, string> => {
     let newErrors: Record<string, string> = {};
-    let isValid = true;
 
     // Company Info Tab Validation
-    if (activeTab === 'company_info') {
-      if (!formData.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (!formData.industry) newErrors.industry = 'Industry is required';
-      if (!formData.businessType) newErrors.businessType = 'Business Type is required';
-      if (!formData.country) newErrors.country = 'Country is required';
-      if (!formData.state.trim()) newErrors.state = 'State/Province is required';
-      // City and ZipCode are now optional
-      if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Address Line 1 is required';
+    if (currentTabId === 'company_info') {
+      if (!data.companyName.trim()) newErrors.companyName = 'Company Name is required';
+      if (!data.industry) newErrors.industry = 'Industry is required';
+      if (!data.businessType) newErrors.businessType = 'Business Type is required';
+      if (!data.country) newErrors.country = 'Country is required';
+      if (!data.state.trim()) newErrors.state = 'State/Province is required';
+      if (!data.addressLine1.trim()) newErrors.addressLine1 = 'Address Line 1 is required';
     }
 
     // Contact Tab Validation
-    if (activeTab === 'contact') {
-      if (!formData.contactPersonName.trim()) newErrors.contactPersonName = 'Contact Person Name is required';
-      // Designation, Email, Mobile are now optional
-      if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
+    if (currentTabId === 'contact') {
+      if (!data.contactPersonName.trim()) newErrors.contactPersonName = 'Contact Person Name is required';
+      if (data.email.trim() && !/\S+@\S+\.\S+/.test(data.email)) {
         newErrors.email = 'Invalid email address';
       }
     }
 
     // Tax Tab Validation
-    if (activeTab === 'tax' && formData.taxConfig.enabled) {
-      if (formData.taxSystem === 'GST') {
-        if (!formData.gstin.trim()) newErrors.gstin = 'GSTIN is required';
-        if (!formData.pan.trim()) newErrors.pan = 'PAN is required';
-        if (!formData.gstRegistrationType) newErrors.gstRegistrationType = 'GST Registration Type is required';
-        if (!formData.filingFrequency) newErrors.filingFrequency = 'Filing Frequency is required';
-      } else if (formData.taxSystem === 'VAT') {
-        if (!formData.trnVatNumber.trim()) newErrors.trnVatNumber = 'TRN / VAT Number is required';
-        if (!formData.vatRegistrationType) newErrors.vatRegistrationType = 'VAT Registration Type is required';
-        if (!formData.filingCycle) newErrors.filingCycle = 'Filing Cycle is required';
+    if (currentTabId === 'tax' && data.taxConfig.enabled) {
+      if (data.taxSystem === 'GST') {
+        if (!data.gstin.trim()) newErrors.gstin = 'GSTIN is required';
+        // PAN is now optional
+        if (!data.gstRegistrationType) newErrors.gstRegistrationType = 'GST Registration Type is required';
+        if (!data.filingFrequency) newErrors.filingFrequency = 'Filing Frequency is required';
+      } else if (data.taxSystem === 'VAT') {
+        if (!data.trnVatNumber.trim()) newErrors.trnVatNumber = 'TRN / VAT Number is required';
+        if (!data.vatRegistrationType) newErrors.vatRegistrationType = 'VAT Registration Type is required';
+        if (!data.filingCycle) newErrors.filingCycle = 'Filing Cycle is required';
       }
     }
 
     // Books Tab Validation
-    if (activeTab === 'books') {
-      if (!formData.booksStartDate) newErrors.booksStartDate = 'Books Start Date is required';
-      if (!formData.fiscalYearStartDate) newErrors.fiscalYearStartDate = 'Financial Year Start Date is required';
-      if (!formData.defaultCurrency) newErrors.defaultCurrency = 'Default Currency is required';
-      if (formData.decimalPlaces === null) newErrors.decimalPlaces = 'Decimal Places is required';
+    if (currentTabId === 'books') {
+      if (!data.booksStartDate) newErrors.booksStartDate = 'Books Start Date is required';
+      if (!data.fiscalYearStartDate) newErrors.fiscalYearStartDate = 'Financial Year Start Date is required';
+      if (!data.defaultCurrency) newErrors.defaultCurrency = 'Default Currency is required';
+      if (data.decimalPlaces === null) newErrors.decimalPlaces = 'Decimal Places is required';
     }
 
     // Preferences Tab Validation
-    if (activeTab === 'preferences') {
-      if (!formData.languagePreference) newErrors.languagePreference = 'Language Preference is required';
-      if (!formData.dateFormat) newErrors.dateFormat = 'Date Format is required';
-      if (formData.enableCompanyPassword && !formData.companyPassword.trim()) {
-        newErrors.companyPassword = 'Company Password is required if enabled';
+    if (currentTabId === 'preferences') {
+      if (!data.languagePreference) newErrors.languagePreference = 'Language Preference is required';
+      if (!data.dateFormat) newErrors.dateFormat = 'Date Format is required';
+      if (data.enableCompanyPassword) { // Only validate password and username if security is enabled
+        if (!data.companyUsername.trim()) newErrors.companyUsername = 'Company Username is required if security is enabled';
+        if (!data.companyPassword.trim()) newErrors.companyPassword = 'Company Password is required if security is enabled';
       }
+      if (!data.companyType) newErrors.companyType = 'Company Type is required';
     }
 
-    setErrors(newErrors);
-    isValid = Object.keys(newErrors).length === 0;
-    return isValid;
+    return newErrors;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -796,26 +772,16 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
   };
 
   const handleSubmit = async () => {
-    // Validate all tabs before final submission
-    let allFormsValid = true;
-    const currentErrors: Record<string, string> = {}; // Use a local variable for errors
+    let allValidationErrors: Record<string, string> = {};
 
-    // Temporarily set activeTab to each tab and validate
-    const originalActiveTab = activeTab;
     for (const tab of tabs) {
-      setActiveTab(tab.id);
-      // Call validateForm and capture its errors
-      const isTabValid = validateForm(); // validateForm updates the state `errors`
-      if (!isTabValid) {
-        allFormsValid = false;
-        // Merge errors from current `errors` state into `currentErrors`
-        Object.assign(currentErrors, errors);
-      }
+      const tabErrors = validateForm(formData, tab.id);
+      allValidationErrors = { ...allValidationErrors, ...tabErrors };
     }
-    setActiveTab(originalActiveTab); // Revert to original active tab
 
-    if (!allFormsValid) {
-      setErrors({ ...currentErrors, submit: 'Please correct the errors in all sections before submitting.' });
+    if (Object.keys(allValidationErrors).length > 0) {
+      setErrors({ ...allValidationErrors, submit: 'Please correct the errors in all sections before submitting.' });
+      showNotification('Please correct the errors in all sections before proceeding.', 'error');
       onSaveError?.('Please correct the errors in all sections before submitting.');
       return;
     }
@@ -895,17 +861,14 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
           batchTracking: formData.enableBatchTracking,
           costCenterAllocation: formData.enableCostCenterAllocation,
           multiUserAccess: formData.enableMultiUserAccess,
-          aiSuggestions: formData.allowAiSuggestions,
           enablePassword: formData.enableCompanyPassword,
           password: formData.enableCompanyPassword ? formData.companyPassword : null,
-          splitByPeriod: formData.allowSplitByPeriod,
           barcodeSupport: formData.enableBarcodeSupport,
-          autoVoucherCreationAI: formData.allowAutoVoucherCreationAI,
-          employeeCount: formData.employeeCount,
-          annualRevenue: formData.annualRevenue,
-          // defaultPaymentTerms and autoNumbering are no longer collected from form
+          companyUsername: formData.companyUsername, // Added companyUsername
+          companyType: formData.companyType,
           inventoryTracking: formData.inventoryTracking,
         },
+        created_by: user?.id, // Add the created_by field here
       };
 
       let result;
@@ -933,24 +896,10 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         throw new Error('Failed to save company record: ' + result.error.message);
       }
 
-      // Link user to the new company (only for creation)
-      if (!companyToEdit && user?.id && result.data?.id) {
-        const { error: userCompanyError } = await supabase
-          .from('users_companies')
-          .insert([
-            {
-              user_id: user.id,
-              company_id: result.data.id,
-              role_id: 'a_default_role_id', // Placeholder: Replace with actual role ID if roles are managed
-              is_active: true,
-            },
-          ]);
-
-        if (userCompanyError) {
-          console.error('Error linking user to company:', userCompanyError);
-          // Decide if this should prevent company creation or just log
-        }
-      }
+      // Removed client-side users_companies insert as it's handled by a database trigger.
+      // If you encounter RLS errors on company creation, check the 'link_user_to_company'
+      // trigger function in your Supabase database for correct permissions (SECURITY DEFINER)
+      // and ownership (e.g., supabase_admin).
 
       // Create default period for the new company (only for creation)
       if (!companyToEdit && result.data?.id) {
@@ -972,12 +921,14 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
       }
 
       refreshCompanies(); // Refresh company context to load updated data
+      showNotification(companyToEdit ? 'Company settings updated successfully!' : 'Company created successfully!', 'success');
       onSaveSuccess?.(companyToEdit ? 'Company settings updated successfully!' : 'Company created successfully!'); // Call success callback
       if (!companyToEdit) { // Only navigate if it's a new company creation
         navigate('/');
       }
     } catch (err: any) {
       setErrors({ submit: err.message || 'An unexpected error occurred.' });
+      showNotification(err.message || 'An unexpected error occurred.', 'error');
       onSaveError?.(err.message || 'An unexpected error occurred during save.'); // Call error callback
       console.error('Submission error:', err);
     } finally {
@@ -990,11 +941,17 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
   const availableStates = selectedCountry?.states || [];
 
   const handleNextTab = () => {
-    if (validateForm()) {
-      const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
-      if (currentIndex < tabs.length - 1) {
-        setActiveTab(tabs[currentIndex + 1].id);
-      }
+    const currentTabErrors = validateForm(formData, activeTab);
+    if (Object.keys(currentTabErrors).length > 0) {
+      setErrors({ ...errors, ...currentTabErrors, submit: 'Please correct the errors in this section before proceeding.' });
+      showNotification('Please correct the errors in this section before proceeding.', 'error');
+      return;
+    }
+
+    const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1].id);
+      setErrors({}); // Clear errors when moving to next tab
     }
   };
 
@@ -1002,12 +959,13 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
     if (currentIndex > 0) {
       setActiveTab(tabs[currentIndex - 1].id);
+      setErrors({}); // Clear errors when moving to previous tab
     }
   };
 
   return (
     <div className={`min-h-screen ${companyToEdit ? '' : theme.panelBg} py-4`}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-8">
+      <div className="w-full px-4 sm:px-8"> {/* Changed max-w-5xl mx-auto to w-full */}
         {/* Header */}
         {!companyToEdit && ( // Only show this header for new company creation
           <div className="text-center mb-6">
@@ -1096,7 +1054,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   readOnly={readOnly}
                 />
                 <FormField
-                  label="Legal Name (Optional)"
+                  label="Legal Name"
                   value={formData.legalName}
                   onChange={(val) => setFormData({ ...formData, legalName: val })}
                   placeholder="Full legal name"
@@ -1146,7 +1104,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   {errors.businessType && <p className="mt-2 text-sm text-red-500">{errors.businessType}</p>}
                 </div>
                 <FormField
-                  label="Registration No. (Optional)"
+                  label="Registration No."
                   value={formData.registrationNo}
                   onChange={(val) => setFormData({ ...formData, registrationNo: val })}
                   icon={<FileText size={18} className="text-gray-400" />}
@@ -1219,7 +1177,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   />
                 </div>
                 <FormField
-                  label="Address Line 2 (Optional)"
+                  label="Address Line 2"
                   value={formData.addressLine2}
                   onChange={(val) => setFormData({ ...formData, addressLine2: val })}
                   placeholder="Apartment, suite, unit, building, floor, etc."
@@ -1227,19 +1185,19 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   readOnly={readOnly}
                 />
                 <FormField
-                  label="City (Optional)"
+                  label="City"
                   value={formData.city}
                   onChange={(val) => setFormData({ ...formData, city: val })}
                   placeholder="City"
-                  error={errors.city} // No longer required
+                  error={errors.city}
                   readOnly={readOnly}
                 />
                 <FormField
-                  label="PIN/ZIP Code (Optional)"
+                  label="PIN/ZIP Code"
                   value={formData.zipCode}
                   onChange={(val) => setFormData({ ...formData, zipCode: val })}
                   placeholder="ZIP or Postal Code"
-                  error={errors.zipCode} // No longer required
+                  error={errors.zipCode}
                   readOnly={readOnly}
                 />
               </div>
@@ -1263,25 +1221,25 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   readOnly={readOnly}
                 />
                 <FormField
-                  label="Designation (Optional)"
+                  label="Designation"
                   value={formData.designation}
                   onChange={(val) => setFormData({ ...formData, designation: val })}
-                  error={errors.designation} // No longer required
+                  error={errors.designation}
                   readOnly={readOnly}
                 />
                 <FormField
-                  label="Email Address (Optional)"
+                  label="Email Address"
                   type="email"
                   value={formData.email}
                   onChange={(val) => setFormData({ ...formData, email: val })}
                   placeholder="contact@example.com"
-                  error={errors.email} // No longer required
+                  error={errors.email}
                   icon={<Mail size={18} className="text-gray-400" />}
                   readOnly={readOnly}
                 />
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Mobile Number (Optional)
+                    Mobile Number
                   </label>
                   <div className="flex items-stretch"> {/* Use items-stretch for alignment */}
                     <div className="relative">
@@ -1336,11 +1294,11 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                         value={formData.mobile}
                         onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                         placeholder="Enter mobile number"
-                        error={errors.mobile} // No longer required
+                        error={errors.mobile}
                         readOnly={readOnly}
                         className={`
                           w-full pl-10 pr-3 py-2 border ${theme.inputBorder}
-                          ${theme.borderRadius} rounded-l-none border-l-0
+                          ${theme.borderRadius} rounded-l-none border-l-0 h-full
                           ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
                           ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
@@ -1351,7 +1309,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   {errors.mobile && <p className="mt-2 text-sm text-red-500">{errors.mobile}</p>}
                 </div>
                 <FormField
-                  label="Alternate Contact Number (Optional)"
+                  label="Alternate Contact Number"
                   value={formData.alternateContactNumber}
                   onChange={(val) => setFormData({ ...formData, alternateContactNumber: val })}
                   icon={<Phone size={18} className="text-gray-400" />}
@@ -1400,12 +1358,11 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                         value={formData.pan}
                         onChange={(val) => setFormData({ ...formData, pan: val })}
                         placeholder="AAAAA0000A"
-                        required
-                        error={errors.pan}
+                        // PAN is now optional
                         readOnly={readOnly}
                       />
                       <FormField
-                        label="TAN (Optional)"
+                        label="TAN"
                         value={formData.tan}
                         onChange={(val) => setFormData({ ...formData, tan: val })}
                         placeholder="TAN Number"
@@ -1574,7 +1531,6 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                   icon={<Calendar size={18} />}
                   readOnly={readOnly}
                 />
-                {/* Financial Year End Date removed as it's auto-calculated */}
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
                     Default Currency <span className="text-red-500">*</span>
@@ -1739,68 +1695,6 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
-                    id="allowAiSuggestions"
-                    checked={formData.allowAiSuggestions}
-                    onChange={(e) => setFormData({ ...formData, allowAiSuggestions: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                    disabled={readOnly}
-                  />
-                  <label htmlFor="allowAiSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow AI Suggestions
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableCompanyPassword"
-                    checked={formData.enableCompanyPassword}
-                    onChange={(e) => setFormData({ ...formData, enableCompanyPassword: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                    disabled={readOnly}
-                  />
-                  <label htmlFor="enableCompanyPassword" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Company Password (Optional)
-                  </label>
-                </div>
-                {formData.enableCompanyPassword && (
-                  <div className="relative">
-                    <FormField
-                      label="Set Company Password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.companyPassword}
-                      onChange={(val) => setFormData({ ...formData, companyPassword: val })}
-                      placeholder="Enter a password for this company"
-                      required
-                      error={errors.companyPassword}
-                      icon={<Lock size={18} />}
-                      readOnly={readOnly}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
-                      disabled={readOnly}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                )}
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="allowSplitByPeriod"
-                    checked={formData.allowSplitByPeriod}
-                    onChange={(e) => setFormData({ ...formData, allowSplitByPeriod: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                    disabled={readOnly}
-                  />
-                  <label htmlFor="allowSplitByPeriod" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow Split by Period
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
                     id="enableBarcodeSupport"
                     checked={formData.enableBarcodeSupport}
                     onChange={(e) => setFormData({ ...formData, enableBarcodeSupport: e.target.checked })}
@@ -1814,79 +1708,64 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
-                    id="allowAutoVoucherCreationAI"
-                    checked={formData.allowAutoVoucherCreationAI}
-                    onChange={(e) => setFormData({ ...formData, allowAutoVoucherCreationAI: e.target.checked })}
+                    id="inventoryTracking"
+                    checked={formData.inventoryTracking}
+                    onChange={(e) => setFormData({ ...formData, inventoryTracking: e.target.checked })}
                     className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
                     disabled={readOnly}
                   />
-                  <label htmlFor="allowAutoVoucherCreationAI" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow Auto-Voucher Creation via AI
+                  <label htmlFor="inventoryTracking" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable Inventory Tracking
                   </label>
                 </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Company Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.companyType}
-                    onChange={(e) => setFormData({ ...formData, companyType: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                      ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
-                    `}
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="enableCompanyPassword"
+                    checked={formData.enableCompanyPassword}
+                    onChange={(e) => setFormData({ ...formData, enableCompanyPassword: e.target.checked })}
+                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
                     disabled={readOnly}
-                  >
-                    {companyTypes.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.companyType && <p className="mt-2 text-sm text-red-500">{errors.companyType}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Employee Count <span className="text-red-500">*</span>
+                  />
+                  <label htmlFor="enableCompanyPassword" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable Security
                   </label>
-                  <select
-                    value={formData.employeeCount}
-                    onChange={(e) => setFormData({ ...formData, employeeCount: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                      ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
-                    `}
-                    disabled={readOnly}
-                  >
-                    {employeeCounts.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.employeeCount && <p className="mt-2 text-sm text-red-500">{errors.employeeCount}</p>}
                 </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Annual Revenue <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.annualRevenue}
-                    onChange={(e) => setFormData({ ...formData, annualRevenue: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                      ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
-                    `}
-                    disabled={readOnly}
-                  >
-                    {revenueRanges.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.annualRevenue && <p className="mt-2 text-sm text-red-500">{errors.annualRevenue}</p>}
-                </div>
+                {formData.enableCompanyPassword && (
+                  <>
+                    <FormField
+                      label="Company Username"
+                      value={formData.companyUsername}
+                      onChange={(val) => setFormData({ ...formData, companyUsername: val })}
+                      placeholder="Enter a username for this company"
+                      required
+                      error={errors.companyUsername}
+                      icon={<User size={18} className="text-gray-400" />}
+                      readOnly={readOnly}
+                    />
+                    <div className="relative">
+                      <FormField
+                        label="Set Company Password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.companyPassword}
+                        onChange={(val) => setFormData({ ...formData, companyPassword: val })}
+                        placeholder="Enter a password for this company"
+                        required
+                        error={errors.companyPassword}
+                        icon={<Lock size={18} />}
+                        readOnly={readOnly}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                        disabled={readOnly}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
