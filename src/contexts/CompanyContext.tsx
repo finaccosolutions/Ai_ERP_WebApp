@@ -52,6 +52,7 @@ interface CompanyContextType {
   currentPeriod: Period | null;
   companies: Company[];
   periods: Period[];
+  loadingCompanies: boolean; // <--- ADD THIS
   switchCompany: (companyId: string) => void;
   switchPeriod: (periodId: string) => void;
   addCompany: (company: Omit<Company, 'id'>) => void;
@@ -66,15 +67,23 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true); // <--- ADD THIS
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && user) {
       loadUserCompanies();
+    } else {
+      setCompanies([]);
+      setCurrentCompany(null);
+      setPeriods([]);
+      setCurrentPeriod(null);
+      setLoadingCompanies(false); // No user, so not loading companies
     }
   }, [isAuthenticated, user]);
 
   const loadUserCompanies = async () => {
+    setLoadingCompanies(true); // <--- SET LOADING TRUE
     try {
       // Get companies user has access to
       const { data: userCompanies, error: companiesError } = await supabase
@@ -101,6 +110,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       if (companiesError) {
         console.error('Error loading companies:', companiesError);
+        setCompanies([]); // Ensure companies array is empty on error
+        setCurrentCompany(null);
+        setPeriods([]);
+        setCurrentPeriod(null);
         return;
       }
 
@@ -123,16 +136,26 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       // Set current company (first one or from localStorage)
       const savedCompanyId = localStorage.getItem('erp-current-company');
-      const currentComp = savedCompanyId 
-        ? companiesData.find(c => c.id === savedCompanyId) 
+      const currentComp = savedCompanyId
+        ? companiesData.find(c => c.id === savedCompanyId)
         : companiesData[0];
 
       if (currentComp) {
         setCurrentCompany(currentComp);
         await loadCompanyPeriods(currentComp.id);
+      } else {
+        setCurrentCompany(null); // No current company found
+        setPeriods([]); // Clear periods if no company
+        setCurrentPeriod(null);
       }
     } catch (error) {
       console.error('Error loading user companies:', error);
+      setCompanies([]);
+      setCurrentCompany(null);
+      setPeriods([]);
+      setCurrentPeriod(null);
+    } finally {
+      setLoadingCompanies(false); // <--- SET LOADING FALSE
     }
   };
 
@@ -213,6 +236,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       currentPeriod,
       companies,
       periods,
+      loadingCompanies, // <--- ADD THIS
       switchCompany,
       switchPeriod,
       addCompany,

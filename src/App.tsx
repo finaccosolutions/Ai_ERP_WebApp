@@ -1,10 +1,11 @@
+// src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
 import { AIProvider } from './contexts/AIContext';
-import { NotificationProvider } from './contexts/NotificationContext'; // Import NotificationProvider
+import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Auth/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -22,22 +23,30 @@ import { useAuth } from './hooks/useAuth';
 import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
 import { useCompany } from './contexts/CompanyContext';
-import CompanyManagement from './pages/Company/CompanyManagement';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
-  const { companies, currentCompany } = useCompany();
+  const { companies, currentCompany, loadingCompanies } = useCompany(); // <--- ADD loadingCompanies HERE
 
   if (!isAuthenticated) {
     return <Login />;
   }
 
-  // If user has no companies, show company setup
+  // If companies are still loading, show a loading indicator
+  if (loadingCompanies) { // <--- ADD THIS BLOCK
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // If user has no companies after loading, show company setup
   if (companies.length === 0) {
     return <CompanySetup />;
   }
 
-  // If no company is selected, show company selector
+  // If no company is selected, show company setup (or a dedicated selection page)
   if (!currentCompany) {
     return <CompanySetup />;
   }
@@ -70,7 +79,7 @@ function App() {
         <AuthProvider>
           <CompanyProvider>
             <AIProvider>
-              <NotificationProvider> {/* Add NotificationProvider here */}
+              <NotificationProvider>
                 <AppContent />
               </NotificationProvider>
             </AIProvider>
