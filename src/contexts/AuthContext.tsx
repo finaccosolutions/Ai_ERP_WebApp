@@ -1,5 +1,4 @@
 // src/contexts/AuthContext.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -21,7 +20,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
-  signUp: (email: string, password: string, fullName: string, mobile: string) => Promise<boolean>; // ADD mobile here
+  signUp: (email: string, password: string, fullName: string, mobile: string) => Promise<boolean>;
 }
 
 console.log('AuthContext.tsx: AuthContext defined');
@@ -30,7 +29,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true); // Initialize to true
+  const [loading, setLoading] = useState(true);
 
   console.log('AuthContext.tsx: AuthProvider mounted. Initial loading state:', loading);
 
@@ -63,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('AuthContext.tsx: initializeAuth: Session user found. Processing user data.');
           await handleAuthUser(session.user);
-          console.log('AuthContext.tsx: initializeAuth: handleAuthUser completed for initial session.');
+          console.log('AuthContext.tsx: handleAuthUser completed for initial session.');
         } else {
           console.log('AuthContext.tsx: initializeAuth: No initial session found.');
           setUser(null);
@@ -74,31 +73,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAuthenticated(false);
       } finally {
-        setLoading(false); // Always set loading to false after initial auth check
+        setLoading(false);
         console.log('AuthContext.tsx: setLoading(false) from initializeAuth finally block.');
       }
 
-      // Listen for changes on auth state AFTER initial check is done
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(handleAuthStateChange);
       console.log('AuthContext.tsx: onAuthStateChange subscription set up.');
 
       return () => {
         console.log('AuthContext.tsx: useEffect cleanup: Unsubscribing from onAuthStateChange.');
-        subscription.unsubscribe();
+        if (subscription) {
+          subscription.unsubscribe();
+        }
       };
     };
 
-    initializeAuth(); // Call the async initialization function
+    initializeAuth();
 
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
     console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
-    let profile: any = null; // Initialize profile to null
-    const maxRetries = 10; // Increased number of retries
-    const retryDelayMs = 300; // Increased delay between retries in milliseconds (total 3 seconds)
+    let profile: any = null;
+    const maxRetries = 30;
+    const retryDelayMs = 500;
 
     try {
+      await new Promise(resolve => setTimeout(resolve, 500)); // Initial delay
+
       for (let i = 0; i < maxRetries; i++) {
         console.log(`AuthContext.tsx: handleAuthUser: Attempt ${i + 1} to query user_profiles table...`);
         const { data: fetchedProfileArray, error: fetchError } = await supabase
@@ -115,10 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (fetchedProfile) {
           profile = fetchedProfile;
           console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
-          break; // Profile found, exit retry loop
+          break;
         } else if (fetchError) {
           console.error(`AuthContext.tsx: handleAuthUser: Error fetching user profile on attempt ${i + 1}:`, fetchError);
-          // Continue to retry on fetch errors as well, as it might be a temporary network issue or RLS propagation delay
         } else {
           console.warn(`AuthContext.tsx: handleAuthUser: User profile not found on attempt ${i + 1}. Retrying...`);
         }
@@ -129,11 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!profile) {
-        // If after all retries, profile is still null, then throw an error
         throw new Error('User profile could not be fetched after multiple attempts. It might not have been created by the trigger yet, or there was a persistent error.');
       }
 
-      // Fetch user companies
       console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user companies...');
       const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('users_companies')
@@ -143,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userCompaniesError) {
         console.error('AuthContext.tsx: handleAuthUser: Error fetching user companies:', userCompaniesError);
-        throw userCompaniesError; // Throw error to be caught by outer catch block
+        throw userCompaniesError;
       }
       console.log('AuthContext.tsx: handleAuthUser: User companies fetched successfully:', userCompanies);
 
@@ -151,8 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
         name: profile?.full_name || 'User',
-        role: 'User', // Default role, adjust as needed
-        permissions: ['dashboard'], // Default permissions, adjust as needed
+        role: 'User',
+        permissions: ['dashboard'],
         companies: userCompanies?.map(uc => uc.company_id) || [],
         avatar: profile?.avatar_url || undefined
       };
@@ -164,21 +163,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error: any) {
       console.error('AuthContext.tsx: handleAuthUser: Caught an error during user data processing:', error);
-      // Reset user and authentication states on error
       setUser(null);
       setIsAuthenticated(false);
-      // Re-throw the error so the calling function (login/signUp) can handle it
       throw error;
     } finally {
       console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
     }
   };
 
-
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log('AuthContext.tsx: login: Attempting login for email:', email);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -187,31 +183,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext.tsx: login: Login error:', error);
         return false;
       }
-
-      if (data.user) {
-        console.log('AuthContext.tsx: login: User data received, calling handleAuthUser.');
-        await handleAuthUser(data.user); // Explicitly call handleAuthUser
-        return true;
-      }
-      console.log('AuthContext.tsx: login: No user data after signInWithPassword.');
-      return false;
+      // Do NOT call handleAuthUser here. Let onAuthStateChange handle it.
+      console.log('AuthContext.tsx: login: Sign-in initiated. Waiting for onAuthStateChange.');
+      return true;
     } catch (error) {
       console.error('AuthContext.tsx: login: Unexpected login error:', error);
       return false;
     }
   };
 
-  // MODIFIED signUp function signature
   const signUp = async (email: string, password: string, fullName: string, mobile: string): Promise<boolean> => {
     console.log('AuthContext.tsx: signUp: Attempting signup for email:', email);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-            mobile: mobile, // Pass mobile number here
+            mobile: mobile,
           },
         },
       });
@@ -220,12 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext.tsx: signUp: Sign up error:', error);
         return false;
       }
-
-      if (data.user) { // If user data is returned, process it immediately
-        console.log('AuthContext.tsx: signUp: Sign up successful, user data received, calling handleAuthUser.');
-        await handleAuthUser(data.user); // Explicitly call handleAuthUser
-      }
-      console.log('AuthContext.tsx: signUp: Sign up successful, data:', data);
+      // Do NOT call handleAuthUser here. Let onAuthStateChange handle it.
+      console.log('AuthContext.tsx: signUp: Sign-up initiated. Waiting for onAuthStateChange.');
       return true;
     } catch (error) {
       console.error('AuthContext.tsx: signUp: Unexpected sign up error:', error);
@@ -241,7 +227,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext.tsx: logout: Logout error:', error);
       } else {
         console.log('AuthContext.tsx: logout: Signed out successfully.');
-        // State will be reset by onAuthStateChange event
       }
     } catch (error) {
       console.error('AuthContext.tsx: logout: Unexpected logout error:', error);
