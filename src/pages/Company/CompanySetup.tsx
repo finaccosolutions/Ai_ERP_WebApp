@@ -388,13 +388,14 @@ interface CompanySetupProps {
 }
 
 
-function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveError, onCancel }: CompanySetupProps) {
+function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onCancel }: CompanySetupProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { suggestWithAI } = useAI();
   const { refreshCompanies, switchCompany } = useCompany(); // <--- ADD switchCompany HERE
   const { showNotification } = useNotification();
+
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -771,7 +772,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     let allValidationErrors: Record<string, string> = {};
 
     for (const tab of tabs) {
@@ -787,40 +788,42 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
     }
 
     setLoading(true);
-  try {
-    // Explicitly get the current user from Supabase Auth
-    const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
+    try {
+      // Check application's authentication state first
+      console.log("handleSubmit: isAuthenticated from useAuth =", isAuthenticated); // This line should now work
+      console.log("handleSubmit: User from useAuth =", user); // This line should now work
 
-    if (authError || !authenticatedUser) {
-      throw new Error('You must be logged in to create a company. Please log in again.');
-    }
+      if (!isAuthenticated || !user) { // This condition should now work
+        throw new Error('Application authentication failed. Please log in again.');
+      }
 
-    console.log("Authenticated user ID:", authenticatedUser.id);
+      // Explicitly get the current user from Supabase Auth (redundant if useAuth is reliable, but good for debugging)
+      const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
 
-    const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
-    if (getSessionError || !session) {
-      throw new Error('Failed to retrieve active session. Please log in again.');
-    }
-    await supabase.auth.setSession(session);
+      if (authError || !authenticatedUser) {
+        throw new Error('Supabase authentication failed. Please log in again.');
+      }
+
+      console.log("Supabase authenticated user ID:", authenticatedUser.id);
 
 
     let logoUrl = formData.companyLogo;
-      if (logoFile) {
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('company_logos')
-          .upload(`${formData.companyName.replace(/\s/g, '_').toLowerCase()}_${Date.now()}`, logoFile, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+    if (logoFile) {
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('company_logos')
+        .upload(`${formData.companyName.replace(/\s/g, '_').toLowerCase()}_${Date.now()}`, logoFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-        if (uploadError) {
-          console.error('Error uploading logo:', uploadError);
-          throw new Error('Failed to upload company logo.');
-        }
-        logoUrl = `${supabase.storage.from('company_logos').getPublicUrl(uploadData.path).data.publicUrl}`;
+      if (uploadError) {
+        console.error('Error uploading logo:', uploadError);
+        throw new Error('Failed to upload company logo.');
       }
+      logoUrl = `${supabase.storage.from('company_logos').getPublicUrl(uploadData.path).data.publicUrl}`;
+    }
 
-      const companyData = {
+    const companyData = {
       name: formData.companyName,
       country: formData.country,
       currency: formData.defaultCurrency,
@@ -884,7 +887,7 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         companyType: formData.companyType,
         inventoryTracking: formData.inventoryTracking,
       },
-      created_by: authenticatedUser.id, // <--- ADD THIS LINE HERE
+      created_by: authenticatedUser.id, // This is correctly placed
     };
 
     let result;
@@ -897,55 +900,73 @@ function CompanySetup({ companyToEdit, readOnly = false, onSaveSuccess, onSaveEr
         .single();
       result = { data, error };
     } else {
-        const { data, error } = await supabase
-          .from('companies')
-          .insert([companyData])
-          .select()
-          .single();
-        result = { data, error };
-      }
+      const { data, error } = await supabase
+        .from('companies')
+        .insert([companyData])
+        .select()
+        .single();
+      result = { data, error };
+    }
 
     if (result.error) {
       console.error('Error saving company:', result.error);
       throw new Error('Failed to save company record: ' + result.error.message);
     }
 
-      // Create default period for the new company (only for creation)
-      if (!companyToEdit && result.data?.id) {
-        const { error: periodError } = await supabase
-          .from('periods')
-          .insert({
-            company_id: result.data.id,
-            name: `FY ${new Date(formData.fiscalYearStartDate).getFullYear()}-${new Date(formData.fiscalYearEndDate).getFullYear()}`,
-            start_date: formData.fiscalYearStartDate,
-            end_date: formData.fiscalYearEndDate,
-            is_active: true,
-            period_type: 'fiscal_year'
-          });
+    // Create default period for the new company (only for creation)
+    if (!companyToEdit && result.data?.id) {
+      const { error: periodError } = await supabase
+        .from('periods')
+        .insert({
+          company_id: result.data.id,
+          name: `FY ${new Date(formData.fiscalYearStartDate).getFullYear()}-${new Date(formData.fiscalYearEndDate).getFullYear()}`,
+          start_date: formData.fiscalYearStartDate,
+          end_date: formData.fiscalYearEndDate,
+          is_active: true,
+          period_type: 'fiscal_year'
+        });
 
-        if (periodError) {
-          console.error('Error creating default period:', periodError);
-        }
-
-        // <--- ADD THESE LINES FOR NEW COMPANY CREATION
-        switchCompany(result.data.id); // Explicitly set the newly created company as current
-        showNotification('Company created successfully!', 'success');
-        onSaveSuccess?.('Company created successfully!');
-        navigate('/'); // Navigate to dashboard after setting current company
-      } else if (companyToEdit) { // For existing company updates
-        showNotification('Company settings updated successfully!', 'success');
-        onSaveSuccess?.('Company settings updated successfully!');
-        // No navigation needed here, user stays on settings page
+      if (periodError) {
+        console.error('Error creating default period:', periodError);
       }
-    } catch (err: any) {
+
+      // --- MODIFIED BLOCK FOR NEW COMPANY CREATION ---
+      // Link the user to the newly created company in 'users_companies'
+      // Omitting role_id as it's nullable and not explicitly managed by user
+      const { error: userCompanyLinkError } = await supabase
+        .from('users_companies')
+        .insert({
+          user_id: authenticatedUser.id,
+          company_id: result.data.id,
+          is_active: true,
+        });
+
+      if (userCompanyLinkError) {
+        console.error('Error linking user to company:', userCompanyLinkError);
+        throw new Error(`Failed to link user to company: ${userCompanyLinkError.message}`);
+      }
+      // --- END OF MODIFIED BLOCK ---
+
+      switchCompany(result.data.id); // Explicitly set the newly created company as current
+      showNotification('Company created successfully!', 'success');
+      onSaveSuccess?.('Company created successfully!');
+      navigate('/'); // Navigate to dashboard after setting current company
+    } else if (companyToEdit) { // For existing company updates
+      showNotification('Company settings updated successfully!', 'success');
+      onSaveSuccess?.('Company settings updated successfully!');
+      // No navigation needed here, user stays on settings page
+    }
+  } catch (err: any) {
       setErrors({ submit: err.message || 'An unexpected error occurred.' });
       showNotification(err.message || 'An unexpected error occurred.', 'error');
-      onSaveError?.(err.message || 'An unexpected error occurred during save.'); // Call error callback
+      onSaveError?.(err.message || 'An unexpected error occurred during save.');
       console.error('Submission error:', err);
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const selectedCountry = countries.find(c => c.id === formData.country);
   const selectedPhoneCountry = countries.find(c => c.id === formData.phoneCountry);

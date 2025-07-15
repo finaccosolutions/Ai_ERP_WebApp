@@ -22,18 +22,34 @@ import Admin from './pages/Admin/Admin';
 import { useAuth } from './hooks/useAuth';
 import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
-import { useCompany } from './contexts/CompanyContext';
+import CompanyManagement from './pages/Company/CompanyManagement'; // Import CompanyManagement
+import { useCompany } from './contexts/CompanyContext'; // Import useCompany
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
-  const { companies, currentCompany, loadingCompanies } = useCompany(); // <--- ADD loadingCompanies HERE
+  console.log('AppContent rendering...');
+  // Destructure the loading state from useAuth
+  const { isAuthenticated, user, loading: authLoading } = useAuth(); // Correctly destructure loading
+  const { companies, currentCompany, loadingCompanies } = useCompany(); // Add loadingCompanies here
+
+  console.log("AppContent: isAuthenticated =", isAuthenticated);
+  console.log("AppContent: Current User =", user);
+  console.log("AppContent: Auth Loading =", authLoading); // This should now show true/false
+
+  // Handle authentication loading state first
+  if (authLoading) { // This check is now meaningful
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Login />;
-  }
-
+  } 
+ 
   // If companies are still loading, show a loading indicator
-  if (loadingCompanies) { // <--- ADD THIS BLOCK
+  if (loadingCompanies) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -48,7 +64,10 @@ function AppContent() {
 
   // If no company is selected, show company setup (or a dedicated selection page)
   if (!currentCompany) {
-    return <CompanySetup />;
+    // This case should ideally be handled by redirecting to CompanyManagement
+    // or a dedicated company selection page if the user has companies but none selected.
+    // For now, we'll redirect to CompanyManagement to allow selection.
+    return <CompanyManagement />;
   }
   return (
     <Layout>

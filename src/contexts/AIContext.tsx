@@ -473,4 +473,4 @@ export function useAI() {
     throw new Error('useAI must be used within an AIProvider');
   }
   return context;
-}
+} 
