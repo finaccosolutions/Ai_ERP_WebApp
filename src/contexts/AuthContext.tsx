@@ -46,36 +46,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthContext.tsx: handleAuthStateChange: No session user, setting states to unauthenticated.');
         setUser(null);
         setIsAuthenticated(false);
-        setLoading(false); // Set loading to false if no user is found (e.g., SIGNED_OUT)
-        console.log('AuthContext.tsx: setLoading(false) from handleAuthStateChange (no user).');
+        // No setLoading(false) here, as initializeAuth or handleAuthUser's finally will handle it
+        console.log('AuthContext.tsx: handleAuthStateChange: States set to unauthenticated.');
       }
     };
 
-    // Initial session check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('AuthContext.tsx: getSession: Initial session check completed. Session:', session);
-      if (session?.user) {
-        console.log('AuthContext.tsx: getSession: Session user found, calling handleAuthUser from initial check.');
-        await handleAuthUser(session.user);
-      } else {
-        console.log('AuthContext.tsx: getSession: No initial session, setting loading to false.');
-        setLoading(false); // Set loading to false if no initial session
-        console.log('AuthContext.tsx: setLoading(false) from getSession (no initial session).');
+    const initializeAuth = async () => {
+      console.log('AuthContext.tsx: initializeAuth: Starting initial session check.');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('AuthContext.tsx: initializeAuth: Initial session check completed. Session:', session);
+        if (session?.user) {
+          console.log('AuthContext.tsx: initializeAuth: Session user found. Processing user data.');
+          await handleAuthUser(session.user);
+          console.log('AuthContext.tsx: initializeAuth: handleAuthUser completed for initial session.');
+        } else {
+          console.log('AuthContext.tsx: initializeAuth: No initial session found.');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('AuthContext.tsx: initializeAuth: Error during initial session check:', error);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false); // Always set loading to false after initial auth check
+        console.log('AuthContext.tsx: setLoading(false) from initializeAuth finally block.');
       }
-    }).catch(error => {
-      console.error('AuthContext.tsx: getSession: Error during initial session check:', error);
-      setLoading(false); // Ensure loading is false even if getSession fails
-      console.log('AuthContext.tsx: setLoading(false) from getSession (error).');
-    });
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-    console.log('AuthContext.tsx: onAuthStateChange subscription set up.');
+      // Listen for changes on auth state AFTER initial check is done
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      console.log('AuthContext.tsx: onAuthStateChange subscription set up.');
 
-    return () => {
-      console.log('AuthContext.tsx: useEffect cleanup: Unsubscribing from onAuthStateChange.');
-      subscription.unsubscribe();
+      return () => {
+        console.log('AuthContext.tsx: useEffect cleanup: Unsubscribing from onAuthStateChange.');
+        subscription.unsubscribe();
+      };
     };
+
+    initializeAuth(); // Call the async initialization function
+
   }, []); // Empty dependency array means this runs once on mount
 
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
@@ -200,8 +210,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     } finally {
-      console.log('AuthContext.tsx: handleAuthUser: Finally block reached. Setting loading to false.');
-      setLoading(false); // Always set loading to false when handleAuthUser finishes
+      // This finally block is now less critical for `loading` state, as `initializeAuth` handles it.
+      // It's still good for ensuring `setUser` and `setIsAuthenticated` are reset on error.
+      console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
     }
   };
 

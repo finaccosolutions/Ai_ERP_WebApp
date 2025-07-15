@@ -789,179 +789,199 @@ const handleSubmit = async () => {
 
     setLoading(true);
     try {
-      // Check application's authentication state first
-      console.log("handleSubmit: isAuthenticated from useAuth =", isAuthenticated); // This line should now work
-      console.log("handleSubmit: User from useAuth =", user); // This line should now work
+      console.log("handleSubmit: Starting submission process.");
 
-      if (!isAuthenticated || !user) { // This condition should now work
+      if (!isAuthenticated || !user) {
+        console.error("handleSubmit: User not authenticated or user object is null.");
         throw new Error('Application authentication failed. Please log in again.');
       }
 
-      // Explicitly get the current user from Supabase Auth (redundant if useAuth is reliable, but good for debugging)
-      const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
+      console.log("handleSubmit: User authenticated. User ID:", user.id);
 
-      if (authError || !authenticatedUser) {
-        throw new Error('Supabase authentication failed. Please log in again.');
+      let logoUrl = formData.companyLogo;
+      if (logoFile) {
+        console.log("handleSubmit: Attempting to upload logo.");
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('company_logos')
+          .upload(`${formData.companyName.replace(/\s/g, '_').toLowerCase()}_${Date.now()}`, logoFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('handleSubmit: Error uploading logo:', uploadError);
+          throw new Error('Failed to upload company logo: ' + uploadError.message);
+        }
+        logoUrl = `${supabase.storage.from('company_logos').getPublicUrl(uploadData.path).data.publicUrl}`;
+        console.log("handleSubmit: Logo uploaded successfully. URL:", logoUrl);
       }
 
-      console.log("Supabase authenticated user ID:", authenticatedUser.id);
-
-
-    let logoUrl = formData.companyLogo;
-    if (logoFile) {
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('company_logos')
-        .upload(`${formData.companyName.replace(/\s/g, '_').toLowerCase()}_${Date.now()}`, logoFile, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error('Error uploading logo:', uploadError);
-        throw new Error('Failed to upload company logo.');
-      }
-      logoUrl = `${supabase.storage.from('company_logos').getPublicUrl(uploadData.path).data.publicUrl}`;
-    }
-
-    const companyData = {
-      name: formData.companyName,
-      country: formData.country,
-      currency: formData.defaultCurrency,
-      fiscal_year_start: formData.fiscalYearStartDate,
-      fiscal_year_end: formData.fiscalYearEndDate,
-      timezone: formData.timezone,
-      logo: logoUrl,
-      tax_config: {
-        type: formData.taxSystem,
-        enabled: formData.taxConfig.enabled,
-        registrationNumber: formData.taxSystem === 'GST' ? formData.gstin : formData.trnVatNumber,
-        rates: formData.taxConfig.rates,
-        gstDetails: formData.taxSystem === 'GST' ? {
-          pan: formData.pan,
-          tan: formData.tan,
-          registrationType: formData.gstRegistrationType,
-          filingFrequency: formData.filingFrequency,
-          tdsApplicable: formData.tdsApplicable,
-          tcsApplicable: formData.tcsApplicable,
-        } : null,
-        vatDetails: formData.taxSystem === 'VAT' ? {
-          registrationNumber: formData.trnVatNumber,
-          registrationType: formData.vatRegistrationType,
-          filingCycle: formData.filingCycle,
-        } : null,
-      },
-      address: {
-        street1: formData.addressLine1,
-        street2: formData.addressLine2,
-        city: formData.city,
-        state: formData.state,
+      const companyData = {
+        name: formData.companyName,
         country: formData.country,
-        zipCode: formData.zipCode,
-      },
-      contact_info: {
-        contactPersonName: formData.contactPersonName,
-        designation: formData.designation,
-        email: formData.email,
-        mobile: formData.mobile,
-        alternatePhone: formData.alternateContactNumber,
-        phoneCountry: formData.phoneCountry,
-      },
-      settings: {
-        displayName: formData.legalName || formData.companyName,
-        legalName: formData.legalName,
-        industry: formData.industry,
-        businessType: formData.businessType,
-        registrationNo: formData.registrationNo,
-        languagePreference: formData.languagePreference,
-        decimalPlaces: formData.decimalPlaces,
-        multiCurrencySupport: formData.multiCurrencySupport,
-        autoRounding: formData.autoRounding,
-        dateFormat: formData.dateFormat,
-        batchTracking: formData.enableBatchTracking,
-        costCenterAllocation: formData.enableCostCenterAllocation,
-        multiUserAccess: formData.enableMultiUserAccess,
-        enablePassword: formData.enableCompanyPassword,
-        password: formData.enableCompanyPassword ? formData.companyPassword : null,
-        barcodeSupport: formData.enableBarcodeSupport,
-        companyUsername: formData.companyUsername,
-        companyType: formData.companyType,
-        inventoryTracking: formData.inventoryTracking,
-      },
-      created_by: authenticatedUser.id, // This is correctly placed
-    };
+        currency: formData.defaultCurrency,
+        fiscal_year_start: formData.fiscalYearStartDate,
+        fiscal_year_end: formData.fiscalYearEndDate,
+        timezone: formData.timezone,
+        logo: logoUrl,
+        tax_config: {
+          type: formData.taxSystem,
+          enabled: formData.taxConfig.enabled,
+          registrationNumber: formData.taxSystem === 'GST' ? formData.gstin : formData.trnVatNumber,
+          rates: formData.taxConfig.rates,
+          gstDetails: formData.taxSystem === 'GST' ? {
+            pan: formData.pan,
+            tan: formData.tan,
+            registrationType: formData.gstRegistrationType,
+            filingFrequency: formData.filingFrequency,
+            tdsApplicable: formData.tdsApplicable,
+            tcsApplicable: formData.tcsApplicable,
+          } : null,
+          vatDetails: formData.taxSystem === 'VAT' ? {
+            registrationNumber: formData.trnVatNumber,
+            registrationType: formData.vatRegistrationType,
+            filingCycle: formData.filingCycle,
+          } : null,
+        },
+        address: {
+          street1: formData.addressLine1,
+          street2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          zipCode: formData.zipCode,
+        },
+        contact_info: {
+          contactPersonName: formData.contactPersonName,
+          designation: formData.designation,
+          email: formData.email,
+          mobile: formData.mobile,
+          alternatePhone: formData.alternateContactNumber,
+          phoneCountry: formData.phoneCountry,
+        },
+        settings: {
+          displayName: formData.legalName || formData.companyName,
+          legalName: formData.legalName,
+          industry: formData.industry,
+          businessType: formData.businessType,
+          registrationNo: formData.registrationNo,
+          languagePreference: formData.languagePreference,
+          decimalPlaces: formData.decimalPlaces,
+          multiCurrencySupport: formData.multiCurrencySupport,
+          autoRounding: formData.autoRounding,
+          dateFormat: formData.dateFormat,
+          batchTracking: formData.enableBatchTracking,
+          costCenterAllocation: formData.enableCostCenterAllocation,
+          multiUserAccess: formData.enableMultiUserAccess,
+          enablePassword: formData.enableCompanyPassword,
+          password: formData.enableCompanyPassword ? formData.companyPassword : null,
+          barcodeSupport: formData.enableBarcodeSupport,
+          companyUsername: formData.companyUsername,
+          companyType: formData.companyType,
+          inventoryTracking: formData.inventoryTracking,
+        },
+        created_by: user.id, // Use user.id from useAuth
+      };
 
-    let result;
-    if (companyToEdit) {
-      const { data, error } = await supabase
-        .from('companies')
-        .update(companyData)
-        .eq('id', companyToEdit.id)
-        .select()
-        .single();
-      result = { data, error };
-    } else {
-      const { data, error } = await supabase
-        .from('companies')
-        .insert([companyData])
-        .select()
-        .single();
-      result = { data, error };
-    }
+      let companyId: string | null = null;
+      console.log("Company data being sent for insert:", companyData);
+      console.log("Value of created_by in companyData:", companyData.created_by);
+      if (companyToEdit) {
+        console.log("handleSubmit: Attempting to update existing company.");
+        const { data, error } = await supabase
+          .from('companies')
+          .update(companyData)
+          .eq('id', companyToEdit.id)
+          .select('id'); // Select only ID
+        
+        if (error) {
+          console.error('handleSubmit: Error updating company:', error);
+          throw new Error('Failed to update company record: ' + error.message);
+        }
+        companyId = data ? data[0]?.id : null;
+        console.log("handleSubmit: Company updated successfully. ID:", companyId);
 
-    if (result.error) {
-      console.error('Error saving company:', result.error);
-      throw new Error('Failed to save company record: ' + result.error.message);
-    }
+      } else {
+        console.log("handleSubmit: Attempting to insert new company.");
+        const { data, error } = await supabase
+          .from('companies')
+          .insert([companyData])
+          .select('id'); // Select only ID
+        
+        if (error) {
+          console.error('handleSubmit: Error inserting new company:', error);
+          throw new Error('Failed to create company record: ' + error.message);
+        }
+        companyId = data ? data[0]?.id : null;
+        console.log("handleSubmit: New company inserted successfully. ID:", companyId);
 
-    // Create default period for the new company (only for creation)
-    if (!companyToEdit && result.data?.id) {
-      const { error: periodError } = await supabase
-        .from('periods')
-        .insert({
-          company_id: result.data.id,
-          name: `FY ${new Date(formData.fiscalYearStartDate).getFullYear()}-${new Date(formData.fiscalYearEndDate).getFullYear()}`,
-          start_date: formData.fiscalYearStartDate,
-          end_date: formData.fiscalYearEndDate,
-          is_active: true,
-          period_type: 'fiscal_year'
-        });
+        if (companyId) {
+          console.log("handleSubmit: Attempting to link user to new company in users_companies.");
+          const { error: userCompanyLinkError } = await supabase
+            .from('users_companies')
+            .insert({
+              user_id: user.id, // Use user.id from useAuth
+              company_id: companyId,
+              is_active: true,
+            });
 
-      if (periodError) {
-        console.error('Error creating default period:', periodError);
+          if (userCompanyLinkError) {
+            console.error('handleSubmit: Error linking user to company:', userCompanyLinkError);
+            throw new Error(`Failed to link user to company: ${userCompanyLinkError.message}`);
+          }
+          console.log("handleSubmit: User successfully linked to new company.");
+        } else {
+          console.error("handleSubmit: No company ID returned after insert, cannot link user.");
+          throw new Error("Failed to retrieve new company ID.");
+        }
       }
 
-      // --- MODIFIED BLOCK FOR NEW COMPANY CREATION ---
-      // Link the user to the newly created company in 'users_companies'
-      // Omitting role_id as it's nullable and not explicitly managed by user
-      const { error: userCompanyLinkError } = await supabase
-        .from('users_companies')
-        .insert({
-          user_id: authenticatedUser.id,
-          company_id: result.data.id,
-          is_active: true,
-        });
+      // Create default period for the new company (only for creation)
+      if (!companyToEdit && companyId) {
+        console.log("handleSubmit: Attempting to create default period.");
+        const { error: periodError } = await supabase
+          .from('periods')
+          .insert({
+            company_id: companyId,
+            name: `FY ${new Date(formData.fiscalYearStartDate).getFullYear()}-${new Date(formData.fiscalYearEndDate).getFullYear()}`,
+            start_date: formData.fiscalYearStartDate,
+            end_date: formData.fiscalYearEndDate,
+            is_active: true,
+            period_type: 'fiscal_year'
+          });
 
-      if (userCompanyLinkError) {
-        console.error('Error linking user to company:', userCompanyLinkError);
-        throw new Error(`Failed to link user to company: ${userCompanyLinkError.message}`);
+        if (periodError) {
+          console.error('handleSubmit: Error creating default period:', periodError);
+          // Do not throw here, as company is already created and linked. Log and continue.
+        }
+        console.log("handleSubmit: Default period creation attempted.");
       }
-      // --- END OF MODIFIED BLOCK ---
 
-      switchCompany(result.data.id); // Explicitly set the newly created company as current
-      showNotification('Company created successfully!', 'success');
-      onSaveSuccess?.('Company created successfully!');
-      navigate('/'); // Navigate to dashboard after setting current company
-    } else if (companyToEdit) { // For existing company updates
-      showNotification('Company settings updated successfully!', 'success');
-      onSaveSuccess?.('Company settings updated successfully!');
-      // No navigation needed here, user stays on settings page
-    }
+      // Refresh companies in context and switch to the new/updated company
+      await refreshCompanies(); // Ensure the company list in context is updated
+      console.log("handleSubmit: Companies refreshed in context.");
+
+      if (!companyToEdit && companyId) {
+        switchCompany(companyId); // Explicitly set the newly created company as current
+        console.log("handleSubmit: Switched to new company:", companyId);
+        showNotification('Company created successfully!', 'success');
+        onSaveSuccess?.('Company created successfully!');
+        navigate('/'); // Navigate to dashboard after setting current company
+      } else if (companyToEdit) { // For existing company updates
+        console.log("handleSubmit: Company settings updated.");
+        showNotification('Company settings updated successfully!', 'success');
+        onSaveSuccess?.('Company settings updated successfully!');
+        // No navigation needed here, user stays on settings page
+      }
+      console.log("handleSubmit: Submission process completed successfully.");
+
   } catch (err: any) {
+      console.error('handleSubmit: Caught error during submission:', err);
       setErrors({ submit: err.message || 'An unexpected error occurred.' });
       showNotification(err.message || 'An unexpected error occurred.', 'error');
       onSaveError?.(err.message || 'An unexpected error occurred during save.');
-      console.error('Submission error:', err);
     } finally {
+      console.log("handleSubmit: Finally block reached. Setting loading to false.");
       setLoading(false);
     }
   };
