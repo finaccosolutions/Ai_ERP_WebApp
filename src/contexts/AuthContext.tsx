@@ -4,6 +4,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  permissions: string[];
+  companies: string[];
+  avatar?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -22,11 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true); // Initialize to true
 
+  console.log('AuthContext.tsx: AuthProvider mounted. Initial loading state:', loading);
+
   useEffect(() => {
     console.log('AuthContext.tsx: useEffect started.');
 
     const handleAuthStateChange = async (event: string, session: any) => {
-      console.log('AuthContext.tsx: Auth state change event:', event);
+      console.log('AuthContext.tsx: handleAuthStateChange: Auth state change event:', event);
       if (session?.user) {
         console.log('AuthContext.tsx: handleAuthStateChange: Session user found, calling handleAuthUser.');
         await handleAuthUser(session.user);
@@ -35,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAuthenticated(false);
         setLoading(false); // Set loading to false if no user is found (e.g., SIGNED_OUT)
+        console.log('AuthContext.tsx: setLoading(false) from handleAuthStateChange (no user).');
       }
     };
 
@@ -47,10 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('AuthContext.tsx: getSession: No initial session, setting loading to false.');
         setLoading(false); // Set loading to false if no initial session
+        console.log('AuthContext.tsx: setLoading(false) from getSession (no initial session).');
       }
     }).catch(error => {
       console.error('AuthContext.tsx: getSession: Error during initial session check:', error);
       setLoading(false); // Ensure loading is false even if getSession fails
+      console.log('AuthContext.tsx: setLoading(false) from getSession (error).');
     });
 
     // Listen for changes on auth state (logged in, signed out, etc.)
@@ -65,39 +80,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
     console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
+    let profile: any = null; // Initialize profile to null
     try {
-      // Fetch user profile
-      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user profile...');
-      let { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
+      // --- TEST: Fetch from a different table first ---
+      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch companies to test client connection...');
+      const { data: testCompanies, error: testError } = await supabase
+        .from('companies')
+        .select('id, name')
+        .limit(1); // Just fetch one to confirm connection
 
-      if (profileError && profileError.code === 'PGRST116') {
-        console.warn('AuthContext.tsx: handleAuthUser: User profile not found, attempting to create one.');
-        // Profile doesn't exist, create one
-        const { data: newProfile, error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: supabaseUser.id,
-            full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-            avatar_url: supabaseUser.user_metadata?.avatar_url,
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('AuthContext.tsx: handleAuthUser: Error creating profile:', insertError);
-          throw insertError; // Throw error to be caught by outer catch block
-        }
-        profile = newProfile;
-        console.log('AuthContext.tsx: handleAuthUser: New profile created successfully:', profile);
-      } else if (profileError) {
-        console.error('AuthContext.tsx: handleAuthUser: Error fetching existing profile:', profileError);
-        throw profileError; // Throw error to be caught by outer catch block
+      if (testError) {
+        console.error('AuthContext.tsx: handleAuthUser: Test fetch from companies failed:', testError);
+        // Don't throw yet, proceed to user_profiles fetch, but this is a strong indicator
       } else {
+        console.log('AuthContext.tsx: handleAuthUser: Test fetch from companies successful. Companies found:', testCompanies?.length);
+      }
+      // --- END TEST ---
+
+
+      // Attempt to fetch user profile
+      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user profile...');
+      
+      let fetchedProfileArray;
+      let fetchError;
+
+      try {
+        console.log('AuthContext.tsx: handleAuthUser: Executing user_profiles select query...');
+        const result = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', supabaseUser.id);
+        
+        fetchedProfileArray = result.data;
+        fetchError = result.error;
+        console.log('AuthContext.tsx: handleAuthUser: User profile select query completed.');
+
+      } catch (e: any) {
+        console.error('AuthContext.tsx: handleAuthUser: Caught synchronous error during user_profiles fetch:', e);
+        fetchError = e; // Assign caught error
+      }
+
+      // Manually extract the profile from the array result
+      const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
+
+      // --- START CRITICAL LOGGING ---
+      console.log('AuthContext.tsx: Fetched profile data:', fetchedProfile);
+      console.log('AuthContext.tsx: Fetch error object:', fetchError);
+      // --- END CRITICAL LOGGING ---
+
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116' || (fetchError.message && fetchError.message.includes('0 rows'))) { // Check for "0 rows" message as well
+          console.warn('AuthContext.tsx: handleAuthUser: User profile not found, attempting to create one.');
+          // Profile doesn't exist, create one
+          const { data: newProfile, error: insertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: supabaseUser.id,
+              full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              avatar_url: supabaseUser.user_metadata?.avatar_url,
+            })
+            .select()
+            .single(); // Keep .single() here as we expect one row on insert
+
+          if (insertError) {
+            console.error('AuthContext.tsx: handleAuthUser: Error creating profile:', insertError);
+            throw insertError; // Throw error to be caught by outer catch block
+          }
+          profile = newProfile; // Assign newProfile to profile
+          console.log('AuthContext.tsx: handleAuthUser: New profile created successfully:', profile);
+        } else {
+          console.error('AuthContext.tsx: handleAuthUser: Error fetching existing profile:', fetchError);
+          // --- START ADDITIONAL ERROR LOGGING ---
+          console.error('AuthContext.tsx: handleAuthUser: Full fetch error object:', fetchError);
+          // --- END ADDITIONAL ERROR LOGGING ---
+          throw fetchError; // Throw other errors to be caught by outer catch block
+        }
+      } else {
+        profile = fetchedProfile; // Assign fetchedProfile to profile
         console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
+      }
+
+      // Ensure profile exists before proceeding
+      if (!profile) {
+        throw new Error('User profile could not be fetched or created.');
       }
 
       // Fetch user companies
@@ -217,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  console.log('AuthContext.tsx: AuthProvider rendering. Providing value:', { user, isAuthenticated, loading });
+  console.log('AuthContext.tsx: AuthProvider rendering. Current loading state:', loading);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, updateUser, signUp }}>
