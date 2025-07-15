@@ -21,7 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
-  signUp: (email: string, password: string, fullName: string) => Promise<boolean>;
+  signUp: (email: string, password: string, fullName: string, mobile: string) => Promise<boolean>; // ADD mobile here
 }
 
 console.log('AuthContext.tsx: AuthContext defined');
@@ -40,13 +40,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthStateChange = async (event: string, session: any) => {
       console.log('AuthContext.tsx: handleAuthStateChange: Auth state change event:', event);
       if (session?.user) {
+        // Add a check to prevent redundant calls if user is already set and matches
+        if (user && user.id === session.user.id) {
+          console.log('AuthContext.tsx: handleAuthStateChange: User already set, skipping handleAuthUser.');
+          return;
+        }
         console.log('AuthContext.tsx: handleAuthStateChange: Session user found, calling handleAuthUser.');
         await handleAuthUser(session.user);
       } else {
         console.log('AuthContext.tsx: handleAuthStateChange: No session user, setting states to unauthenticated.');
         setUser(null);
         setIsAuthenticated(false);
-        // No setLoading(false) here, as initializeAuth or handleAuthUser's finally will handle it
         console.log('AuthContext.tsx: handleAuthStateChange: States set to unauthenticated.');
       }
     };
@@ -91,88 +95,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
     console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
     let profile: any = null; // Initialize profile to null
+    const maxRetries = 10; // Increased number of retries
+    const retryDelayMs = 300; // Increased delay between retries in milliseconds (total 3 seconds)
+
     try {
-      // --- TEST: Fetch from a different table first ---
-      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch companies to test client connection...');
-      const { data: testCompanies, error: testError } = await supabase
-        .from('companies')
-        .select('id, name')
-        .limit(1); // Just fetch one to confirm connection
-
-      if (testError) {
-        console.error('AuthContext.tsx: handleAuthUser: Test fetch from companies failed:', testError);
-        // Don't throw yet, proceed to user_profiles fetch, but this is a strong indicator
-      } else {
-        console.log('AuthContext.tsx: handleAuthUser: Test fetch from companies successful. Companies found:', testCompanies?.length);
-      }
-      // --- END TEST ---
-
-
-      // Attempt to fetch user profile
-      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user profile...');
-      
-      let fetchedProfileArray;
-      let fetchError;
-
-      try {
-        console.log('AuthContext.tsx: handleAuthUser: Executing user_profiles select query...');
-        const result = await supabase
+      for (let i = 0; i < maxRetries; i++) {
+        console.log(`AuthContext.tsx: handleAuthUser: Attempt ${i + 1} to query user_profiles table...`);
+        const { data: fetchedProfileArray, error: fetchError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('id', supabaseUser.id);
-        
-        fetchedProfileArray = result.data;
-        fetchError = result.error;
+
         console.log('AuthContext.tsx: handleAuthUser: User profile select query completed.');
+        console.log('AuthContext.tsx: handleAuthUser: User profile select query result data:', fetchedProfileArray);
+        console.log('AuthContext.tsx: handleAuthUser: User profile select query result error:', fetchError);
 
-      } catch (e: any) {
-        console.error('AuthContext.tsx: handleAuthUser: Caught synchronous error during user_profiles fetch:', e);
-        fetchError = e; // Assign caught error
-      }
+        const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
 
-      // Manually extract the profile from the array result
-      const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
-
-      // --- START CRITICAL LOGGING ---
-      console.log('AuthContext.tsx: Fetched profile data:', fetchedProfile);
-      console.log('AuthContext.tsx: Fetch error object:', fetchError);
-      // --- END CRITICAL LOGGING ---
-
-      if (fetchError) {
-        if (fetchError.code === 'PGRST116' || (fetchError.message && fetchError.message.includes('0 rows'))) { // Check for "0 rows" message as well
-          console.warn('AuthContext.tsx: handleAuthUser: User profile not found, attempting to create one.');
-          // Profile doesn't exist, create one
-          const { data: newProfile, error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: supabaseUser.id,
-              full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-              avatar_url: supabaseUser.user_metadata?.avatar_url,
-            })
-            .select()
-            .single(); // Keep .single() here as we expect one row on insert
-
-          if (insertError) {
-            console.error('AuthContext.tsx: handleAuthUser: Error creating profile:', insertError);
-            throw insertError; // Throw error to be caught by outer catch block
-          }
-          profile = newProfile; // Assign newProfile to profile
-          console.log('AuthContext.tsx: handleAuthUser: New profile created successfully:', profile);
+        if (fetchedProfile) {
+          profile = fetchedProfile;
+          console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
+          break; // Profile found, exit retry loop
+        } else if (fetchError) {
+          console.error(`AuthContext.tsx: handleAuthUser: Error fetching user profile on attempt ${i + 1}:`, fetchError);
+          // Continue to retry on fetch errors as well, as it might be a temporary network issue or RLS propagation delay
         } else {
-          console.error('AuthContext.tsx: handleAuthUser: Error fetching existing profile:', fetchError);
-          // --- START ADDITIONAL ERROR LOGGING ---
-          console.error('AuthContext.tsx: handleAuthUser: Full fetch error object:', fetchError);
-          // --- END ADDITIONAL ERROR LOGGING ---
-          throw fetchError; // Throw other errors to be caught by outer catch block
+          console.warn(`AuthContext.tsx: handleAuthUser: User profile not found on attempt ${i + 1}. Retrying...`);
         }
-      } else {
-        profile = fetchedProfile; // Assign fetchedProfile to profile
-        console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
+
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+        }
       }
 
-      // Ensure profile exists before proceeding
       if (!profile) {
-        throw new Error('User profile could not be fetched or created.');
+        // If after all retries, profile is still null, then throw an error
+        throw new Error('User profile could not be fetched after multiple attempts. It might not have been created by the trigger yet, or there was a persistent error.');
       }
 
       // Fetch user companies
@@ -209,12 +167,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Reset user and authentication states on error
       setUser(null);
       setIsAuthenticated(false);
+      // Re-throw the error so the calling function (login/signUp) can handle it
+      throw error;
     } finally {
-      // This finally block is now less critical for `loading` state, as `initializeAuth` handles it.
-      // It's still good for ensuring `setUser` and `setIsAuthenticated` are reset on error.
       console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
     }
   };
+
 
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log('AuthContext.tsx: login: Attempting login for email:', email);
@@ -231,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         console.log('AuthContext.tsx: login: User data received, calling handleAuthUser.');
-        await handleAuthUser(data.user);
+        await handleAuthUser(data.user); // Explicitly call handleAuthUser
         return true;
       }
       console.log('AuthContext.tsx: login: No user data after signInWithPassword.');
@@ -242,7 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string): Promise<boolean> => {
+  // MODIFIED signUp function signature
+  const signUp = async (email: string, password: string, fullName: string, mobile: string): Promise<boolean> => {
     console.log('AuthContext.tsx: signUp: Attempting signup for email:', email);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -251,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             full_name: fullName,
+            mobile: mobile, // Pass mobile number here
           },
         },
       });
@@ -260,8 +221,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      // For signup, handleAuthUser might be called by onAuthStateChange 'SIGNED_IN' event
-      // if auto-login happens after signup.
+      if (data.user) { // If user data is returned, process it immediately
+        console.log('AuthContext.tsx: signUp: Sign up successful, user data received, calling handleAuthUser.');
+        await handleAuthUser(data.user); // Explicitly call handleAuthUser
+      }
       console.log('AuthContext.tsx: signUp: Sign up successful, data:', data);
       return true;
     } catch (error) {
