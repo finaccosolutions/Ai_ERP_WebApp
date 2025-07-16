@@ -1,3 +1,4 @@
+// src/pages/Company/CompanySetup.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,7 +31,7 @@ import {
   AlertTriangle,
   Clock,
   X,
-  Bot,
+  Bot, // Changed from MessageSquare for AI Assistant icon
   ToggleRight,
   Barcode,
   Lightbulb,
@@ -387,16 +388,65 @@ interface CompanySetupProps {
   onCancel?: () => void; // Callback to cancel and go back (for edit mode)
 }
 
+// Helper function to get initial form data
+const getInitialFormData = () => {
+  const currentYear = new Date().getFullYear();
+  const defaultCountry = countries.find(c => c.id === 'IN')!; // Default to India
+
+  const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
+  let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
+  if (new Date().getUTCMonth() < fiscalYearStartMonth) {
+    fiscalYearStartDate = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1));
+  }
+  const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
+
+  const initialTaxRates: { [key: string]: number[] } = {
+    'IN': [0, 5, 12, 18, 28], // GST rates
+    'AU': [0, 10], // GST rates
+    'GB': [0, 5, 20], // VAT rates
+    'DE': [0, 7, 19], // VAT rates
+    'US': [0, 5, 8.5, 10], // Sales tax varies by state
+    'CA': [0, 5, 13, 15], // GST/HST rates
+    'AE': [0, 5], // UAE VAT
+    'SA': [0, 15], // Saudi Arabia VAT
+    'QA': [0, 5], // Qatar VAT
+    'KW': [0, 5], // Kuwait VAT
+    'BH': [0, 10], // Bahrain VAT
+    'OM': [0, 5], // Oman VAT
+    'JP': [0, 10], // Japan Consumption Tax
+    'SG': [0, 9], // Singapore GST
+  };
+
+  return {
+    companyName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id,
+    registrationNo: '', country: defaultCountry.id, state: '', city: '', addressLine1: '', addressLine2: '', zipCode: '',
+    languagePreference: languages[0].id, companyLogo: null, timezone: defaultCountry.timezone,
+
+    contactPersonName: '', designation: '', email: '', mobile: '', phoneCountry: defaultCountry.id, alternateContactNumber: '',
+
+    taxSystem: defaultCountry.taxType, taxConfig: { enabled: true, rates: initialTaxRates[defaultCountry.id] || [0, 10, 20] },
+    gstin: '', pan: '', tan: '', gstRegistrationType: gstRegistrationTypes[0].id, filingFrequency: filingFrequencies[0].id,
+    tdsApplicable: false, tcsApplicable: false, trnVatNumber: '', vatRegistrationType: vatRegistrationTypes[0].id, filingCycle: filingCycles[0].id,
+
+    booksStartDate: fiscalYearStartDate.toISOString().split('T')[0], fiscalYearStartDate: fiscalYearStartDate.toISOString().split('T')[0],
+    fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0], defaultCurrency: defaultCountry.currency, decimalPlaces: 2,
+    multiCurrencySupport: false, autoRounding: false, dateFormat: dateFormats[0].id, enableBatchTracking: false,
+    enableCostCenterAllocation: false, enableMultiUserAccess: false, companyPassword: '',
+    enableCompanyPassword: false, enableBarcodeSupport: false, companyUsername: '',
+
+    companyType: companyTypes[0].id, inventoryTracking: true
+  };
+};
+
 
 function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onCancel }: CompanySetupProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const { suggestWithAI } = useAI();
-  const { refreshCompanies, switchCompany } = useCompany(); // <--- ADD switchCompany HERE
+  const { refreshCompanies, switchCompany } = useCompany();
   const { showNotification } = useNotification();
-
-
+ 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -415,104 +465,9 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
   ];
 
 
-  const [formData, setFormData] = useState<any>(() => {
-    const currentYear = new Date().getFullYear();
-    const defaultCountry = countries.find(c => c.id === 'IN')!; // Default to India
+  const [formData, setFormData] = useState<any>(getInitialFormData());
 
-    // Calculate fiscal year start date based on country's fiscal year start month
-    const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-    // Use Date.UTC to prevent timezone issues
-    let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
-    // If current month is before fiscal year start month, use previous year
-    if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth for consistency
-      fiscalYearStartDate = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1));
-    }
-
-    // Calculate fiscal year end date (last day of the month before fiscalYearStartMonth in the next year)
-    const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
-
-    // Determine initial tax rates based on default country
-    const initialTaxRates: { [key: string]: number[] } = {
-      'IN': [0, 5, 12, 18, 28],
-      'US': [0, 5, 8.5, 10],
-      'AE': [0, 5],
-      'SA': [0, 15], // Saudi Arabia VAT
-      'QA': [0, 5], // Qatar VAT
-      'KW': [0, 5], // Kuwait VAT
-      'BH': [0, 10], // Bahrain VAT
-      'OM': [0, 5], // Oman VAT
-      'GB': [0, 5, 20],
-      'CA': [0, 5, 13, 15],
-      'AU': [0, 10],
-      'DE': [0, 7, 19],
-      'JP': [0, 10],
-      'SG': [0, 9],
-    };
-
-    return {
-      companyName: '',
-      legalName: '',
-      industry: industries[0].id,
-      businessType: companyTypes[0].id,
-      registrationNo: '',
-      country: defaultCountry.id,
-      state: '',
-      city: '',
-      addressLine1: '',
-      addressLine2: '',
-      zipCode: '',
-      languagePreference: languages[0].id,
-      companyLogo: null, // File object for upload
-      timezone: defaultCountry.timezone,
-
-      contactPersonName: '',
-      designation: '',
-      email: '',
-      mobile: '',
-      phoneCountry: defaultCountry.id, // Default to selected company country
-      alternateContactNumber: '',
-
-      taxSystem: defaultCountry.taxType,
-      taxConfig: {
-        enabled: true,
-        rates: initialTaxRates[defaultCountry.id] || [0, 10, 20],
-      },
-      gstin: '',
-      pan: '',
-      tan: '',
-      gstRegistrationType: gstRegistrationTypes[0].id,
-      filingFrequency: filingFrequencies[0].id,
-      tdsApplicable: false,
-      tcsApplicable: false,
-      trnVatNumber: '',
-      vatRegistrationType: vatRegistrationTypes[0].id,
-      filingCycle: filingCycles[0].id,
-
-      booksStartDate: fiscalYearStartDate.toISOString().split('T')[0], // Same as fiscal year start
-      fiscalYearStartDate: fiscalYearStartDate.toISOString().split('T')[0],
-      fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0],
-      defaultCurrency: defaultCountry.currency,
-      decimalPlaces: 2,
-      multiCurrencySupport: false,
-      autoRounding: false,
-
-      defaultLanguage: languages[0].id,
-      dateFormat: dateFormats[0].id,
-      enableBatchTracking: false,
-      enableCostCenterAllocation: false,
-      enableMultiUserAccess: false,
-      companyPassword: '',
-      enableCompanyPassword: false,
-      enableBarcodeSupport: false,
-      companyUsername: '', // Added companyUsername
-
-      // Fields from old Business Configuration, now in Preferences
-      companyType: companyTypes[0].id,
-      inventoryTracking: true
-    };
-  });
-
-  // Initialize form data from companyToEdit prop
+  // Initialize form data from companyToEdit prop or reset for new company
   useEffect(() => {
     if (companyToEdit) {
       const selectedCountryData = countries.find(c => c.id === companyToEdit.country);
@@ -600,31 +555,7 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
       setErrors({}); // Clear errors when loading new company
       setActiveTab('company_info'); // Reset to first tab
     } else {
-      // Reset to default for new company creation
-      const currentYear = new Date().getFullYear();
-      const defaultCountry = countries.find(c => c.id === 'IN')!;
-      const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-      let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
-      if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
-        fiscalYearStartDate = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
-      }
-      const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
-
-      setFormData({
-        companyName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id,
-        registrationNo: '', country: defaultCountry.id, state: '', city: '', addressLine1: '', addressLine2: '', zipCode: '',
-        languagePreference: languages[0].id, companyLogo: null, timezone: defaultCountry.timezone,
-        contactPersonName: '', designation: '', email: '', mobile: '', phoneCountry: defaultCountry.id, alternateContactNumber: '',
-        taxSystem: defaultCountry.taxType, taxConfig: { enabled: true, rates: [] }, // Rates will be set by country effect
-        gstin: '', pan: '', tan: '', gstRegistrationType: gstRegistrationTypes[0].id, filingFrequency: filingFrequencies[0].id,
-        tdsApplicable: false, tcsApplicable: false, trnVatNumber: '', vatRegistrationType: vatRegistrationTypes[0].id, filingCycle: filingCycles[0].id,
-        booksStartDate: fiscalYearStartDate.toISOString().split('T')[0], fiscalYearStartDate: fiscalYearStartDate.toISOString().split('T')[0],
-        fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0], defaultCurrency: defaultCountry.currency, decimalPlaces: 2,
-        multiCurrencySupport: false, autoRounding: false, dateFormat: dateFormats[0].id, enableBatchTracking: false,
-        enableCostCenterAllocation: false, enableMultiUserAccess: false, companyPassword: '',
-        enableCompanyPassword: false, enableBarcodeSupport: false, companyUsername: '',
-        companyType: companyTypes[0].id, inventoryTracking: true
-      });
+      setFormData(getInitialFormData()); // Use the helper function here
       setLogoFile(null); // Clear logo file for new company
       setErrors({}); // Clear errors for new company
       setActiveTab('company_info'); // Reset to first tab
@@ -718,7 +649,7 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
 
     // Contact Tab Validation
     if (currentTabId === 'contact') {
-      if (!data.contactPersonName.trim()) newErrors.contactPersonName = 'Contact Person Name is required';
+      // Contact Person Name is no longer compulsory
       if (data.email.trim() && !/\S+@\S+\.\S+/.test(data.email)) {
         newErrors.email = 'Invalid email address';
       }
@@ -966,6 +897,10 @@ const handleSubmit = async () => {
         console.log("handleSubmit: Switched to new company:", companyId);
         showNotification('Company created successfully!', 'success');
         onSaveSuccess?.('Company created successfully!');
+        setFormData(getInitialFormData()); // Reset form fields after successful creation
+        setLogoFile(null); // Clear logo file input
+        setErrors({}); // Clear any remaining errors
+        setActiveTab('company_info'); // Go back to the first tab
         navigate('/'); // Navigate to dashboard after setting current company
       } else if (companyToEdit) { // For existing company updates
         console.log("handleSubmit: Company settings updated.");
@@ -1122,7 +1057,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1143,7 +1078,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1178,7 +1113,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1201,7 +1136,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1268,7 +1203,7 @@ const handleSubmit = async () => {
                   label="Contact Person Name"
                   value={formData.contactPersonName}
                   onChange={(val) => setFormData({ ...formData, contactPersonName: val })}
-                  required
+                  // Removed required prop
                   error={errors.contactPersonName}
                   readOnly={readOnly}
                 />
@@ -1299,7 +1234,7 @@ const handleSubmit = async () => {
                         type="button"
                         onClick={() => setShowPhoneCountryDropdown(!showPhoneCountryDropdown)}
                         className={`
-                          flex items-center space-x-2 px-3 py-2 border ${theme.borderColor}
+                          flex items-center space-x-2 px-3 py-2.5 border ${theme.borderColor}
                           ${theme.borderRadius} border-r-0 rounded-r-none
                           ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
@@ -1349,7 +1284,7 @@ const handleSubmit = async () => {
                         error={errors.mobile}
                         readOnly={readOnly}
                         className={`
-                          w-full pl-10 pr-3 py-2 border ${theme.inputBorder}
+                          w-full pl-10 pr-3 py-2.5 border ${theme.inputBorder}
                           ${theme.borderRadius} rounded-l-none border-l-0 h-full
                           ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
@@ -1429,7 +1364,7 @@ const handleSubmit = async () => {
                           onChange={(e) => setFormData({ ...formData, gstRegistrationType: e.target.value })}
                           className={`
                             w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
+                            ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                             ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                           `}
@@ -1450,7 +1385,7 @@ const handleSubmit = async () => {
                           onChange={(e) => setFormData({ ...formData, filingFrequency: e.target.value })}
                           className={`
                             w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
+                            ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                             ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                           `}
@@ -1509,7 +1444,7 @@ const handleSubmit = async () => {
                           onChange={(e) => setFormData({ ...formData, vatRegistrationType: e.target.value })}
                           className={`
                             w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
+                            ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                             ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                           `}
@@ -1530,7 +1465,7 @@ const handleSubmit = async () => {
                           onChange={(e) => setFormData({ ...formData, filingCycle: e.target.value })}
                           className={`
                             w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
+                            ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                             ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                           `}
@@ -1592,7 +1527,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1613,7 +1548,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, decimalPlaces: parseInt(e.target.value) })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1672,7 +1607,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, languagePreference: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1693,7 +1628,7 @@ const handleSubmit = async () => {
                     onChange={(e) => setFormData({ ...formData, dateFormat: e.target.value })}
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
+                      ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
@@ -1810,7 +1745,7 @@ const handleSubmit = async () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                         disabled={readOnly}
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

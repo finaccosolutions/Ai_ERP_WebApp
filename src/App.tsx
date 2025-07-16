@@ -1,5 +1,5 @@
 // src/App.tsx
-import React from 'react';
+import React, { useState } from 'react'; // Import useState
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -24,12 +24,21 @@ import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
 import CompanyManagement from './pages/Company/CompanyManagement'; // Import CompanyManagement
 import { useCompany } from './contexts/CompanyContext'; // Import useCompany
+import ConfirmationModal from './components/UI/ConfirmationModal'; // Import ConfirmationModal
+
+// Import new User-related pages
+import ProfilePage from './pages/User/ProfilePage';
+import UserSettingsPage from './pages/User/SettingsPage';
+import AIPreferencesPage from './pages/User/AIPreferencesPage';
+
 
 function AppContent() {
   console.log('AppContent rendering...');
   // Destructure the loading state from useAuth
-  const { isAuthenticated, user, loading: authLoading } = useAuth(); // Correctly destructure loading
+  const { isAuthenticated, user, loading: authLoading, logout } = useAuth(); // Correctly destructure loading and logout
   const { companies, currentCompany, loadingCompanies } = useCompany(); // Add loadingCompanies here
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // State for logout confirmation
 
   console.log("AppContent: isAuthenticated =", isAuthenticated);
   console.log("AppContent: Current User =", user);
@@ -69,25 +78,47 @@ function AppContent() {
     // For now, we'll redirect to CompanyManagement to allow selection.
     return <CompanyManagement />;
   }
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false); // Close modal
+    logout(); // Perform actual logout
+  };
+
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/company/manage" element={<CompanyManagement />} />
-        <Route path="/company/setup" element={<CompanySetup />} />
-        <Route path="/company/settings" element={<CompanySettings />} />
-        <Route path="/sales/*" element={<Sales />} />
-        <Route path="/purchase/*" element={<Purchase />} />
-        <Route path="/accounting/*" element={<Accounting />} />
-        <Route path="/inventory/*" element={<Inventory />} />
-        <Route path="/manufacturing/*" element={<Manufacturing />} />
-        <Route path="/reports/*" element={<Reports />} />
-        <Route path="/compliance/*" element={<Compliance />} />
-        <Route path="/hr/*" element={<HR />} />
-        <Route path="/crm/*" element={<CRM />} />
-        <Route path="/admin/*" element={<Admin />} />
-      </Routes>
-    </Layout>
+    <>
+      <Layout setShowLogoutConfirm={setShowLogoutConfirm}> {/* Pass setShowLogoutConfirm to Layout */}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/company/manage" element={<CompanyManagement />} />
+          <Route path="/company/setup" element={<CompanySetup />} />
+          <Route path="/company/settings" element={<CompanySettings />} />
+          <Route path="/sales/*" element={<Sales />} />
+          <Route path="/purchase/*" element={<Purchase />} />
+          <Route path="/accounting/*" element={<Accounting />} />
+          <Route path="/inventory/*" element={<Inventory />} />
+          <Route path="/manufacturing/*" element={<Manufacturing />} />
+          <Route path="/reports/*" element={<Reports />} />
+          <Route path="/compliance/*" element={<Compliance />} />
+          <Route path="/hr/*" element={<HR />} />
+          <Route path="/crm/*" element={<CRM />} />
+          <Route path="/admin/*" element={<Admin />} />
+          {/* New User-related Routes */}
+          <Route path="/user/profile" element={<ProfilePage />} />
+          <Route path="/user/settings" element={<UserSettingsPage />} />
+          <Route path="/user/ai-preferences" element={<AIPreferencesPage />} />
+        </Routes>
+      </Layout>
+
+      {/* Logout Confirmation Modal - Rendered at AppContent level */}
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to log out of your account?"
+        confirmText="Yes, Logout"
+      />
+    </>
   );
 }
 

@@ -1,3 +1,4 @@
+// src/pages/Auth/Login.tsx
 import React, { useState } from 'react';
 import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,8 +8,8 @@ import FormField from '../../components/UI/FormField';
 import Card from '../../components/UI/Card';
 
 const countries = [
+  { code: 'IN', name: 'India', flag: '🇮🇳', dialCode: '+91' }, // India as default
   { code: 'US', name: 'United States', flag: '🇺🇸', dialCode: '+1' },
-  { code: 'IN', name: 'India', flag: '🇮🇳', dialCode: '+91' },
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dialCode: '+44' },
   { code: 'CA', name: 'Canada', flag: '🇨🇦', dialCode: '+1' },
   { code: 'AU', name: 'Australia', flag: '🇦🇺', dialCode: '+61' },
@@ -24,7 +25,7 @@ function Login() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+  const [selectedCountry, setSelectedCountry] = useState(countries[0]); // Default to India
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +85,8 @@ function Login() {
       let success = false;
       
       if (isSignUp) {
-        success = await signUp(email, password, fullName);
+        // Pass mobile number to signUp function
+        success = await signUp(email, password, fullName, mobile);
         if (success) {
           setError('');
           setIsSignUp(false);
@@ -255,17 +257,17 @@ function Login() {
                     <label className={`block text-sm font-medium ${theme.isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                       Mobile Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex">
+                    <div className="flex items-stretch"> {/* Added items-stretch for alignment */}
                       {/* Country Selector */}
                       <div className="relative">
                         <button
                           type="button"
                           onClick={() => setShowCountryDropdown(!showCountryDropdown)}
                           className={`
-                            flex items-center space-x-2 px-3 py-2 border border-gray-300 
+                            flex items-center space-x-2 px-3 py-2.5 border border-gray-300 /* Changed py-2 to py-2.5 */
                             ${theme.borderRadius} border-r-0 rounded-r-none
                             ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
-                            focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                            focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
                           `}
                         >
                           <span className="text-lg">{selectedCountry.flag}</span>
@@ -311,8 +313,8 @@ function Login() {
                           placeholder="Enter mobile number"
                           required
                           className={`
-                            w-full pl-10 pr-3 py-2 border border-gray-300 
-                            ${theme.borderRadius} rounded-l-none border-l-0
+                            w-full pl-10 pr-3 py-2.5 border border-gray-300 /* Changed py-2 to py-2.5 */
+                            ${theme.borderRadius} rounded-l-none border-l-0 h-full
                             ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
                           `}
@@ -337,7 +339,7 @@ function Login() {
                     <button
                       type="button"
                       onClick={togglePasswordVisibility}
-                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -365,7 +367,7 @@ function Login() {
                       <button
                         type="button"
                         onClick={toggleConfirmPasswordVisibility}
-                        className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       >
                         {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>

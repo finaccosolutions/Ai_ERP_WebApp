@@ -1,12 +1,9 @@
+// src/components/Layout/TopNavbar.tsx
 import React, { useState } from 'react';
 import { 
   Bell, 
   Search, 
   Mic, 
-  Zap,
-  Sparkles,
-  Hexagon,
-  Calendar,
   Settings,
   LogOut,
   User,
@@ -14,13 +11,15 @@ import {
   Moon,
   Menu,
   X,
-  MessageSquare
+  Bot, // Changed from MessageSquare for AI Assistant icon
+  Hexagon // <--- ADDED THIS IMPORT
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAI } from '../../contexts/AIContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import CompanyNameDisplay from '../Company/CompanyNameDisplay';
+import { Link } from 'react-router-dom'; // Import Link
 
 interface TopNavbarProps {
   sidebarOpen: boolean;
@@ -28,9 +27,10 @@ interface TopNavbarProps {
   sidebarWidth: string; // New prop for sidebar width
   showAI: boolean;
   setShowAI: (show: boolean) => void;
+  setShowLogoutConfirm: (show: boolean) => void; // New prop
 }
 
-function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowAI }: TopNavbarProps) {
+function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowAI, setShowLogoutConfirm }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -38,7 +38,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
   
   const { user, logout } = useAuth();
   const { currentCompany, currentPeriod } = useCompany();
-  const { isAIEnabled, toggleAI, smartSearch, voiceCommand } = useAI();
+  const { isAIEnabled, smartSearch, voiceCommand } = useAI();
   const { theme, toggleDarkMode } = useTheme();
 
   const handleVoiceSearch = async () => {
@@ -80,51 +80,31 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
     }
   };
 
-  const notifications = [
-    { 
-      id: 1, 
-      title: 'AI Suggestion Available', 
-      message: 'New invoice pattern detected - would you like to create a template?', 
-      time: '5 min ago', 
-      unread: true,
-      type: 'ai'
-    },
-    { 
-      id: 2, 
-      title: 'Payment Received', 
-      message: '$5,000 payment processed automatically', 
-      time: '1 hour ago', 
-      unread: true,
-      type: 'payment'
-    },
-    { 
-      id: 3, 
-      title: 'Compliance Alert', 
-      message: 'GST return due in 3 days - AI can help prepare', 
-      time: '2 hours ago', 
-      unread: false,
-      type: 'compliance'
-    },
-    { 
-      id: 4, 
-      title: 'AI Audit Complete', 
-      message: 'Found 3 potential issues in recent transactions', 
-      time: '4 hours ago', 
-      unread: false,
-      type: 'audit'
-    },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Removed dummy notifications array and unreadCount calculation
+  const notifications: any[] = []; // Placeholder for actual notifications
+  const unreadCount = 0; // Will be calculated from actual notifications
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'ai': return <Sparkles size={16} className="text-[#6AC8A3]" />;
+      case 'ai': return <Bot size={16} className="text-[#6AC8A3]" />; // Changed from Sparkles
       case 'payment': return <span className="w-4 h-4 bg-green-500 rounded-full" />;
       case 'compliance': return <span className="w-4 h-4 bg-orange-500 rounded-full" />;
       case 'audit': return <span className="w-4 h-4 bg-red-500 rounded-full" />;
       default: return <span className="w-4 h-4 bg-blue-500 rounded-full" />;
     }
+  };
+
+  const handleLogoutClick = () => {
+    setShowUserMenu(false); // Hide user menu
+    setShowLogoutConfirm(true); // Show confirmation modal
+  };
+
+  // Function to get user initials for avatar placeholder
+  const getUserInitials = (fullName?: string | null) => {
+    if (!fullName) return 'UN'; // Unknown User
+    const parts = fullName.split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   };
 
   return (
@@ -144,7 +124,19 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               text-white hover:bg-white hover:bg-opacity-10 hover:text-[#5DBF99]
             `}
           >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            <div className="group relative"> {/* Added group for tooltip */}
+              {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+              <div className={`
+                absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
+                rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-all duration-300 whitespace-nowrap z-50 shadow-xl
+                border border-slate-600
+              `}>
+                {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
+                              border-4 border-transparent border-b-slate-800" />
+              </div>
+            </div>
           </button>
 
           {/* Brand Logo and Name */}
@@ -155,7 +147,6 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               transform hover:scale-105 transition-all duration-300
             `}>
               <Hexagon size={20} className="text-white relative z-10" />
-              <div className="absolute inset-1 border border-white/20 rounded-lg" />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-white tracking-tight">
@@ -187,7 +178,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {isAIEnabled && (
-                <Sparkles size={12} className="text-[#6AC8A3] animate-pulse" />
+                <span className="text-[#6AC8A3] animate-pulse">AI</span>
               )}
               <button
                 type="button"
@@ -218,43 +209,33 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
           <button
             onClick={toggleDarkMode}
             className={`
-              p-2 rounded-xl transition-all duration-300 transform hover:scale-110
+              p-2 rounded-xl transition-all duration-300 transform hover:scale-110 group relative
               ${theme.isDark 
-                ? 'bg-yellow-500/90 text-yellow-900 hover:bg-yellow-400' 
-                : 'bg-yellow-500/90 text-yellow-900 hover:bg-yellow-400'
+                ? 'bg-gray-700 text-yellow-300 hover:bg-gray-600' // Dark mode: gray background, yellow icon
+                : 'bg-yellow-500/90 text-yellow-900 hover:bg-yellow-400' // Light mode: yellow background, dark yellow icon
               }
               shadow-md
             `}
           >
             {theme.isDark ? <Sun size={16} /> : <Moon size={16} />}
+            <div className={`
+              absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
+              rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
+              transition-all duration-300 whitespace-nowrap z-50 shadow-xl
+              border border-slate-600
+            `}>
+              Toggle Theme
+              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
+                            border-4 border-transparent border-b-slate-800" />
+            </div>
           </button>
 
-          {/* AI Toggle */}
-          <button
-            onClick={toggleAI}
-            className={`
-              p-2 rounded-xl transition-all duration-300 transform hover:scale-110
-              relative overflow-hidden
-              ${isAIEnabled 
-                ? 'bg-gradient-to-r from-[#5DBF99] to-[#6AC8A3] text-white hover:from-[#4FB085] hover:to-[#5DBF99]' 
-                : 'bg-slate-600 text-slate-400 hover:bg-slate-500'
-              }
-              shadow-md
-            `}
-          >
-            <Zap size={16} className="relative z-10" />
-            {isAIEnabled && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             transform -skew-x-12 animate-pulse" />
-            )}
-          </button>
-
-          {/* AI Assistant */}
+          {/* AI Assistant Icon (Bot) */}
           <button
             onClick={() => setShowAI(!showAI)}
             disabled={!isAIEnabled}
             className={`
-              p-2 rounded-xl transition-all duration-300 transform hover:scale-110
+              p-2 rounded-xl transition-all duration-300 transform hover:scale-110 group relative
               relative overflow-hidden shadow-md
               ${isAIEnabled 
                 ? `bg-gradient-to-r ${theme.primaryGradient} text-white hover:shadow-[#6AC8A3]/25` 
@@ -262,12 +243,22 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               }
             `}
           >
-            <MessageSquare size={16} className="relative z-10" />
+            <Bot size={20} className="relative z-10" /> {/* Increased size to 20 */}
             {isAIEnabled && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
                            transform -skew-x-12 -translate-x-full hover:translate-x-full 
                            transition-transform duration-1000 ease-out" />
             )}
+            <div className={`
+              absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
+              rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
+              transition-all duration-300 whitespace-nowrap z-50 shadow-xl
+              border border-slate-600
+            `}>
+              AI Assistant
+              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
+                            border-4 border-transparent border-b-slate-800" />
+            </div>
           </button>
 
           {/* Enhanced Notifications */}
@@ -275,16 +266,26 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className={`
-                p-2 rounded-xl transition-all duration-300 relative
+                p-2 rounded-xl transition-all duration-300 relative group
                 text-white hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
               `}
             >
-              <Bell size={16} />
+              <Bell size={20} /> {/* Increased size to 20 */}
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
                   {unreadCount}
                 </span>
               )}
+              <div className={`
+                absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
+                rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-all duration-300 whitespace-nowrap z-50 shadow-xl
+                border border-slate-600
+              `}>
+                Notifications
+                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
+                              border-4 border-transparent border-b-slate-800" />
+              </div>
             </button>
             
             {showNotifications && (
@@ -296,42 +297,46 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                   <h3 className="font-medium text-white flex items-center space-x-2">
                     <Bell size={16} />
                     <span>Notifications</span>
-                    {isAIEnabled && <Sparkles size={12} />}
+                    {isAIEnabled && <Bot size={12} />} {/* Changed from Sparkles */}
                   </h3>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {notifications.map(notification => (
-                    <div
-                      key={notification.id}
-                      className={`
-                        p-4 border-b ${theme.borderColor} transition-all duration-300
-                        hover:bg-[#5DBF99] hover:bg-opacity-10
-                        ${notification.unread ? 'bg-blue-50 border-l-4 border-l-[#5DBF99]' : ''}
-                      `}
-                    >
-                      <div className="flex items-start space-x-3">
-                        {getNotificationIcon(notification.type)}
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <p className={`font-medium text-sm ${theme.textPrimary}`}>
-                              {notification.title}
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">No new notifications.</div>
+                  ) : (
+                    notifications.map(notification => (
+                      <div
+                        key={notification.id}
+                        className={`
+                          p-4 border-b ${theme.borderColor} transition-all duration-300
+                          hover:bg-[#5DBF99] hover:bg-opacity-10
+                          ${notification.unread ? 'bg-blue-50 border-l-4 border-l-[#5DBF99]' : ''}
+                        `}
+                      >
+                        <div className="flex items-start space-x-3">
+                          {getNotificationIcon(notification.type)}
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <p className={`font-medium text-sm ${theme.textPrimary}`}>
+                                {notification.title}
+                              </p>
+                              <span className={`text-xs ${theme.textMuted}`}>
+                                {notification.time}
+                              </span>
+                            </div>
+                            <p className={`text-sm ${theme.textMuted} mt-1`}>
+                              {notification.message}
                             </p>
-                            <span className={`text-xs ${theme.textMuted}`}>
-                              {notification.time}
-                            </span>
+                            {notification.type === 'ai' && (
+                              <button className="text-xs text-[#5DBF99] hover:text-[#4FB085] mt-2">
+                                View AI Suggestion →
+                              </button>
+                            )}
                           </div>
-                          <p className={`text-sm ${theme.textMuted} mt-1`}>
-                            {notification.message}
-                          </p>
-                          {notification.type === 'ai' && (
-                            <button className="text-xs text-[#5DBF99] hover:text-[#4FB085] mt-2">
-                              View AI Suggestion →
-                            </button>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <div className={`p-3 border-t ${theme.borderColor} text-center`}>
                   <button className="text-sm text-[#6AC8A3] hover:text-[#5DBF99]">
@@ -351,11 +356,17 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 hover:bg-white hover:bg-opacity-10
               `}
             >
-              <img
-                src={user?.avatar || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                alt="User"
-                className="w-8 h-8 rounded-full border-2 border-[#6AC8A3]"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt="User Avatar"
+                  className="w-8 h-8 rounded-full border-2 border-[#6AC8A3]"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full border-2 border-[#6AC8A3] bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                  {getUserInitials(user?.name)}
+                </div>
+              )}
               <span className="text-sm font-medium hidden sm:block text-white">
                 {user?.name}
               </span>
@@ -366,32 +377,32 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 ${theme.borderRadius} ${theme.shadowLevel} z-50
               `}>
                 <div className="py-1">
-                  <button className={`
+                  <Link to="/user/profile" onClick={() => setShowUserMenu(false)} className={`
                     w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                    ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
+                    ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
                   `}>
                     <User size={16} className="mr-2" />
                     Profile
-                  </button>
-                  <button className={`
+                  </Link>
+                  <Link to="/user/settings" onClick={() => setShowUserMenu(false)} className={`
                     w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                    ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
+                    ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
                   `}>
                     <Settings size={16} className="mr-2" />
                     Settings
-                  </button>
+                  </Link>
                   {isAIEnabled && (
-                    <button className={`
+                    <Link to="/user/ai-preferences" onClick={() => setShowUserMenu(false)} className={`
                       w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                      ${theme.textPrimary} hover:bg-[#6AC8A3] hover:text-white
+                      ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
                     `}>
-                      <Zap size={16} className="mr-2" />
+                      <Bot size={16} className="mr-2" /> {/* Changed from Zap */}
                       AI Preferences
-                    </button>
+                    </Link>
                   )}
                   <hr className={`my-1 ${theme.borderColor}`} />
                   <button
-                    onClick={logout}
+                    onClick={handleLogoutClick} // Use the new handler
                     className={`
                       w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
                       text-red-600 hover:bg-red-50 hover:text-red-700

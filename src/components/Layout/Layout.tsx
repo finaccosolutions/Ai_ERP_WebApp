@@ -6,9 +6,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 interface LayoutProps {
   children: React.ReactNode;
+  setShowLogoutConfirm: (show: boolean) => void; // Add prop for logout confirmation
 }
 
-function Layout({ children }: LayoutProps) {
+function Layout({ children, setShowLogoutConfirm }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showAI, setShowAI] = useState(false);
   const { theme } = useTheme();
@@ -21,6 +22,7 @@ function Layout({ children }: LayoutProps) {
         sidebarWidth={sidebarOpen ? 'w-64' : 'w-16'}
         showAI={showAI}
         setShowAI={setShowAI}
+        setShowLogoutConfirm={setShowLogoutConfirm} // Pass down the prop
       />
       
       <div className="flex">

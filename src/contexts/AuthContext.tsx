@@ -11,6 +11,11 @@ interface User {
   permissions: string[];
   companies: string[];
   avatar?: string;
+  mobile?: string; // Add mobile to User interface
+  department?: string; // Added for ProfilePage
+  designation?: string; // Added for ProfilePage
+  employeeId?: string; // Added for ProfilePage
+  preferences?: any; // Added for SettingsPage and AIPreferencesPage
 }
 
 interface AuthContextType {
@@ -153,7 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: 'User',
         permissions: ['dashboard'],
         companies: userCompanies?.map(uc => uc.company_id) || [],
-        avatar: profile?.avatar_url || undefined
+        avatar: profile?.avatar_url || undefined,
+        mobile: profile?.phone || undefined, // Include mobile number from profile
+        department: profile?.department || undefined, // Include department
+        designation: profile?.designation || undefined, // Include designation
+        employeeId: profile?.employee_id || undefined, // Include employeeId
+        preferences: profile?.preferences || {}, // Include preferences
       };
 
       console.log('AuthContext.tsx: handleAuthUser: Setting user and authentication states.');
@@ -201,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             full_name: fullName,
-            mobile: mobile,
+            phone: mobile, // Pass mobile number here
           },
         },
       });
@@ -227,6 +237,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext.tsx: logout: Logout error:', error);
       } else {
         console.log('AuthContext.tsx: logout: Signed out successfully.');
+        // Manually clear user state after successful logout
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('AuthContext.tsx: logout: Unexpected logout error:', error);

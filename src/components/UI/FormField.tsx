@@ -71,8 +71,8 @@ function FormField({
           required={required}
           readOnly={readOnly} // Apply readOnly prop
           className={`
-            w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border ${theme.inputBorder}
-            ${theme.borderRadius} ${theme.inputBg} ${theme.textPrimary}
+            w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5 border ${theme.inputBorder} /* Changed py-2 to py-2.5 */
+            ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[#6AC8A3]
             placeholder:${theme.textMuted}

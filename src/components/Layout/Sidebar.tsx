@@ -1,3 +1,4 @@
+// src/components/Layout/Sidebar.tsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -107,7 +108,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     transition-all duration-300 ease-in-out
                     ${isActive 
                       ? 'bg-gradient-to-r ${theme.primaryGradient} text-white shadow-lg shadow-[#6AC8A3]/25' 
-                      : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+                      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' // Changed text-slate-300 to text-slate-400 for better contrast
                     }
                     ${!open ? 'justify-center' : ''}
                     transform hover:scale-105 hover:translate-x-1
