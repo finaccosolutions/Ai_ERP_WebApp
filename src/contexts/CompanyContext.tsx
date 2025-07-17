@@ -1,3 +1,4 @@
+// src/contexts/CompanyContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -16,24 +17,61 @@ interface Company {
     rates: number[];
     enabled: boolean;
     registrationNumber: string;
+    gstDetails?: {
+      pan?: string;
+      tan?: string;
+      registrationType?: string;
+      filingFrequency?: string;
+      tdsApplicable?: boolean;
+      tcsApplicable?: boolean;
+    };
+    vatDetails?: {
+      registrationNumber?: string;
+      registrationType?: string;
+      filingCycle?: string;
+    };
   };
   address: {
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    zipCode: string;
+    street1?: string;
+    street2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
   };
   contactInfo: {
-    email: string;
-    phone: string;
+    contactPersonName?: string;
+    designation?: string;
+    email?: string;
+    mobile?: string;
+    alternatePhone?: string;
+    phoneCountry?: string;
   };
   settings: {
-    displayName: string;
-    decimalPlaces: number;
-    language: string;
-    enablePassword: boolean;
+    displayName?: string;
+    legalName?: string;
+    industry?: string;
+    businessType?: string;
+    registrationNo?: string;
+    languagePreference?: string;
+    decimalPlaces?: number;
+    multiCurrencySupport?: boolean;
+    autoRounding?: boolean;
+    dateFormat?: string;
+    batchTracking?: boolean;
+    costCenterAllocation?: boolean;
+    multiUserAccess?: boolean;
+    aiSuggestions?: boolean;
+    enablePassword?: boolean;
     password?: string;
+    splitByPeriod?: boolean;
+    barcodeSupport?: boolean;
+    autoVoucherCreationAI?: boolean;
+    companyType?: string;
+    employeeCount?: string;
+    annualRevenue?: string;
+    inventoryTracking?: boolean;
+    companyUsername?: string;
   };
 }
 
@@ -52,7 +90,7 @@ interface CompanyContextType {
   currentPeriod: Period | null;
   companies: Company[];
   periods: Period[];
-  loadingCompanies: boolean; // <--- ADD THIS
+  loadingCompanies: boolean;
   switchCompany: (companyId: string) => void;
   switchPeriod: (periodId: string) => void;
   addCompany: (company: Omit<Company, 'id'>) => void;
@@ -67,7 +105,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
-  const [loadingCompanies, setLoadingCompanies] = useState(true); // <--- ADD THIS
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -78,86 +116,98 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setCurrentCompany(null);
       setPeriods([]);
       setCurrentPeriod(null);
-      setLoadingCompanies(false); // No user, so not loading companies
+      setLoadingCompanies(false);
     }
   }, [isAuthenticated, user]);
 
   const loadUserCompanies = async () => {
-    setLoadingCompanies(true); // <--- SET LOADING TRUE
-    try {
-      // Get companies user has access to
-      const { data: userCompanies, error: companiesError } = await supabase
-        .from('users_companies')
-        .select(`
-          company_id,
-          companies (
-            id,
-            name,
-            country,
-            currency,
-            fiscal_year_start,
-            fiscal_year_end,
-            timezone,
-            logo,
-            tax_config,
-            address,
-            contact_info,
-            settings
-          )
-        `)
-        .eq('user_id', user?.id)
-        .eq('is_active', true);
+  setLoadingCompanies(true);
+  try {
+    const { data: userCompanies, error: companiesError } = await supabase
+      .from('users_companies')
+      .select(`
+        company_id,
+        companies (
+          id,
+          name,
+          country,
+          currency,
+          fiscal_year_start,
+          fiscal_year_end,
+          timezone,
+          logo,
+          tax_config,
+          address,
+          contact_info,
+          settings
+        )
+      `)
+      .eq('user_id', user?.id)
+      .eq('is_active', true);
 
-      if (companiesError) {
-        console.error('Error loading companies:', companiesError);
-        setCompanies([]); // Ensure companies array is empty on error
-        setCurrentCompany(null);
-        setPeriods([]);
-        setCurrentPeriod(null);
-        return;
-      }
-
-      const companiesData = userCompanies?.map(uc => ({
-        id: uc.companies.id,
-        name: uc.companies.name,
-        country: uc.companies.country,
-        currency: uc.companies.currency,
-        fiscalYearStart: uc.companies.fiscal_year_start,
-        fiscalYearEnd: uc.companies.fiscal_year_end,
-        timezone: uc.companies.timezone,
-        logo: uc.companies.logo,
-        taxConfig: uc.companies.tax_config || { type: 'GST', rates: [0, 5, 12, 18, 28], enabled: true, registrationNumber: '' },
-        address: uc.companies.address || { street: '', city: '', state: '', country: '', zipCode: '' },
-        contactInfo: uc.companies.contact_info || { email: '', phone: '' },
-        settings: uc.companies.settings || { displayName: '', decimalPlaces: 2, language: 'en', enablePassword: false }
-      })) || [];
-
-      setCompanies(companiesData);
-
-      // Set current company (first one or from localStorage)
-      const savedCompanyId = localStorage.getItem('erp-current-company');
-      const currentComp = savedCompanyId
-        ? companiesData.find(c => c.id === savedCompanyId)
-        : companiesData[0];
-
-      if (currentComp) {
-        setCurrentCompany(currentComp);
-        await loadCompanyPeriods(currentComp.id);
-      } else {
-        setCurrentCompany(null); // No current company found
-        setPeriods([]); // Clear periods if no company
-        setCurrentPeriod(null);
-      }
-    } catch (error) {
-      console.error('Error loading user companies:', error);
+    if (companiesError) {
+      console.error('Error loading companies:', companiesError);
       setCompanies([]);
       setCurrentCompany(null);
       setPeriods([]);
       setCurrentPeriod(null);
-    } finally {
-      setLoadingCompanies(false); // <--- SET LOADING FALSE
+      return;
     }
-  };
+
+    const companiesData = userCompanies?.map(uc => ({
+      id: uc.companies.id,
+      name: uc.companies.name,
+      country: uc.companies.country,
+      currency: uc.companies.currency,
+      fiscalYearStart: uc.companies.fiscal_year_start,
+      fiscalYearEnd: uc.companies.fiscal_year_end,
+      timezone: uc.companies.timezone,
+      logo: uc.companies.logo,
+      // Ensure these JSONB fields always default to a structured object if null from DB
+      taxConfig: uc.companies.tax_config || {
+        type: 'GST', rates: [0, 5, 12, 18, 28], enabled: true, registrationNumber: '',
+        gstDetails: { pan: '', tan: '', registrationType: '', filingFrequency: '', tdsApplicable: false, tcsApplicable: false },
+        vatDetails: { registrationNumber: '', registrationType: '', filingCycle: '' }
+      },
+      address: uc.companies.address || { street1: '', street2: '', city: '', state: '', country: '', zipCode: '' },
+      contactInfo: uc.companies.contact_info || {
+        contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: ''
+      },
+      settings: uc.companies.settings || {
+        displayName: '', legalName: '', industry: '', businessType: '', registrationNo: '',
+        languagePreference: 'en', decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
+        dateFormat: 'DD-MM-YYYY', batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
+        aiSuggestions: false, enablePassword: false, password: '', splitByPeriod: false,
+        barcodeSupport: false, autoVoucherCreationAI: false, companyType: '', employeeCount: '',
+        annualRevenue: '', inventoryTracking: true, companyUsername: ''
+      }
+    })) || [];
+
+    setCompanies(companiesData);
+
+    const savedCompanyId = localStorage.getItem('erp-current-company');
+    const currentComp = savedCompanyId
+      ? companiesData.find(c => c.id === savedCompanyId)
+      : companiesData[0];
+
+    if (currentComp) {
+      setCurrentCompany(currentComp);
+      await loadCompanyPeriods(currentComp.id);
+    } else {
+      setCurrentCompany(null);
+      setPeriods([]);
+      setCurrentPeriod(null);
+    }
+  } catch (error) {
+    console.error('Error loading user companies:', error);
+    setCompanies([]);
+    setCurrentCompany(null);
+    setPeriods([]);
+    setCurrentPeriod(null);
+  } finally {
+    setLoadingCompanies(false);
+  }
+}; 
 
   const loadCompanyPeriods = async (companyId: string) => {
     try {
@@ -184,10 +234,9 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       setPeriods(periods);
 
-      // Set current period
       const savedPeriodId = localStorage.getItem('erp-current-period');
-      const currentPer = savedPeriodId 
-        ? periods.find(p => p.id === savedPeriodId) 
+      const currentPer = savedPeriodId
+        ? periods.find(p => p.id === savedPeriodId)
         : periods.find(p => p.isActive) || periods[0];
 
       if (currentPer) {
@@ -216,7 +265,6 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addCompany = (company: Omit<Company, 'id'>) => {
-    // This would create a new company in the database
     console.log('Add company:', company);
   };
 
@@ -236,7 +284,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       currentPeriod,
       companies,
       periods,
-      loadingCompanies, // <--- ADD THIS
+      loadingCompanies,
       switchCompany,
       switchPeriod,
       addCompany,
@@ -255,3 +303,4 @@ export function useCompany() {
   }
   return context;
 }
+

@@ -388,10 +388,10 @@ interface CompanySetupProps {
   onCancel?: () => void; // Callback to cancel and go back (for edit mode)
 }
 
-// Helper function to get initial form data
-const getInitialFormData = () => {
+// Helper function to get initial form data with robust defaults
+const getInitialFormData = (company?: Company) => {
   const currentYear = new Date().getFullYear();
-  const defaultCountry = countries.find(c => c.id === 'IN')!; // Default to India
+  const defaultCountry = countries.find(c => c.id === (company?.country || 'IN'))!;
 
   const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
   let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
@@ -401,40 +401,117 @@ const getInitialFormData = () => {
   const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
 
   const initialTaxRates: { [key: string]: number[] } = {
-    'IN': [0, 5, 12, 18, 28], // GST rates
-    'AU': [0, 10], // GST rates
-    'GB': [0, 5, 20], // VAT rates
-    'DE': [0, 7, 19], // VAT rates
-    'US': [0, 5, 8.5, 10], // Sales tax varies by state
-    'CA': [0, 5, 13, 15], // GST/HST rates
-    'AE': [0, 5], // UAE VAT
-    'SA': [0, 15], // Saudi Arabia VAT
-    'QA': [0, 5], // Qatar VAT
-    'KW': [0, 5], // Kuwait VAT
-    'BH': [0, 10], // Bahrain VAT
-    'OM': [0, 5], // Oman VAT
-    'JP': [0, 10], // Japan Consumption Tax
-    'SG': [0, 9], // Singapore GST
+    'IN': [0, 5, 12, 18, 28],
+    'AU': [0, 10],
+    'GB': [0, 5, 20],
+    'DE': [0, 7, 19],
+    'US': [0, 5, 8.5, 10],
+    'CA': [0, 5, 13, 15],
+    'AE': [0, 5],
+    'SA': [0, 15],
+    'QA': [0, 5],
+    'KW': [0, 5],
+    'BH': [0, 10],
+    'OM': [0, 5],
+    'JP': [0, 10],
+    'SG': [0, 9],
   };
 
+  // Ensure nested objects are always present, even if incoming 'company' has them as null/undefined
+  const safeCompany = {
+    ...company,
+    address: company?.address || {},
+    contact_info: company?.contact_info || {},
+    tax_config: {
+      ...(company?.tax_config || {}), // Ensure tax_config is an object
+      gstDetails: (company?.tax_config?.gstDetails || {}), // Ensure gstDetails is an object
+      vatDetails: (company?.tax_config?.vatDetails || {}), // Ensure vatDetails is an object
+    },
+    settings: company?.settings || {},
+  } as Company; // Cast to Company to ensure type safety for nested properties
+
+  // Default values for nested objects (used if safeCompany's properties are still empty)
+  const defaultAddress = { street1: '', street2: '', city: '', state: '', country: defaultCountry.id, zipCode: '' };
+  const defaultContactInfo = { contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: defaultCountry.id };
+  const defaultTaxConfig = {
+    enabled: true,
+    rates: initialTaxRates[defaultCountry.id] || [0, 10, 20],
+    type: defaultCountry.taxType,
+    registrationNumber: '',
+    gstDetails: { pan: '', tan: '', registrationType: gstRegistrationTypes[0].id, filingFrequency: filingFrequencies[0].id, tdsApplicable: false, tcsApplicable: false },
+    vatDetails: { registrationNumber: '', registrationType: vatRegistrationTypes[0].id, filingCycle: filingCycles[0].id }
+  };
+  const defaultSettings = {
+    displayName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id, registrationNo: '',
+    languagePreference: languages[0].id, decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
+    dateFormat: dateFormats[0].id, batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
+    aiSuggestions: false, enablePassword: false, password: '', splitByPeriod: false,
+    barcodeSupport: false, autoVoucherCreationAI: false, companyType: companyTypes[0].id, employeeCount: '',
+    annualRevenue: '', inventoryTracking: true, companyUsername: ''
+  };
+
+
   return {
-    companyName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id,
-    registrationNo: '', country: defaultCountry.id, state: '', city: '', addressLine1: '', addressLine2: '', zipCode: '',
-    languagePreference: languages[0].id, companyLogo: null, timezone: defaultCountry.timezone,
+    companyName: safeCompany.name || '',
+    legalName: safeCompany.settings.legalName || safeCompany.name || '',
+    industry: safeCompany.settings.industry || industries[0].id,
+    businessType: safeCompany.settings.businessType || companyTypes[0].id,
+    registrationNo: safeCompany.settings.registrationNo || '',
+    country: safeCompany.country || defaultCountry.id,
+    state: safeCompany.address.state || '', // Access directly from safeCompany.address
+    city: safeCompany.address.city || '',   // Access directly from safeCompany.address
+    addressLine1: safeCompany.address.street1 || '', // Access directly from safeCompany.address
+    addressLine2: safeCompany.address.street2 || '', // Access directly from safeCompany.address
+    zipCode: safeCompany.address.zipCode || '', // Access directly from safeCompany.address
+    languagePreference: safeCompany.settings.languagePreference || languages[0].id,
+    companyLogo: safeCompany.logo || null,
+    timezone: safeCompany.timezone || defaultCountry.timezone,
 
-    contactPersonName: '', designation: '', email: '', mobile: '', phoneCountry: defaultCountry.id, alternateContactNumber: '',
+    contactPersonName: safeCompany.contact_info.contactPersonName || '', // Access directly from safeCompany.contact_info
+    designation: safeCompany.contact_info.designation || '',             // Access directly from safeCompany.contact_info
+    email: safeCompany.contact_info.email || '',                         // Access directly from safeCompany.contact_info
+    mobile: safeCompany.contact_info.mobile || '',                       // Access directly from safeCompany.contact_info
+    phoneCountry: safeCompany.contact_info.phoneCountry || safeCompany.country || defaultCountry.id, // Access directly from safeCompany.contact_info
+    alternateContactNumber: safeCompany.contact_info.alternatePhone || '', // Access directly from safeCompany.contact_info
 
-    taxSystem: defaultCountry.taxType, taxConfig: { enabled: true, rates: initialTaxRates[defaultCountry.id] || [0, 10, 20] },
-    gstin: '', pan: '', tan: '', gstRegistrationType: gstRegistrationTypes[0].id, filingFrequency: filingFrequencies[0].id,
-    tdsApplicable: false, tcsApplicable: false, trnVatNumber: '', vatRegistrationType: vatRegistrationTypes[0].id, filingCycle: filingCycles[0].id,
+    taxSystem: safeCompany.tax_config.type || defaultCountry.taxType,
+    taxConfig: { // This object is constructed from safeCompany.tax_config
+      enabled: safeCompany.tax_config.enabled ?? defaultTaxConfig.enabled,
+      rates: safeCompany.tax_config.rates || defaultTaxConfig.rates,
+      registrationNumber: safeCompany.tax_config.registrationNumber || defaultTaxConfig.registrationNumber,
+      gstDetails: safeCompany.tax_config.gstDetails || defaultTaxConfig.gstDetails,
+      vatDetails: safeCompany.tax_config.vatDetails || defaultTaxConfig.vatDetails,
+    },
+    gstin: safeCompany.tax_config.gstDetails?.registrationNumber || '', // Access from safeCompany.tax_config.gstDetails
+    pan: safeCompany.tax_config.gstDetails?.pan || '',                 // Access from safeCompany.tax_config.gstDetails
+    tan: safeCompany.tax_config.gstDetails?.tan || '',                 // Ensure TAN is also handled
+    gstRegistrationType: safeCompany.tax_config.gstDetails?.registrationType || gstRegistrationTypes[0].id, // Access from safeCompany.tax_config.gstDetails
+    filingFrequency: safeCompany.tax_config.gstDetails?.filingFrequency || filingFrequencies[0].id,       // Access from safeCompany.tax_config.gstDetails
+    tdsApplicable: safeCompany.tax_config.gstDetails?.tdsApplicable ?? false,                             // Access from safeCompany.tax_config.gstDetails
+    tcsApplicable: safeCompany.tax_config.gstDetails?.tcsApplicable ?? false,                             // Access from safeCompany.tax_config.gstDetails
+    trnVatNumber: safeCompany.tax_config.vatDetails?.registrationNumber || '',                            // Access from safeCompany.tax_config.vatDetails
+    vatRegistrationType: safeCompany.tax_config.vatDetails?.registrationType || vatRegistrationTypes[0].id, // Access from safeCompany.tax_config.vatDetails
+    filingCycle: safeCompany.tax_config.vatDetails?.filingCycle || filingCycles[0].id,                   // Access from safeCompany.tax_config.vatDetails
 
-    booksStartDate: fiscalYearStartDate.toISOString().split('T')[0], fiscalYearStartDate: fiscalYearStartDate.toISOString().split('T')[0],
-    fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0], defaultCurrency: defaultCountry.currency, decimalPlaces: 2,
-    multiCurrencySupport: false, autoRounding: false, dateFormat: dateFormats[0].id, enableBatchTracking: false,
-    enableCostCenterAllocation: false, enableMultiUserAccess: false, companyPassword: '',
-    enableCompanyPassword: false, enableBarcodeSupport: false, companyUsername: '',
+    booksStartDate: safeCompany.fiscal_year_start || fiscalYearStartDate.toISOString().split('T')[0],
+    fiscalYearStartDate: safeCompany.fiscal_year_start || fiscalYearStartDate.toISOString().split('T')[0],
+    fiscalYearEndDate: safeCompany.fiscal_year_end || fiscalYearEndDate.toISOString().split('T')[0],
+    defaultCurrency: safeCompany.currency || defaultCountry.currency,
+    decimalPlaces: safeCompany.settings.decimalPlaces ?? defaultSettings.decimalPlaces,
+    multiCurrencySupport: safeCompany.settings.multiCurrencySupport ?? defaultSettings.multiCurrencySupport,
+    autoRounding: safeCompany.settings.autoRounding ?? defaultSettings.autoRounding,
 
-    companyType: companyTypes[0].id, inventoryTracking: true
+    dateFormat: safeCompany.settings.dateFormat || defaultSettings.dateFormat,
+    enableBatchTracking: safeCompany.settings.batchTracking ?? defaultSettings.batchTracking,
+    costCenterAllocation: safeCompany.settings.costCenterAllocation ?? defaultSettings.costCenterAllocation,
+    enableMultiUserAccess: safeCompany.settings.multiUserAccess ?? defaultSettings.multiUserAccess,
+    companyPassword: safeCompany.settings.password || '',
+    enableCompanyPassword: safeCompany.settings.enablePassword ?? defaultSettings.enablePassword,
+    enableBarcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettings.barcodeSupport,
+    companyUsername: safeCompany.settings.companyUsername || '',
+
+    companyType: safeCompany.settings.companyType || defaultSettings.companyType,
+    inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettings.inventoryTracking
   };
 };
 
@@ -469,161 +546,104 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
 
   // Initialize form data from companyToEdit prop or reset for new company
   useEffect(() => {
+    console.log("CompanySetup: companyToEdit prop received:", companyToEdit); // ADDED THIS LOG
     if (companyToEdit) {
-      const selectedCountryData = countries.find(c => c.id === companyToEdit.country);
+      // Create a deep copy to ensure immutability and prevent reference issues
+      const companyCopy = JSON.parse(JSON.stringify(companyToEdit));
+      const initialData = getInitialFormData(companyCopy);
+      setFormData(initialData);
+      setLogoFile(null);
+      setErrors({});
+      setActiveTab('company_info');
 
-      // Safely parse fiscal_year_start
-      let initialFiscalYearStartDate = companyToEdit.fiscal_year_start;
-      let fiscalYearStartDateObj = new Date(initialFiscalYearStartDate);
+      // ADD THESE CONSOLE LOGS TO VERIFY formData AFTER SETTING
+      console.log("CompanySetup useEffect: formData after setting:");
+      console.log("  Contact Person Name:", initialData.contactPersonName);
+      console.log("  Email:", initialData.email);
+      console.log("  Mobile:", initialData.mobile);
+      console.log("  GSTIN:", initialData.gstin);
+      console.log("  PAN:", initialData.pan);
+      console.log("  TRN/VAT Number:", initialData.trnVatNumber);
+      console.log("  Books Start Date:", initialData.booksStartDate);
+      console.log("  Date Format:", initialData.dateFormat);
+      console.log("  Enable Company Password:", initialData.enableCompanyPassword);
+      console.log("  Company Username:", initialData.companyUsername);
 
-      // Fallback if initialFiscalYearStartDate is invalid
-      if (isNaN(fiscalYearStartDateObj.getTime())) {
-        // Provide a sensible default, e.g., current year's fiscal start for the country
-        const currentYear = new Date().getFullYear();
-        const defaultCountry = countries.find(c => c.id === companyToEdit.country) || countries[0]; // Fallback to India if country not found
-        const fiscalYearStartMonth = defaultCountry.fiscalYearStartMonth;
-        fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
-        if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
-          fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
-        }
-        initialFiscalYearStartDate = fiscalYearStartDateObj.toISOString().split('T')[0];
-      }
 
-      // Calculate fiscal year end date based on the *valid* fiscalYearStartDateObj
-      const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
-      
-      setFormData({
-        companyName: companyToEdit.name || '',
-        legalName: companyToEdit.settings?.legalName || '',
-        industry: companyToEdit.settings?.industry || industries[0].id,
-        businessType: companyToEdit.settings?.businessType || companyTypes[0].id,
-        registrationNo: companyToEdit.settings?.registrationNo || '',
-        country: companyToEdit.country || countries[0].id,
-        state: companyToEdit.address?.state || '',
-        city: companyToEdit.address?.city || '',
-        addressLine1: companyToEdit.address?.street1 || '',
-        addressLine2: companyToEdit.address?.street2 || '',
-        zipCode: companyToEdit.address?.zipCode || '',
-        languagePreference: companyToEdit.settings?.languagePreference || languages[0].id,
-        companyLogo: companyToEdit.logo || null,
-        timezone: companyToEdit.timezone || (selectedCountryData ? selectedCountryData.timezone : countries[0].timezone),
-
-        contactPersonName: companyToEdit.contact_info?.contactPersonName || '',
-        designation: companyToEdit.contact_info?.designation || '',
-        email: companyToEdit.contact_info?.email || '',
-        mobile: companyToEdit.contact_info?.mobile || '',
-        phoneCountry: companyToEdit.contact_info?.phoneCountry || companyToEdit.country || countries[0].id,
-        alternateContactNumber: '',
-
-        taxSystem: companyToEdit.tax_config?.type || (selectedCountryData ? selectedCountryData.taxType : countries[0].taxType),
-        taxConfig: {
-          enabled: companyToEdit.tax_config?.enabled ?? true,
-          rates: companyToEdit.tax_config?.rates || [],
-        },
-        gstin: companyToEdit.tax_config?.gstDetails?.registrationNumber || '',
-        pan: companyToEdit.tax_config?.gstDetails?.pan || '',
-        tan: companyToEdit.tax_config?.gstDetails?.tan || '',
-        gstRegistrationType: companyToEdit.tax_config?.gstDetails?.registrationType || gstRegistrationTypes[0].id,
-        filingFrequency: companyToEdit.tax_config?.gstDetails?.filingFrequency || filingFrequencies[0].id,
-        tdsApplicable: companyToEdit.tax_config?.gstDetails?.tdsApplicable ?? false,
-        tcsApplicable: companyToEdit.tax_config?.gstDetails?.tcsApplicable ?? false,
-        trnVatNumber: companyToEdit.tax_config?.vatDetails?.registrationNumber || '',
-        vatRegistrationType: companyToEdit.tax_config?.vatDetails?.registrationType || vatRegistrationTypes[0].id,
-        filingCycle: companyToEdit.tax_config?.vatDetails?.filingCycle || filingCycles[0].id,
-
-        booksStartDate: initialFiscalYearStartDate, // Use the validated/defaulted date
-        fiscalYearStartDate: initialFiscalYearStartDate, // Use the validated/defaulted date
-        fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0], // Use the calculated valid date
-        defaultCurrency: companyToEdit.currency || currencies[0].id,
-        decimalPlaces: companyToEdit.settings?.decimalPlaces ?? 2,
-        multiCurrencySupport: companyToEdit.settings?.multiCurrencySupport ?? false,
-        autoRounding: companyToEdit.settings?.autoRounding ?? false,
-
-        dateFormat: companyToEdit.settings?.dateFormat || dateFormats[0].id,
-        enableBatchTracking: companyToEdit.settings?.batchTracking ?? false,
-        enableCostCenterAllocation: companyToEdit.settings?.costCenterAllocation ?? false,
-        enableMultiUserAccess: companyToEdit.settings?.multiUserAccess ?? false,
-        companyPassword: companyToEdit.settings?.password || '',
-        enableCompanyPassword: companyToEdit.settings?.enablePassword ?? false,
-        enableBarcodeSupport: companyToEdit.settings?.barcodeSupport ?? false,
-        companyUsername: companyToEdit.settings?.companyUsername || '', // Added companyUsername
-
-        companyType: companyToEdit.settings?.companyType || companyTypes[0].id,
-        inventoryTracking: true
-      });
-      setLogoFile(null); // Clear logo file for existing company, only set if new upload
-      setErrors({}); // Clear errors when loading new company
-      setActiveTab('company_info'); // Reset to first tab
     } else {
-      setFormData(getInitialFormData()); // Use the helper function here
-      setLogoFile(null); // Clear logo file for new company
-      setErrors({}); // Clear errors for new company
-      setActiveTab('company_info'); // Reset to first tab
+      setFormData(getInitialFormData());
+      setLogoFile(null);
+      setErrors({});
+      setActiveTab('company_info');
     }
   }, [companyToEdit]); // Re-run when companyToEdit changes
 
 
   // Auto-calculate fiscal year end date and update tax rates based on country
   useEffect(() => {
-    const selectedCountryData = countries.find(c => c.id === formData.country);
-    if (selectedCountryData) {
-      const currentYear = new Date().getFullYear();
-      const fiscalYearStartMonth = selectedCountryData.fiscalYearStartMonth;
+    // Only auto-calculate if fiscalYearStartDate is not already set from database
+    // This prevents overwriting existing data when editing a company
+    if (!formData.fiscalYearStartDate || !formData.fiscalYearEndDate) {
+      const selectedCountryData = countries.find(c => c.id === formData.country);
+      if (selectedCountryData) {
+        const currentYear = new Date().getFullYear();
+        const fiscalYearStartMonth = selectedCountryData.fiscalYearStartMonth;
 
-      let fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
-      // If current month is before fiscal year start month, use previous year
-      if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
-        fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
+        let fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
+        // If current month is before fiscal year start month, use previous year
+        if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
+          fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
+        }
+
+        const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
+
+        // Log the calculated dates for debugging
+        console.log('Calculated Fiscal Year Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+        console.log('Calculated Fiscal Year End Date:', fiscalYearEndDateObj.toISOString().split('T')[0]);
+        console.log('Calculated Books Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+
+
+        setFormData((prev: any) => ({
+          ...prev,
+          timezone: selectedCountryData.timezone,
+          defaultCurrency: selectedCountryData.currency,
+          taxSystem: selectedCountryData.taxType,
+          fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the start date
+          fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0], // This is the end date
+          booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the books start date
+          phoneCountry: selectedCountryData.id, // Auto-update phone country code
+          // Reset state if country changes and previous state is not valid for new country
+          state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
+        }));
+
+        // Update tax rates based on country
+        const taxRates: { [key: string]: number[] } = {
+          'IN': [0, 5, 12, 18, 28], // GST rates
+          'AU': [0, 10], // GST rates
+          'GB': [0, 5, 20], // VAT rates
+          'DE': [0, 7, 19], // VAT rates
+          'US': [0, 5, 8.5, 10], // Sales tax varies by state
+          'CA': [0, 5, 13, 15], // GST/HST rates
+          'AE': [0, 5], // UAE VAT
+          'SA': [0, 15], // Saudi Arabia VAT
+          'QA': [0, 5], // Qatar VAT
+          'KW': [0, 5], // Kuwait VAT
+          'BH': [0, 10], // Bahrain VAT
+          'OM': [0, 5], // Oman VAT
+          'JP': [0, 10], // Japan Consumption Tax
+          'SG': [0, 9], // Singapore GST
+        };
+
+        setFormData((prev: any) => ({
+          ...prev,
+          taxConfig: {
+            ...prev.taxConfig,
+            rates: taxRates[selectedCountryData.id] || [0, 10, 20], // Default if not found
+          },
+        }));
       }
-
-      const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
-
-      // Log the calculated dates for debugging
-      console.log('Calculated Fiscal Year Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
-      console.log('Calculated Fiscal Year End Date:', fiscalYearEndDateObj.toISOString().split('T')[0]);
-      console.log('Calculated Books Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
-
-
-      setFormData((prev: any) => ({
-        ...prev,
-        timezone: selectedCountryData.timezone,
-        defaultCurrency: selectedCountryData.currency,
-        taxSystem: selectedCountryData.taxType,
-        fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the start date
-        fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0], // This is the end date
-        booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the books start date
-        phoneCountry: selectedCountryData.id, // Auto-update phone country code
-        // Reset state if country changes and previous state is not valid for new country
-        state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
-      }));
-
-      // Update tax rates based on country
-      const taxRates: { [key: string]: number[] } = {
-        'IN': [0, 5, 12, 18, 28], // GST rates
-        'AU': [0, 10], // GST rates
-        'GB': [0, 5, 20], // VAT rates
-        'DE': [0, 7, 19], // VAT rates
-        'US': [0, 5, 8.5, 10], // Sales tax varies by state
-        'CA': [0, 5, 13, 15], // GST/HST rates
-        'AE': [0, 5], // UAE VAT
-        'SA': [0, 15], // Saudi Arabia VAT
-        'QA': [0, 5], // Qatar VAT
-        'KW': [0, 5], // Kuwait VAT
-        'BH': [0, 10], // Bahrain VAT
-        'OM': [0, 5], // Oman VAT
-        'JP': [0, 10], // Japan Consumption Tax
-        'SG': [0, 9], // Singapore GST
-      };
-
-      setFormData((prev: any) => ({
-        ...prev,
-        taxConfig: {
-          ...prev.taxConfig,
-          rates: taxRates[selectedCountryData.id] || [0, 10, 20], // Default if not found
-        },
-      }));
     }
-  }, [formData.country]); // Re-run when country changes
+  }, [formData.country, formData.fiscalYearStartDate, formData.fiscalYearEndDate]); // Re-run when country changes or fiscal dates are empty
 
   // Update booksStartDate if fiscalYearStartDate is manually changed
   useEffect(() => {
@@ -802,7 +822,7 @@ const handleSubmit = async () => {
           autoRounding: formData.autoRounding,
           dateFormat: formData.dateFormat,
           batchTracking: formData.enableBatchTracking,
-          costCenterAllocation: formData.enableCostCenterAllocation,
+          costCenterAllocation: formData.costCenterAllocation,
           multiUserAccess: formData.enableMultiUserAccess,
           enablePassword: formData.enableCompanyPassword,
           password: formData.enableCompanyPassword ? formData.companyPassword : null,
@@ -1024,7 +1044,7 @@ const handleSubmit = async () => {
         <Card className="p-6 space-y-8">
           {/* Company Info Tab */}
           {activeTab === 'company_info' && (
-            <div>
+            <div key="company_info_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <Briefcase size={24} className="mr-3 text-[#6AC8A3]" />
                 General Company Information
@@ -1193,7 +1213,7 @@ const handleSubmit = async () => {
 
           {/* Contact Tab */}
           {activeTab === 'contact' && (
-            <div>
+            <div key="contact_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <User size={24} className="mr-3 text-[#6AC8A3]" />
                 Contact Person Details
@@ -1308,7 +1328,7 @@ const handleSubmit = async () => {
 
           {/* Tax Tab */}
           {activeTab === 'tax' && (
-            <div>
+            <div key="tax_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <ReceiptText size={24} className="mr-3 text-[#6AC8A3]" />
                 Tax / Compliance Details
@@ -1492,7 +1512,7 @@ const handleSubmit = async () => {
 
           {/* Books Tab */}
           {activeTab === 'books' && (
-            <div>
+            <div key="books_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <BookMarked size={24} className="mr-3 text-[#6AC8A3]" />
                 Books & Financial Period Setup
@@ -1592,7 +1612,7 @@ const handleSubmit = async () => {
 
           {/* Preferences Tab */}
           {activeTab === 'preferences' && (
-            <div>
+            <div key="preferences_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <SlidersHorizontal size={24} className="mr-3 text-[#6AC8A3]" />
                 Company Preferences
