@@ -2,6 +2,7 @@
 import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import AIFormHelper from './AIFormHelper';
+import { Eye, EyeOff } from 'lucide-react'; // Import Eye icons
 
 interface FormFieldProps {
   label: string;
@@ -17,7 +18,11 @@ interface FormFieldProps {
   context?: string;
   onAISuggestion?: (suggestion: any) => void;
   onAITeach?: (correction: any) => void;
-  readOnly?: boolean; // Add readOnly prop
+  readOnly?: boolean;
+  // New props for password visibility toggle
+  showToggleVisibility?: boolean;
+  onToggleVisibility?: () => void;
+  isPasswordVisible?: boolean;
 }
 
 function FormField({
@@ -34,9 +39,16 @@ function FormField({
   context,
   onAISuggestion,
   onAITeach,
-  readOnly = false, // Default to false
+  readOnly = false,
+  showToggleVisibility = false, // Default to false
+  onToggleVisibility,
+  isPasswordVisible,
 }: FormFieldProps) {
   const { theme } = useTheme();
+
+  // Determine padding based on icon and toggle visibility
+  const paddingLeft = icon ? 'pl-10' : 'pl-3';
+  const paddingRight = showToggleVisibility ? 'pr-10' : (onAISuggestion && !readOnly ? 'pr-10' : 'pr-3');
 
   return (
     <div className={`relative ${className}`}>
@@ -45,7 +57,7 @@ function FormField({
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        {aiHelper && !readOnly && ( // Only show AI helper if not readOnly
+        {aiHelper && !readOnly && (
           <AIFormHelper
             fieldName={label}
             fieldValue={value}
@@ -64,25 +76,34 @@ function FormField({
         )}
 
         <input
-          type={type}
+          type={showToggleVisibility && !isPasswordVisible ? "password" : type} // Use internal type for password toggle
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          readOnly={readOnly} // Apply readOnly prop
+          readOnly={readOnly}
           className={`
-            w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5 border ${theme.inputBorder} /* Changed py-2 to py-2.5 */
+            w-full ${paddingLeft} ${paddingRight} py-2.5 border ${theme.inputBorder}
             ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[#6AC8A3]
             placeholder:${theme.textMuted}
             ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
-            ${onAISuggestion && !readOnly ? 'pr-10' : ''}
-            ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''} // Styling for readOnly
+            ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
           `}
         />
 
-        {onAISuggestion && value && !readOnly && ( // Only show AI suggestion indicator if not readOnly
+        {showToggleVisibility && onToggleVisibility && (
+          <button
+            type="button"
+            onClick={onToggleVisibility}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+
+        {onAISuggestion && value && !readOnly && !showToggleVisibility && ( // Only show AI suggestion indicator if not readOnly and no password toggle
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="AI suggestion available" />
           </div>

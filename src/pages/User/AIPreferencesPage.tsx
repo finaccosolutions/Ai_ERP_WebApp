@@ -10,7 +10,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useNotification } from '../../contexts/NotificationContext';
 
-function AIPreferencesPage() {
+interface AIPreferencesPageProps {
+  activeSection: string; // e.g., 'ai-general', 'ai-suggestions'
+}
+
+function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
   const { theme } = useTheme();
   const { isAIEnabled, toggleAI } = useAI();
   const { user } = useAuth();
@@ -57,7 +61,7 @@ function AIPreferencesPage() {
     setAiSettings((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveAIPreferences = async () => {
+ const handleSaveAIPreferences = async () => {
     setLoading(true);
     try {
       if (!user?.id) {
@@ -65,17 +69,20 @@ function AIPreferencesPage() {
         return;
       }
 
-      // Update the nested 'ai' object within 'preferences'
-      const { error } = await supabase
+      const { data, error } = await supabase // Added data
         .from('user_profiles')
         .update({ preferences: { ...user.preferences, ai: aiSettings } }) // Merge with existing preferences
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select(); // Added select() to get data back
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase AI Preferences Update Error:', error); // Log error
+        throw error;
+      }
+      console.log('Supabase AI Preferences Update Success:', data); // Log success
 
-      // If global AI toggle is changed, update the context
       if (aiSettings.globalAIEnabled !== isAIEnabled) {
-        toggleAI(); // This will update the global AI context state
+        toggleAI();
       }
       
       showNotification('AI Preferences saved successfully!', 'success');
@@ -99,197 +106,211 @@ function AIPreferencesPage() {
         </Button>
       </div>
 
-      <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-          <Bot size={20} className="mr-2 text-[#6AC8A3]" />
-          General AI Features
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="globalAIEnabled"
-              checked={aiSettings.globalAIEnabled}
-              onChange={(e) => handleAISettingChange('globalAIEnabled', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="globalAIEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Globally Enable/Disable AI Features
-            </label>
+      {activeSection === 'ai-general' && (
+        <Card className="p-6">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+            <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+            General AI Features
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="globalAIEnabled"
+                checked={aiSettings.globalAIEnabled}
+                onChange={(e) => handleAISettingChange('globalAIEnabled', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="globalAIEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Globally Enable/Disable AI Features
+              </label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="enableSuggestions"
+                checked={aiSettings.enableSuggestions}
+                onChange={(e) => handleAISettingChange('enableSuggestions', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="enableSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable AI Suggestions
+              </label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="enableVoiceCommands"
+                checked={aiSettings.enableVoiceCommands}
+                onChange={(e) => handleAISettingChange('enableVoiceCommands', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="enableVoiceCommands" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable Voice Commands
+              </label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="enableDocumentProcessing"
+                checked={aiSettings.enableDocumentProcessing}
+                onChange={(e) => handleAISettingChange('enableDocumentProcessing', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="enableDocumentProcessing" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable Document Processing
+              </label>
+            </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="enableSuggestions"
-              checked={aiSettings.enableSuggestions}
-              onChange={(e) => handleAISettingChange('enableSuggestions', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="enableSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable AI Suggestions
-            </label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="enableVoiceCommands"
-              checked={aiSettings.enableVoiceCommands}
-              onChange={(e) => handleAISettingChange('enableVoiceCommands', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="enableVoiceCommands" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable Voice Commands
-            </label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="enableDocumentProcessing"
-              checked={aiSettings.enableDocumentProcessing}
-              onChange={(e) => handleAISettingChange('enableDocumentProcessing', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="enableDocumentProcessing" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable Document Processing
-            </label>
-          </div>
-        </div>
+        </Card>
+      )}
 
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-          <Lightbulb size={20} className="mr-2 text-[#6AC8A3]" />
-          Suggestion & Response
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-              Suggestion Confidence Threshold
-            </label>
-            <select
-              value={aiSettings.suggestionConfidenceThreshold}
-              onChange={(e) => handleAISettingChange('suggestionConfidenceThreshold', e.target.value)}
-              className={`
-                w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-              `}
-            >
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-              AI Response Verbosity
-            </label>
-            <select
-              value={aiSettings.aiResponseVerbosity}
-              onChange={(e) => handleAISettingChange('aiResponseVerbosity', e.target.value)}
-              className={`
-                w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-              `}
-            >
-              <option value="concise">Concise</option>
-              <option value="normal">Normal</option>
-              <option value="verbose">Verbose</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="aiLearningEnabled"
-              checked={aiSettings.aiLearningEnabled}
-              onChange={(e) => handleAISettingChange('aiLearningEnabled', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="aiLearningEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Allow AI to Learn from My Corrections
-            </label>
-          </div>
-        </div>
-
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-          <Brain size={20} className="mr-2 text-[#6AC8A3]" />
-          Advanced AI Features
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="aiSearchEnabled"
-              checked={aiSettings.aiSearchEnabled}
-              onChange={(e) => handleAISettingChange('aiSearchEnabled', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="aiSearchEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable AI-Powered Smart Search
-            </label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="aiReportGenerationEnabled"
-              checked={aiSettings.aiReportGenerationEnabled}
-              onChange={(e) => handleAISettingChange('aiReportGenerationEnabled', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="aiReportGenerationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable AI-Driven Report Generation
-            </label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="aiNotificationEnabled"
-              checked={aiSettings.aiNotificationEnabled}
-              onChange={(e) => handleAISettingChange('aiNotificationEnabled', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-            />
-            <label htmlFor="aiNotificationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-              Enable AI Notifications
-            </label>
-          </div>
-          {aiSettings.aiNotificationEnabled && (
+      {activeSection === 'ai-suggestions' && (
+        <Card className="p-6">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+            <Lightbulb size={20} className="mr-2 text-[#6AC8A3]" />
+            Suggestion & Response
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                AI Notification Threshold
+                Suggestion Confidence Threshold
               </label>
               <select
-                value={aiSettings.aiNotificationThreshold}
-                onChange={(e) => handleAISettingChange('aiNotificationThreshold', e.target.value)}
+                value={aiSettings.suggestionConfidenceThreshold}
+                onChange={(e) => handleAISettingChange('suggestionConfidenceThreshold', e.target.value)}
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
                   focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                 `}
               >
-                <option value="high">High Confidence Only</option>
-                <option value="medium">Medium Confidence and Above</option>
-                <option value="low">All Confidence Levels</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </div>
-          )}
-        </div>
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                AI Response Verbosity
+              </label>
+              <select
+                value={aiSettings.aiResponseVerbosity}
+                onChange={(e) => handleAISettingChange('aiResponseVerbosity', e.target.value)}
+                className={`
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                  ${theme.inputBg} ${theme.textPrimary}
+                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                `}
+              >
+                <option value="concise">Concise</option>
+                <option value="normal">Normal</option>
+                <option value="verbose">Verbose</option>
+              </select>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="aiLearningEnabled"
+                checked={aiSettings.aiLearningEnabled}
+                onChange={(e) => handleAISettingChange('aiLearningEnabled', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="aiLearningEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Allow AI to Learn from My Corrections
+              </label>
+            </div>
+          </div>
+        </Card>
+      )}
 
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-          <Zap size={20} className="mr-2 text-[#6AC8A3]" />
-          AI Model & Integration
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            label="AI Model"
-            value={aiSettings.aiModel}
-            readOnly
-          />
-          <FormField
-            label="API Key Status"
-            value={aiSettings.apiKeyStatus}
-            readOnly
-          />
-        </div>
-      </Card>
+      {activeSection === 'ai-advanced' && (
+        <Card className="p-6">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+            <Brain size={20} className="mr-2 text-[#6AC8A3]" />
+            Advanced AI Features
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="aiSearchEnabled"
+                checked={aiSettings.aiSearchEnabled}
+                onChange={(e) => handleAISettingChange('aiSearchEnabled', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="aiSearchEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable AI-Powered Smart Search
+              </label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="aiReportGenerationEnabled"
+                checked={aiSettings.aiReportGenerationEnabled}
+                onChange={(e) => handleAISettingChange('aiReportGenerationEnabled', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="aiReportGenerationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable AI-Driven Report Generation
+              </label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="aiNotificationEnabled"
+                checked={aiSettings.aiNotificationEnabled}
+                onChange={(e) => handleAISettingChange('aiNotificationEnabled', e.target.checked)}
+                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              />
+              <label htmlFor="aiNotificationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                Enable AI Notifications
+              </label>
+            </div>
+            {aiSettings.aiNotificationEnabled && (
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                  AI Notification Threshold
+                </label>
+                <select
+                  value={aiSettings.aiNotificationThreshold}
+                  onChange={(e) => handleAISettingChange('aiNotificationThreshold', e.target.value)}
+                  className={`
+                    w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                    ${theme.inputBg} ${theme.textPrimary}
+                    focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  `}
+                >
+                  <option value="high">High Confidence Only</option>
+                  <option value="medium">Medium Confidence and Above</option>
+                  <option value="low">All Confidence Levels</option>
+                </select>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {activeSection === 'ai-model' && (
+        <Card className="p-6">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+            <Zap size={20} className="mr-2 text-[#6AC8A3]" />
+            AI Model & Integration
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="AI Model"
+              value={aiSettings.aiModel}
+              readOnly
+            />
+            <FormField
+              label="API Key Status"
+              value={aiSettings.apiKeyStatus}
+              readOnly
+            />
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // src/App.tsx
 import React, { useState } from 'react'; // Import useState
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // Import Navigate
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
@@ -18,7 +18,7 @@ import Reports from './pages/Reports/Reports';
 import Compliance from './pages/Compliance/Compliance';
 import HR from './pages/HR/HR';
 import CRM from './pages/CRM/CRM';
-import Admin from './pages/Admin/Admin';
+import Admin from './pages/Admin/Admin'; // Admin module entry
 import { useAuth } from './hooks/useAuth';
 import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
@@ -30,12 +30,12 @@ import ConfirmationModal from './components/UI/ConfirmationModal'; // Import Con
 import ProfilePage from './pages/User/ProfilePage';
 import UserSettingsPage from './pages/User/SettingsPage';
 import AIPreferencesPage from './pages/User/AIPreferencesPage';
-
+import UserPageLayout from './components/Layout/UserPageLayout'; // Import new UserPageLayout
 
 function AppContent() {
   console.log('AppContent rendering...');
   // Destructure the loading state from useAuth
-  const { isAuthenticated, user, loading: authLoading, logout } = useAuth(); // Correctly destructure loading and logout
+  const { isAuthenticated, user, loading: authLoading, logout, hasPermission } = useAuth(); // Correctly destructure loading and logout
   const { companies, currentCompany, loadingCompanies } = useCompany(); // Add loadingCompanies here
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // State for logout confirmation
@@ -101,11 +101,17 @@ function AppContent() {
           <Route path="/compliance/*" element={<Compliance />} />
           <Route path="/hr/*" element={<HR />} />
           <Route path="/crm/*" element={<CRM />} />
-          <Route path="/admin/*" element={<Admin />} />
-          {/* New User-related Routes */}
-          <Route path="/user/profile" element={<ProfilePage />} />
-          <Route path="/user/settings" element={<UserSettingsPage />} />
-          <Route path="/user/ai-preferences" element={<AIPreferencesPage />} />
+          {/* Conditional Admin Route */}
+          <Route 
+            path="/admin/*" 
+            element={hasPermission('admin_panel', 'access') ? <Admin /> : <Navigate to="/" replace />} 
+          />
+          {/* User-related Routes wrapped with UserPageLayout */}
+          <Route path="/user/*" element={<UserPageLayout />}>
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<UserSettingsPage />} />
+            <Route path="ai-preferences" element={<AIPreferencesPage />} />
+          </Route>
         </Routes>
       </Layout>
 

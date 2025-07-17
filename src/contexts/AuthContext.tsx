@@ -7,8 +7,9 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: string;
-  permissions: string[];
+  role: string; // Name of the role
+  role_id: string; // ID of the role
+  permissions: any; // JSONB object of permissions
   companies: string[];
   avatar?: string;
   mobile?: string; // Add mobile to User interface
@@ -26,6 +27,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   signUp: (email: string, password: string, fullName: string, mobile: string) => Promise<boolean>;
+  hasPermission: (module: string, action: string) => boolean; // New permission checker
 }
 
 console.log('AuthContext.tsx: AuthContext defined');
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
         console.log('AuthContext.tsx: handleAuthStateChange: States set to unauthenticated.');
       }
+      setLoading(false); // Ensure loading is false after state change is processed
     };
 
     const initializeAuth = async () => {
@@ -100,48 +103,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
     console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
     let profile: any = null;
-    const maxRetries = 30;
-    const retryDelayMs = 500;
+    let userRole: any = null;
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Initial delay
+      // Attempt to fetch user profile once
+      console.log(`AuthContext.tsx: handleAuthUser: Attempting to query user_profiles table for user: ${supabaseUser.id}`);
+      const { data: fetchedProfileArray, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', supabaseUser.id);
 
-      for (let i = 0; i < maxRetries; i++) {
-        console.log(`AuthContext.tsx: handleAuthUser: Attempt ${i + 1} to query user_profiles table...`);
-        const { data: fetchedProfileArray, error: fetchError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', supabaseUser.id);
+      console.log('AuthContext.tsx: handleAuthUser: User profile select query completed.');
+      console.log('AuthContext.tsx: handleAuthUser: User profile select query result data:', fetchedProfileArray);
+      console.log('AuthContext.tsx: handleAuthUser: User profile select query result error:', fetchError);
 
-        console.log('AuthContext.tsx: handleAuthUser: User profile select query completed.');
-        console.log('AuthContext.tsx: handleAuthUser: User profile select query result data:', fetchedProfileArray);
-        console.log('AuthContext.tsx: handleAuthUser: User profile select query result error:', fetchError);
+      const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
 
-        const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
-
-        if (fetchedProfile) {
-          profile = fetchedProfile;
-          console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
-          break;
-        } else if (fetchError) {
-          console.error(`AuthContext.tsx: handleAuthUser: Error fetching user profile on attempt ${i + 1}:`, fetchError);
-        } else {
-          console.warn(`AuthContext.tsx: handleAuthUser: User profile not found on attempt ${i + 1}. Retrying...`);
-        }
-
-        if (i < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-        }
+      if (!fetchedProfile) {
+        // If no profile found, it means the user is not fully set up or the profile hasn't been created yet.
+        // In this case, we treat them as unauthenticated for now to show the login page quickly.
+        console.warn(`AuthContext.tsx: handleAuthUser: User profile not found for user ID: ${supabaseUser.id}. Setting as unauthenticated.`);
+        setUser(null);
+        setIsAuthenticated(false);
+        return; // Exit early
       }
 
-      if (!profile) {
-        throw new Error('User profile could not be fetched after multiple attempts. It might not have been created by the trigger yet, or there was a persistent error.');
-      }
+      profile = fetchedProfile;
+      console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
 
-      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user companies...');
+      console.log('AuthContext.tsx: handleAuthUser: Attempting to fetch user companies and roles...');
       const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('users_companies')
-        .select('company_id, role_id')
+        .select(`
+          company_id,
+          role_id,
+          user_roles (
+            name,
+            permissions
+          )
+        `)
         .eq('user_id', supabaseUser.id)
         .eq('is_active', true);
 
@@ -151,12 +151,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       console.log('AuthContext.tsx: handleAuthUser: User companies fetched successfully:', userCompanies);
 
+      // For simplicity, we'll take the role from the first company if multiple exist
+      // A more complex app might handle roles per company or aggregate permissions
+      if (userCompanies && userCompanies.length > 0) {
+        userRole = userCompanies[0].user_roles;
+      }
+
       const userData: User = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
         name: profile?.full_name || 'User',
-        role: 'User',
-        permissions: ['dashboard'],
+        role: userRole?.name || 'Standard User', // Default role name
+        role_id: userCompanies?.[0]?.role_id || '', // Default role ID
+        permissions: userRole?.permissions || {}, // Default empty permissions
         companies: userCompanies?.map(uc => uc.company_id) || [],
         avatar: profile?.avatar_url || undefined,
         mobile: profile?.phone || undefined, // Include mobile number from profile
@@ -175,9 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('AuthContext.tsx: handleAuthUser: Caught an error during user data processing:', error);
       setUser(null);
       setIsAuthenticated(false);
-      throw error;
+      // Do not re-throw here, as it's caught by initializeAuth or handleAuthStateChange
     } finally {
       console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
+      setLoading(false); // Ensure loading is false after processing
     }
   };
 
@@ -243,6 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('AuthContext.tsx: logout: Unexpected logout error:', error);
+    } finally {
+      setLoading(false); // Ensure loading is false after logout
     }
   };
 
@@ -254,10 +264,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const hasPermission = (module: string, action: string): boolean => {
+    if (!user || !user.permissions) {
+      return false;
+    }
+    // Check if the module exists and if the action is explicitly true
+    return user.permissions[module]?.[action] === true;
+  };
+
   console.log('AuthContext.tsx: AuthProvider rendering. Current loading state:', loading);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, updateUser, signUp }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, updateUser, signUp, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

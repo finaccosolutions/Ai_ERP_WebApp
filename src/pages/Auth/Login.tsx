@@ -1,6 +1,6 @@
 // src/pages/Auth/Login.tsx
 import React, { useState } from 'react';
-import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe } from 'lucide-react';
+import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe, CheckCircle } from 'lucide-react'; // Import CheckCircle
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Button from '../../components/UI/Button';
@@ -31,8 +31,9 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPasswordText, setShowPasswordText] = useState(false); // Renamed for clarity
+  const [showConfirmPasswordText, setShowConfirmPasswordText] = useState(false); // Renamed for clarity
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false); // New state for verification message
   
   const { login, signUp } = useAuth();
   const { theme } = useTheme();
@@ -74,6 +75,7 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowVerificationMessage(false); // Hide verification message on new submission
 
     if (!validateForm()) {
       return;
@@ -85,15 +87,17 @@ function Login() {
       let success = false;
       
       if (isSignUp) {
-        // Pass mobile number to signUp function
         success = await signUp(email, password, fullName, mobile);
         if (success) {
           setError('');
-          setIsSignUp(false);
+          setShowVerificationMessage(true); // Show verification message
+          // Clear form fields after successful sign-up
           setPassword('');
           setConfirmPassword('');
           setFullName('');
           setMobile('');
+          // Optionally switch to login mode after successful sign-up
+          setIsSignUp(false);
         } else {
           setError('Sign up failed. Please try again.');
         }
@@ -111,31 +115,26 @@ function Login() {
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
   const switchMode = () => {
     setIsSignUp(!isSignUp);
     setError('');
+    setShowVerificationMessage(false); // Hide verification message when switching modes
     setPassword('');
     setConfirmPassword('');
     setFullName('');
     setMobile('');
+    setEmail(''); // Clear email when switching modes
   };
 
   return (
-    <div className={`min-h-screen ${theme.isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'} flex`}>
+    <div className={`min-h-screen ${theme.isDark ? 'bg-gradient-to-br from-gray-950 via-gray-900 to-gray-850' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'} flex`}>
       {/* Left Side - Information */}
       <div className={`hidden lg:flex lg:w-1/2 ${theme.isDark ? 'bg-gray-800' : 'bg-white'} flex-col justify-center px-12`}>
         <div className="max-w-md">
           <div className={`
             h-16 w-16 bg-gradient-to-r ${theme.primaryGradient}
             ${theme.borderRadius} flex items-center justify-center shadow-xl mb-8
+            transform hover:scale-105 transition-transform duration-300
           `}>
             <Building size={32} className="text-white" />
           </div>
@@ -150,7 +149,10 @@ function Login() {
           
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
+              <div className={`
+                p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg
+                transform hover:scale-110 transition-transform duration-300
+              `}>
                 <Bot size={20} className="text-white" />
               </div>
               <div>
@@ -164,7 +166,10 @@ function Login() {
             </div>
             
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
+              <div className={`
+                p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg
+                transform hover:scale-110 transition-transform duration-300
+              `}>
                 <Globe size={20} className="text-white" />
               </div>
               <div>
@@ -178,7 +183,10 @@ function Login() {
             </div>
             
             <div className="flex items-start space-x-4">
-              <div className={`p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg`}>
+              <div className={`
+                p-2 bg-gradient-to-r ${theme.primaryGradient} rounded-lg
+                transform hover:scale-110 transition-transform duration-300
+              `}>
                 <Building size={20} className="text-white" />
               </div>
               <div>
@@ -257,14 +265,14 @@ function Login() {
                     <label className={`block text-sm font-medium ${theme.isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                       Mobile Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex items-stretch"> {/* Added items-stretch for alignment */}
+                    <div className="flex items-stretch">
                       {/* Country Selector */}
                       <div className="relative">
                         <button
                           type="button"
                           onClick={() => setShowCountryDropdown(!showCountryDropdown)}
                           className={`
-                            flex items-center space-x-2 px-3 py-2.5 border border-gray-300 /* Changed py-2 to py-2.5 */
+                            flex items-center space-x-2 px-3 py-2.5 border border-gray-300
                             ${theme.borderRadius} border-r-0 rounded-r-none
                             ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                             focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
@@ -313,7 +321,7 @@ function Login() {
                           placeholder="Enter mobile number"
                           required
                           className={`
-                            w-full pl-10 pr-3 py-2.5 border border-gray-300 /* Changed py-2 to py-2.5 */
+                            w-full pl-10 pr-3 py-2.5 border border-gray-300
                             ${theme.borderRadius} rounded-l-none border-l-0 h-full
                             ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
@@ -326,24 +334,18 @@ function Login() {
                 
                 {/* Password Field */}
                 <div className="space-y-2">
-                  <div className="relative">
-                    <FormField
-                      label="Password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={setPassword}
-                      placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
-                      required
-                      icon={<Lock size={18} className="text-gray-400" />}
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePasswordVisibility}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <FormField
+                    label="Password"
+                    type="password" // Set type to password, visibility handled by FormField
+                    value={password}
+                    onChange={setPassword}
+                    placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                    required
+                    icon={<Lock size={18} className="text-gray-400" />}
+                    showToggleVisibility={true} // Enable toggle
+                    onToggleVisibility={() => setShowPasswordText(!showPasswordText)}
+                    isPasswordVisible={showPasswordText}
+                  />
                   {isSignUp && (
                     <p className={`text-xs ${theme.isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       Password must be at least 6 characters long
@@ -354,24 +356,18 @@ function Login() {
                 {/* Confirm Password Field - Only for Sign Up */}
                 {isSignUp && (
                   <div className="space-y-2">
-                    <div className="relative">
-                      <FormField
-                        label="Confirm Password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={setConfirmPassword}
-                        placeholder="Confirm your password"
-                        required
-                        icon={<Lock size={18} className="text-gray-400" />}
-                      />
-                      <button
-                        type="button"
-                        onClick={toggleConfirmPasswordVisibility}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
+                    <FormField
+                      label="Confirm Password"
+                      type="password" // Set type to password, visibility handled by FormField
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      placeholder="Confirm your password"
+                      required
+                      icon={<Lock size={18} className="text-gray-400" />}
+                      showToggleVisibility={true} // Enable toggle
+                      onToggleVisibility={() => setShowConfirmPasswordText(!showConfirmPasswordText)}
+                      isPasswordVisible={showConfirmPasswordText}
+                    />
                   </div>
                 )}
               </div>
@@ -382,6 +378,18 @@ function Login() {
                   <div className="flex items-center">
                     <div className="text-red-600 text-sm font-medium">
                       {error}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Message */}
+              {showVerificationMessage && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle size={20} className="text-green-600" />
+                    <div className="text-green-600 text-sm font-medium">
+                      Verification email sent to <span className="font-bold">{email}</span>. Please check your inbox.
                     </div>
                   </div>
                 </div>

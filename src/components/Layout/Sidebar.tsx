@@ -185,4 +185,4 @@ function Sidebar({ open, setOpen }: SidebarProps) {
   );
 }
 
-export default Sidebar;
+export default Sidebar 

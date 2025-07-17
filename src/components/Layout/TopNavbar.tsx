@@ -47,14 +47,14 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
     try {
       // Mock voice recognition - in production, use Web Speech API
       setTimeout(async () => {
-        const mockQueries = [
+        const mockCommands = [
           "Show me sales in June 2024",
           "What's my TDS liability this quarter",
           "Show unpaid invoices over 30 days",
           "Top 5 customers by revenue"
         ];
         
-        const mockQuery = mockQueries[Math.floor(Math.random() * mockQueries.length)];
+        const mockQuery = mockCommands[Math.floor(Math.random() * mockCommands.length)];
         setSearchQuery(mockQuery);
         
         const result = await voiceCommand(mockQuery);
@@ -127,14 +127,13 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             <div className="group relative"> {/* Added group for tooltip */}
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
               <div className={`
-                absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
-                rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
-                transition-all duration-300 whitespace-nowrap z-50 shadow-xl
-                border border-slate-600
+                absolute left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs
+                rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-all duration-300 whitespace-nowrap z-50
               `}>
                 {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
-                              border-4 border-transparent border-b-slate-800" />
+                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
+                              border-4 border-transparent border-b-gray-700" />
               </div>
             </div>
           </button>
@@ -178,7 +177,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {isAIEnabled && (
-                <span className="text-[#6AC8A3] animate-pulse">AI</span>
+                <span className="text-[#6AC8A3] animate-pulse text-xs">AI</span>
               )}
               <button
                 type="button"
@@ -219,14 +218,13 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
           >
             {theme.isDark ? <Sun size={16} /> : <Moon size={16} />}
             <div className={`
-              absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
-              rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
-              transition-all duration-300 whitespace-nowrap z-50 shadow-xl
-              border border-slate-600
+              absolute left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs
+              rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible
+              transition-all duration-300 whitespace-nowrap z-50
             `}>
               Toggle Theme
-              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
-                            border-4 border-transparent border-b-slate-800" />
+              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
+                            border-4 border-transparent border-b-gray-700" />
             </div>
           </button>
 
@@ -235,7 +233,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             onClick={() => setShowAI(!showAI)}
             disabled={!isAIEnabled}
             className={`
-              p-2 rounded-xl transition-all duration-300 transform hover:scale-110 group relative
+              p-2 rounded-xl transition-all duration-300 transform hover:scale-110 relative group
               relative overflow-hidden shadow-md
               ${isAIEnabled 
                 ? `bg-gradient-to-r ${theme.primaryGradient} text-white hover:shadow-[#6AC8A3]/25` 
@@ -249,15 +247,15 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                            transform -skew-x-12 -translate-x-full hover:translate-x-full 
                            transition-transform duration-1000 ease-out" />
             )}
+            {/* Tooltip for AI Assistant icon */}
             <div className={`
-              absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
-              rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
-              transition-all duration-300 whitespace-nowrap z-50 shadow-xl
-              border border-slate-600
+              absolute left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs
+              rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible
+              transition-all duration-300 whitespace-nowrap z-50
             `}>
               AI Assistant
-              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
-                            border-4 border-transparent border-b-slate-800" />
+              <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
+                            border-4 border-transparent border-b-gray-700" />
             </div>
           </button>
 
@@ -277,14 +275,13 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 </span>
               )}
               <div className={`
-                absolute left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-800 text-white text-sm 
-                rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
-                transition-all duration-300 whitespace-nowrap z-50 shadow-xl
-                border border-slate-600
+                absolute left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs
+                rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-all duration-300 whitespace-nowrap z-50
               `}>
                 Notifications
-                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1 
-                              border-4 border-transparent border-b-slate-800" />
+                <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
+                              border-4 border-transparent border-b-gray-700" />
               </div>
             </button>
             
@@ -377,29 +374,14 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 ${theme.borderRadius} ${theme.shadowLevel} z-50
               `}>
                 <div className="py-1">
+                  {/* Consolidated link */}
                   <Link to="/user/profile" onClick={() => setShowUserMenu(false)} className={`
                     w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
                     ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
                   `}>
                     <User size={16} className="mr-2" />
-                    Profile
+                    My Account
                   </Link>
-                  <Link to="/user/settings" onClick={() => setShowUserMenu(false)} className={`
-                    w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                    ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
-                  `}>
-                    <Settings size={16} className="mr-2" />
-                    Settings
-                  </Link>
-                  {isAIEnabled && (
-                    <Link to="/user/ai-preferences" onClick={() => setShowUserMenu(false)} className={`
-                      w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                      ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
-                    `}>
-                      <Bot size={16} className="mr-2" /> {/* Changed from Zap */}
-                      AI Preferences
-                    </Link>
-                  )}
                   <hr className={`my-1 ${theme.borderColor}`} />
                   <button
                     onClick={handleLogoutClick} // Use the new handler
