@@ -1,3 +1,4 @@
+// src/pages/Company/CompanySetup.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -52,7 +53,7 @@ import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext'; // Import useNotification
-
+ 
 // --- ALL STATIC DATA DEFINED HERE, ABOVE THE COMPONENT FUNCTION ---
 const countries = [
   {
@@ -312,25 +313,26 @@ interface Company {
   name: string;
   country: string;
   currency: string;
-  fiscal_year_start: string;
-  fiscal_year_end: string;
+  fiscalYearStart: string; // Changed from fiscal_year_start
+  fiscalYearEnd: string;   // Changed from fiscal_year_end
   timezone: string;
   logo?: string;
-  tax_config: {
+  taxConfig: {             // Changed from tax_config
     type: 'GST' | 'VAT' | 'Custom';
     rates: number[];
     enabled: boolean;
-    registrationNumber: string;
+    registrationNumber?: string; // Make this optional as it might be nested or not always present
     gstDetails?: {
       pan?: string;
       tan?: string;
+      registrationNumber?: string; // Keep this for nested access
       registrationType?: string;
       filingFrequency?: string;
       tdsApplicable?: boolean;
       tcsApplicable?: boolean;
     };
     vatDetails?: {
-      registrationNumber?: string;
+      registrationNumber?: string; // Keep this for nested access
       registrationType?: string;
       filingCycle?: string;
     };
@@ -343,7 +345,7 @@ interface Company {
     country?: string;
     zipCode?: string;
   };
-  contact_info: {
+  contactInfo: {           // Changed from contact_info
     contactPersonName?: string;
     designation?: string;
     email?: string;
@@ -351,7 +353,7 @@ interface Company {
     alternatePhone?: string;
     phoneCountry?: string;
   };
-  settings: {
+  settings: {              // Changed from settings
     displayName?: string;
     legalName?: string;
     industry?: string;
@@ -375,7 +377,7 @@ interface Company {
     employeeCount?: string;
     annualRevenue?: string;
     inventoryTracking?: boolean;
-    companyUsername?: string; // Added companyUsername
+    companyUsername?: string;
   };
 }
 
@@ -387,7 +389,6 @@ interface CompanySetupProps {
   onCancel?: () => void; // Callback to cancel and go back (for edit mode)
 }
 
-// Helper function to get initial form data with robust defaults
 const getInitialFormData = (company?: Company) => {
   const currentYear = new Date().getFullYear();
   const defaultCountry = countries.find(c => c.id === (company?.country || 'IN'))!;
@@ -400,80 +401,120 @@ const getInitialFormData = (company?: Company) => {
   const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
 
   const initialTaxRates: { [key: string]: number[] } = {
-    'IN': [0, 5, 12, 18, 28], 'AU': [0, 10], 'GB': [0, 5, 20], 'DE': [0, 7, 19],
-    'US': [0, 5, 8.5, 10], 'CA': [0, 5, 13, 15], 'AE': [0, 5], 'SA': [0, 15],
-    'QA': [0, 5], 'KW': [0, 5], 'BH': [0, 10], 'OM': [0, 5], 'JP': [0, 10], 'SG': [0, 9],
+    'IN': [0, 5, 12, 18, 28], // GST rates
+    'AU': [0, 10], // GST rates
+    'GB': [0, 5, 20], // VAT rates
+    'DE': [0, 7, 19], // VAT rates
+    'US': [0, 5, 8.5, 10], // Sales tax varies by state
+    'CA': [0, 5, 13, 15], // GST/HST rates
+    'AE': [0, 5], // UAE VAT
+    'SA': [0, 15], // Saudi Arabia VAT
+    'QA': [0, 5], // Qatar VAT
+    'KW': [0, 5], // Kuwait VAT
+    'BH': [0, 10], // Bahrain VAT
+    'OM': [0, 5], // Oman VAT
+    'JP': [0, 10], // Japan Consumption Tax
+    'SG': [0, 9], // Singapore GST
   };
 
-  // Directly map properties from 'company' with robust fallbacks
-  return {
-    // Company Info Tab
-    companyName: company?.name || '',
-    legalName: company?.settings?.legalName || company?.name || '',
-    industry: company?.settings?.industry || industries[0].id,
-    businessType: company?.settings?.businessType || companyTypes[0].id,
-    registrationNo: company?.settings?.registrationNo || '',
-    country: company?.country || defaultCountry.id,
-    state: company?.address?.state || '',
-    city: company?.address?.city || '',
-    addressLine1: company?.address?.street1 || '',
-    addressLine2: company?.address?.street2 || '',
-    zipCode: company?.address?.zipCode || '',
-    languagePreference: company?.settings?.languagePreference || languages[0].id,
-    companyLogo: company?.logo || null,
-    timezone: company?.timezone || defaultCountry.timezone,
-
-    // Contact Tab
-    contactPersonName: company?.contact_info?.contactPersonName || '',
-    designation: company?.contact_info?.designation || '',
-    email: company?.contact_info?.email || '',
-    mobile: company?.contact_info?.mobile || '',
-    phoneCountry: company?.contact_info?.phoneCountry || company?.country || defaultCountry.id,
-    alternateContactNumber: company?.contact_info?.alternatePhone || '',
-
-    // Tax Tab
-    taxSystem: company?.tax_config?.type || defaultCountry.taxType,
-    taxConfig: company?.tax_config || { // Ensure taxConfig itself is an object
-      type: defaultCountry.taxType,
-      rates: initialTaxRates[defaultCountry.id] || [0, 10, 20],
-      enabled: true,
-      registrationNumber: '',
-      gstDetails: {}, // Default to empty object
-      vatDetails: {}, // Default to empty object
+  // Ensure nested objects are always present, even if incoming 'company' has them as null/undefined
+  const safeCompany = {
+    ...company,
+    address: company?.address || {},
+    contactInfo: company?.contactInfo || {}, // Changed from contact_info
+    taxConfig: { // Changed from tax_config
+      ...(company?.taxConfig || {}), // Changed from tax_config
+      gstDetails: (company?.taxConfig?.gstDetails || {}), // Changed from tax_config
+      vatDetails: (company?.taxConfig?.vatDetails || {}), // Changed from tax_config
     },
-    gstin: company?.tax_config?.gstDetails?.registrationNumber || '',
-    pan: company?.tax_config?.gstDetails?.pan || '',
-    tan: company?.tax_config?.gstDetails?.tan || '',
-    gstRegistrationType: company?.tax_config?.gstDetails?.registrationType || gstRegistrationTypes[0].id,
-    filingFrequency: company?.tax_config?.gstDetails?.filingFrequency || filingFrequencies[0].id,
-    tdsApplicable: company?.tax_config?.gstDetails?.tdsApplicable ?? false,
-    tcsApplicable: company?.tax_config?.gstDetails?.tcsApplicable ?? false,
-    trnVatNumber: company?.tax_config?.vatDetails?.registrationNumber || '',
-    vatRegistrationType: company?.tax_config?.vatDetails?.registrationType || vatRegistrationTypes[0].id,
-    filingCycle: company?.tax_config?.vatDetails?.filingCycle || filingCycles[0].id,
+    settings: company?.settings || {}, // Changed from settings
+  } as Company; // Cast to Company to ensure type safety for nested properties
 
-    // Books Tab
-    booksStartDate: company?.fiscal_year_start || fiscalYearStartDate.toISOString().split('T')[0],
-    fiscalYearStartDate: company?.fiscal_year_start || fiscalYearStartDate.toISOString().split('T')[0],
-    fiscalYearEndDate: company?.fiscal_year_end || fiscalYearEndDate.toISOString().split('T')[0],
-    defaultCurrency: company?.currency || defaultCountry.currency,
-    decimalPlaces: company?.settings?.decimalPlaces ?? 2,
-    multiCurrencySupport: company?.settings?.multiCurrencySupport ?? false,
-    autoRounding: company?.settings?.autoRounding ?? false,
+  // Default values for nested objects (used if safeCompany's properties are still empty)
+  const defaultAddress = { street1: '', street2: '', city: '', state: '', country: defaultCountry.id, zipCode: '' };
+  const defaultContactInfo = { contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: defaultCountry.id };
+  const defaultTaxConfig = {
+    enabled: true,
+    rates: initialTaxRates[defaultCountry.id] || [0, 10, 20],
+    type: defaultCountry.taxType,
+    registrationNumber: '',
+    gstDetails: { pan: '', tan: '', registrationType: gstRegistrationTypes[0].id, filingFrequency: filingFrequencies[0].id, tdsApplicable: false, tcsApplicable: false, registrationNumber: '' },
+    vatDetails: { registrationNumber: '', registrationType: vatRegistrationTypes[0].id, filingCycle: filingCycles[0].id }
+  };
+  const defaultSettings = {
+    displayName: '', legalName: '', industry: industries[0].id, businessType: companyTypes[0].id, registrationNo: '',
+    languagePreference: languages[0].id, decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
+    dateFormat: dateFormats[0].id, batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
+    aiSuggestions: false, enablePassword: false, password: '', splitByPeriod: false,
+    barcodeSupport: false, autoVoucherCreationAI: false, companyType: companyTypes[0].id, employeeCount: '',
+    annualRevenue: '', inventoryTracking: true, companyUsername: ''
+  };
 
-    // Preferences Tab
-    dateFormat: company?.settings?.dateFormat || dateFormats[0].id,
-    enableBatchTracking: company?.settings?.batchTracking ?? false,
-    costCenterAllocation: company?.settings?.costCenterAllocation ?? false,
-    enableMultiUserAccess: company?.settings?.multiUserAccess ?? false,
-    companyPassword: company?.settings?.password || '',
-    enableCompanyPassword: company?.settings?.enablePassword ?? false,
-    enableBarcodeSupport: company?.settings?.barcodeSupport ?? false,
-    // companyUsername: company?.settings?.companyUsername || '', // REMOVED
-    companyType: company?.settings?.companyType || companyTypes[0].id,
-    inventoryTracking: company?.settings?.inventoryTracking ?? true,
+
+  return {
+    companyName: safeCompany.name || '',
+    legalName: safeCompany.settings.legalName || safeCompany.name || '',
+    industry: safeCompany.settings.industry || industries[0].id,
+    businessType: safeCompany.settings.businessType || companyTypes[0].id,
+    registrationNo: safeCompany.settings.registrationNo || '',
+    country: safeCompany.country || defaultCountry.id,
+    state: safeCompany.address.state || '',
+    city: safeCompany.address.city || '',
+    addressLine1: safeCompany.address.street1 || '',
+    addressLine2: safeCompany.address.street2 || '',
+    zipCode: safeCompany.address.zipCode || '',
+    languagePreference: safeCompany.settings.languagePreference || languages[0].id,
+    companyLogo: safeCompany.logo || null,
+    timezone: safeCompany.timezone || defaultCountry.timezone,
+
+    contactPersonName: safeCompany.contactInfo.contactPersonName || '', // Changed from contact_info
+    designation: safeCompany.contactInfo.designation || '',             // Changed from contact_info
+    email: safeCompany.contactInfo.email || '',                         // Changed from contact_info
+    mobile: safeCompany.contactInfo.mobile || '',                       // Changed from contact_info
+    phoneCountry: safeCompany.contactInfo.phoneCountry || safeCompany.country || defaultCountry.id, // Changed from contact_info
+    alternateContactNumber: safeCompany.contactInfo.alternatePhone || '', // Changed from contact_info
+
+    taxSystem: safeCompany.taxConfig.type || defaultCountry.taxType, // Changed from tax_config
+    taxConfig: { // Changed from tax_config
+      enabled: safeCompany.taxConfig.enabled ?? defaultTaxConfig.enabled, // Changed from tax_config
+      rates: safeCompany.taxConfig.rates || defaultTaxConfig.rates, // Changed from tax_config
+      registrationNumber: safeCompany.taxConfig.registrationNumber || defaultTaxConfig.registrationNumber, // Changed from tax_config
+      gstDetails: safeCompany.taxConfig.gstDetails || defaultTaxConfig.gstDetails, // Changed from tax_config
+      vatDetails: safeCompany.taxConfig.vatDetails || defaultTaxConfig.vatDetails, // Changed from tax_config
+    },
+    // MODIFIED: Prioritize top-level registrationNumber, then fallback to nested
+    gstin: safeCompany.taxConfig.type === 'GST' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.gstDetails?.registrationNumber || '') : '', // Changed from tax_config
+    pan: safeCompany.taxConfig.gstDetails?.pan || '', // Changed from tax_config
+    tan: safeCompany.taxConfig.gstDetails?.tan || '', // Changed from tax_config
+    gstRegistrationType: safeCompany.taxConfig.gstDetails?.registrationType || gstRegistrationTypes[0].id, // Changed from tax_config
+    filingFrequency: safeCompany.taxConfig.gstDetails?.filingFrequency || filingFrequencies[0].id,       // Changed from tax_config
+    tdsApplicable: safeCompany.taxConfig.gstDetails?.tdsApplicable ?? false,                             // Changed from tax_config
+    tcsApplicable: safeCompany.taxConfig.gstDetails?.tcsApplicable ?? false,                             // Changed from tax_config
+    trnVatNumber: safeCompany.taxConfig.type === 'VAT' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.vatDetails?.registrationNumber || '') : '', // Changed from tax_config
+    vatRegistrationType: safeCompany.taxConfig.vatDetails?.registrationType || vatRegistrationTypes[0].id, // Changed from tax_config
+    filingCycle: safeCompany.taxConfig.vatDetails?.filingCycle || filingCycles[0].id,                   // Changed from tax_config
+
+    booksStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0], // Changed from fiscal_year_start
+    fiscalYearStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0], // Changed from fiscal_year_start
+    fiscalYearEndDate: safeCompany.fiscalYearEnd || fiscalYearEndDate.toISOString().split('T')[0], // Changed from fiscal_year_end
+    defaultCurrency: safeCompany.currency || defaultCountry.currency,
+    decimalPlaces: safeCompany.settings.decimalPlaces ?? defaultSettings.decimalPlaces, // Changed from settings
+    multiCurrencySupport: safeCompany.settings.multiCurrencySupport ?? defaultSettings.multiCurrencySupport, // Changed from settings
+    autoRounding: safeCompany.settings.autoRounding ?? defaultSettings.autoRounding, // Changed from settings
+
+    dateFormat: safeCompany.settings.dateFormat || defaultSettings.dateFormat, // Changed from settings
+    enableBatchTracking: safeCompany.settings.batchTracking ?? defaultSettings.batchTracking, // Changed from settings
+    costCenterAllocation: safeCompany.settings.costCenterAllocation ?? defaultSettings.costCenterAllocation, // Changed from settings
+    enableMultiUserAccess: safeCompany.settings.multiUserAccess ?? defaultSettings.multiUserAccess, // Changed from settings
+    companyPassword: safeCompany.settings.password || '', // Changed from settings
+    enableCompanyPassword: safeCompany.settings.enablePassword ?? defaultSettings.enablePassword, // Changed from settings
+    enableBarcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettings.barcodeSupport, // Changed from settings
+    companyUsername: safeCompany.settings.companyUsername || '', // Changed from settings
+    companyType: safeCompany.settings.companyType || defaultSettings.companyType, // Changed from settings
+    inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettings.inventoryTracking // Changed from settings
   };
 };
+
 
 function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onCancel }: CompanySetupProps) {
   const navigate = useNavigate();
@@ -505,10 +546,11 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
 
   // Initialize form data from companyToEdit prop or reset for new company
   useEffect(() => {
-    console.log("CompanySetup: companyToEdit prop received:", companyToEdit);
+    console.log("CompanySetup: companyToEdit prop received:", companyToEdit); // ADDED THIS LOG
     if (companyToEdit) {
-      // Directly use companyToEdit without deep copy to avoid potential issues
-      const initialData = getInitialFormData(companyToEdit);
+      // Removed: Create a deep copy to ensure immutability and prevent reference issues
+      // const companyCopy = JSON.parse(JSON.stringify(companyToEdit));
+      const initialData = getInitialFormData(companyToEdit); // Directly use companyToEdit
       setFormData(initialData);
       setLogoFile(null);
       setErrors({});
@@ -525,60 +567,91 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
       console.log("  Books Start Date:", initialData.booksStartDate);
       console.log("  Date Format:", initialData.dateFormat);
       console.log("  Enable Company Password:", initialData.enableCompanyPassword);
-      // console.log("  Company Username:", initialData.companyUsername); // REMOVED: No longer logging
+      console.log("  Company Username:", initialData.companyUsername);
+
+
     } else {
       setFormData(getInitialFormData());
       setLogoFile(null);
       setErrors({});
       setActiveTab('company_info');
     }
-  }, [companyToEdit]);
+  }, [companyToEdit]); // Re-run when companyToEdit changes
 
 
   // Auto-calculate fiscal year end date and update tax rates based on country
-  // This effect should primarily run for NEW company setups, not when editing existing ones
   useEffect(() => {
-    if (!companyToEdit) { // Only auto-calculate for new company creation
+    // Only auto-calculate if fiscalYearStartDate is not already set from database
+    // This prevents overwriting existing data when editing a company
+    if (!companyToEdit || !formData.fiscalYearStartDate || !formData.fiscalYearEndDate) { // Added companyToEdit check
       const selectedCountryData = countries.find(c => c.id === formData.country);
       if (selectedCountryData) {
         const currentYear = new Date().getFullYear();
         const fiscalYearStartMonth = selectedCountryData.fiscalYearStartMonth;
 
-        let fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
-        if (new Date().getUTCMonth() < fiscalYearStartMonth) {
-          fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1));
+        let fiscalYearStartDateObj = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1)); // Use Date.UTC
+        // If current month is before fiscal year start month, use previous year
+        if (new Date().getUTCMonth() < fiscalYearStartMonth) { // Use getUTCMonth
+          fiscalYearStartDateObj = new Date(Date.UTC(currentYear - 1, fiscalYearStartMonth, 1)); // Use Date.UTC
         }
 
-        const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0));
+        const fiscalYearEndDateObj = new Date(Date.UTC(fiscalYearStartDateObj.getUTCFullYear() + 1, fiscalYearStartDateObj.getUTCMonth(), 0)); // Use Date.UTC and getUTCMonth
+
+        // Log the calculated dates for debugging
+        console.log('Calculated Fiscal Year Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+        console.log('Calculated Fiscal Year End Date:', fiscalYearEndDateObj.toISOString().split('T')[0]);
+        console.log('Calculated Books Start Date:', fiscalYearStartDateObj.toISOString().split('T')[0]);
+
 
         setFormData((prev: any) => ({
           ...prev,
+          timezone: selectedCountryData.timezone,
           defaultCurrency: selectedCountryData.currency,
           taxSystem: selectedCountryData.taxType,
-          fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0],
-          fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0],
-          booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0],
-          phoneCountry: selectedCountryData.id,
-          timezone: selectedCountryData.timezone, // Ensure timezone is updated
+          fiscalYearStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the start date
+          fiscalYearEndDate: fiscalYearEndDateObj.toISOString().split('T')[0], // This is the end date
+          booksStartDate: fiscalYearStartDateObj.toISOString().split('T')[0], // This is the books start date
+          phoneCountry: selectedCountryData.id, // Auto-update phone country code
+          // Reset state if country changes and previous state is not valid for new country
           state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
         }));
 
+        // Update tax rates based on country
         const taxRates: { [key: string]: number[] } = {
-          'IN': [0, 5, 12, 18, 28], 'AU': [0, 10], 'GB': [0, 5, 20], 'DE': [0, 7, 19],
-          'US': [0, 5, 8.5, 10], 'CA': [0, 5, 13, 15], 'AE': [0, 5], 'SA': [0, 15],
-          'QA': [0, 5], 'KW': [0, 5], 'BH': [0, 10], 'OM': [0, 5], 'JP': [0, 10], 'SG': [0, 9],
+          'IN': [0, 5, 12, 18, 28], // GST rates
+          'AU': [0, 10], // GST rates
+          'GB': [0, 5, 20], // VAT rates
+          'DE': [0, 7, 19], // VAT rates
+          'US': [0, 5, 8.5, 10], // Sales tax varies by state
+          'CA': [0, 5, 13, 15], // GST/HST rates
+          'AE': [0, 5], // UAE VAT
+          'SA': [0, 15], // Saudi Arabia VAT
+          'QA': [0, 5], // Qatar VAT
+          'KW': [0, 5], // Kuwait VAT
+          'BH': [0, 10], // Bahrain VAT
+          'OM': [0, 5], // Oman VAT
+          'JP': [0, 10], // Japan Consumption Tax
+          'SG': [0, 9], // Singapore GST
         };
 
         setFormData((prev: any) => ({
           ...prev,
           taxConfig: {
             ...prev.taxConfig,
-            rates: taxRates[selectedCountryData.id] || [0, 10, 20],
+            rates: taxRates[selectedCountryData.id] || [0, 10, 20], // Default if not found
           },
         }));
       }
     }
-  }, [formData.country, companyToEdit]);
+  }, [formData.country, formData.fiscalYearStartDate, formData.fiscalYearEndDate, companyToEdit]); // Re-run when country changes or fiscal dates are empty
+
+  // Update booksStartDate if fiscalYearStartDate is manually changed
+  useEffect(() => {
+    setFormData((prev: any) => ({
+      ...prev,
+      booksStartDate: prev.fiscalYearStartDate,
+    }));
+  }, [formData.fiscalYearStartDate]);
 
 
   const validateForm = (data: any, currentTabId: string): Record<string, string> => {
@@ -629,7 +702,6 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
       if (!data.languagePreference) newErrors.languagePreference = 'Language Preference is required';
       if (!data.dateFormat) newErrors.dateFormat = 'Date Format is required';
       if (data.enableCompanyPassword) { // Only validate password and username if security is enabled
-        // Removed companyUsername validation
         if (!data.companyPassword.trim()) newErrors.companyPassword = 'Company Password is required if security is enabled';
       }
       if (!data.companyType) newErrors.companyType = 'Company Type is required';
@@ -707,19 +779,20 @@ const handleSubmit = async () => {
           enabled: formData.taxConfig.enabled,
           registrationNumber: formData.taxSystem === 'GST' ? formData.gstin : formData.trnVatNumber,
           rates: formData.taxConfig.rates,
-          gstDetails: {
+          gstDetails: formData.taxSystem === 'GST' ? {
             pan: formData.pan,
             tan: formData.tan,
+            registrationNumber: formData.gstin,
             registrationType: formData.gstRegistrationType,
             filingFrequency: formData.filingFrequency,
             tdsApplicable: formData.tdsApplicable,
             tcsApplicable: formData.tcsApplicable,
-          },
-           vatDetails: {
+          } : null,
+          vatDetails: formData.taxSystem === 'VAT' ? {
             registrationNumber: formData.trnVatNumber,
             registrationType: formData.vatRegistrationType,
             filingCycle: formData.filingCycle,
-          },
+          } : null,
         },
         address: {
           street1: formData.addressLine1,
@@ -754,29 +827,49 @@ const handleSubmit = async () => {
           enablePassword: formData.enableCompanyPassword,
           password: formData.enableCompanyPassword ? formData.companyPassword : null,
           barcodeSupport: formData.enableBarcodeSupport,
-          // companyUsername: formData.companyUsername, // REMOVED: No longer saving companyUsername
           companyType: formData.companyType,
           inventoryTracking: formData.inventoryTracking,
         },
-        created_by: user.id, // Use user.id from useAuth
+        created_by: user.id,
       };
 
       let companyId: string | null = null;
       console.log("Company data being sent for insert:", companyData);
       console.log("Value of created_by in companyData:", companyData.created_by);
+
       if (companyToEdit) {
         console.log("handleSubmit: Attempting to update existing company.");
-        const { data, error } = await supabase
+
+        // Create a promise for the Supabase update call
+        const updatePromise = supabase
           .from('companies')
           .update(companyData)
           .eq('id', companyToEdit.id)
-          .select('id'); // Select only ID
-        
+          .select('id');
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise<any>((resolve, reject) => { // Explicitly type as Promise<any>
+          const id = setTimeout(() => {
+            clearTimeout(id);
+            reject(new Error('Update operation timed out after 10 seconds.'));
+          }, 10000); // 10 seconds timeout
+        });
+
+        // Race the update promise against the timeout promise
+        const { data, error } = await Promise.race([updatePromise, timeoutPromise]);
+
         if (error) {
-          console.error('handleSubmit: Error updating company:', error);
+          console.error('handleSubmit: Supabase Error during update:', error);
           throw new Error('Failed to update company record: ' + error.message);
         }
-        companyId = data ? data[0]?.id : null;
+
+        // Explicitly check if data is null or empty, indicating no rows were updated
+        if (!data || data.length === 0) {
+          console.error('handleSubmit: Update operation completed without error, but no rows were affected. Data:', data);
+          throw new Error('Failed to update company record: No matching record found or update was silently denied (e.g., by RLS).');
+        }
+
+        companyId = data[0].id; // Now we are sure data[0] exists
         console.log("handleSubmit: Company updated successfully. ID:", companyId);
 
       } else {
@@ -784,8 +877,8 @@ const handleSubmit = async () => {
         const { data, error } = await supabase
           .from('companies')
           .insert([companyData])
-          .select('id'); // Select only ID
-        
+          .select('id');
+
         if (error) {
           console.error('handleSubmit: Error inserting new company:', error);
           throw new Error('Failed to create company record: ' + error.message);
@@ -798,7 +891,7 @@ const handleSubmit = async () => {
           const { error: userCompanyLinkError } = await supabase
             .from('users_companies')
             .insert({
-              user_id: user.id, // Use user.id from useAuth
+              user_id: user.id,
               company_id: companyId,
               is_active: true,
             });
@@ -856,7 +949,7 @@ const handleSubmit = async () => {
       }
       console.log("handleSubmit: Submission process completed successfully.");
 
-  } catch (err: any) {
+    } catch (err: any) {
       console.error('handleSubmit: Caught error during submission:', err);
       setErrors({ submit: err.message || 'An unexpected error occurred.' });
       showNotification(err.message || 'An unexpected error occurred.', 'error');
@@ -884,7 +977,7 @@ const handleSubmit = async () => {
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1].id);
-      setErrors({});
+      setErrors({}); // Clear errors when moving to next tab
     }
   };
 
@@ -892,15 +985,15 @@ const handleSubmit = async () => {
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
     if (currentIndex > 0) {
       setActiveTab(tabs[currentIndex - 1].id);
-      setErrors({});
+      setErrors({}); // Clear errors when moving to previous tab
     }
   };
 
   return (
     <div className={`min-h-screen ${companyToEdit ? '' : theme.panelBg} py-4`}>
-      <div className="w-full px-4 sm:px-8">
+      <div className="w-full px-4 sm:px-8"> {/* Changed max-w-5xl mx-auto to w-full */}
         {/* Header */}
-        {!companyToEdit && (
+        {!companyToEdit && ( // Only show this header for new company creation
           <div className="text-center mb-6">
             <div className={`
               inline-flex items-center justify-center w-16 h-16
@@ -916,7 +1009,7 @@ const handleSubmit = async () => {
             </p>
           </div>
         )}
-        {companyToEdit && (
+        {companyToEdit && ( // Show this header for view/edit mode
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
@@ -970,7 +1063,7 @@ const handleSubmit = async () => {
         <Card className="p-6 space-y-8">
           {/* Company Info Tab */}
           {activeTab === 'company_info' && (
-            <div key="company_info_tab_content">
+            <div key="company_info_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <Briefcase size={24} className="mr-3 text-[#6AC8A3]" />
                 General Company Information
@@ -1139,7 +1232,7 @@ const handleSubmit = async () => {
 
           {/* Contact Tab */}
           {activeTab === 'contact' && (
-            <div key="contact_tab_content">
+            <div key="contact_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <User size={24} className="mr-3 text-[#6AC8A3]" />
                 Contact Person Details
@@ -1149,6 +1242,7 @@ const handleSubmit = async () => {
                   label="Contact Person Name"
                   value={formData.contactPersonName}
                   onChange={(val) => setFormData({ ...formData, contactPersonName: val })}
+                  // Removed required prop
                   error={errors.contactPersonName}
                   readOnly={readOnly}
                 />
@@ -1173,7 +1267,7 @@ const handleSubmit = async () => {
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
                     Mobile Number
                   </label>
-                  <div className="flex items-stretch">
+                  <div className="flex items-stretch"> {/* Use items-stretch for alignment */}
                     <div className="relative">
                       <button
                         type="button"
@@ -1253,7 +1347,7 @@ const handleSubmit = async () => {
 
           {/* Tax Tab */}
           {activeTab === 'tax' && (
-            <div key="tax_tab_content">
+            <div key="tax_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <ReceiptText size={24} className="mr-3 text-[#6AC8A3]" />
                 Tax / Compliance Details
@@ -1290,6 +1384,7 @@ const handleSubmit = async () => {
                         value={formData.pan}
                         onChange={(val) => setFormData({ ...formData, pan: val })}
                         placeholder="AAAAA0000A"
+                        // PAN is now optional
                         readOnly={readOnly}
                       />
                       <FormField
@@ -1375,6 +1470,7 @@ const handleSubmit = async () => {
                         label="TRN / VAT Number"
                         value={formData.trnVatNumber}
                         onChange={(val) => setFormData({ ...formData, trnVatNumber: val })}
+                        placeholder="TRN / VAT Number"
                         required
                         error={errors.trnVatNumber}
                         readOnly={readOnly}
@@ -1436,7 +1532,7 @@ const handleSubmit = async () => {
 
           {/* Books Tab */}
           {activeTab === 'books' && (
-            <div key="books_tab_content">
+            <div key="books_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <BookMarked size={24} className="mr-3 text-[#6AC8A3]" />
                 Books & Financial Period Setup
@@ -1446,7 +1542,7 @@ const handleSubmit = async () => {
                   label="Books Start Date"
                   type="date"
                   value={formData.booksStartDate}
-                  onChange={(val) => setFormData({ ...formData, booksStartDate: val })}
+                  onChange={(val) => setFormData({ ...formData, booksStartDate: val })} // Made editable
                   required
                   error={errors.booksStartDate}
                   icon={<Calendar size={18} />}
@@ -1536,7 +1632,7 @@ const handleSubmit = async () => {
 
           {/* Preferences Tab */}
           {activeTab === 'preferences' && (
-            <div key="preferences_tab_content">
+            <div key="preferences_tab_content"> {/* ADDED KEY */}
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <SlidersHorizontal size={24} className="mr-3 text-[#6AC8A3]" />
                 Company Preferences
@@ -1604,7 +1700,7 @@ const handleSubmit = async () => {
                     checked={formData.costCenterAllocation}
                     onChange={(e) => setFormData({ ...formData, costCenterAllocation: e.target.checked })}
                     className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                    disabled={readOnly}
+                    disabled={readOnly} // This line ensures it's editable when not readOnly
                   />
                   <label htmlFor="enableCostCenterAllocation" className={`text-sm font-medium ${theme.textPrimary}`}>
                     Enable Cost Center Allocation
@@ -1663,32 +1759,35 @@ const handleSubmit = async () => {
                   </label>
                 </div>
                 {formData.enableCompanyPassword && (
-                  <div className="relative"> {/* Removed companyUsername FormField */}
-                    <FormField
-                      label="Set Company Password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.companyPassword}
-                      onChange={(val) => setFormData({ ...formData, companyPassword: val })}
-                      placeholder="Enter a password for this company"
-                      required
-                      error={errors.companyPassword}
-                      icon={<Lock size={18} />}
-                      readOnly={readOnly}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 inset-y-0 my-auto text-gray-400 hover:text-gray-600 transition-colors"
-                      disabled={readOnly}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <>
+                    
+                    <div className="relative">
+                      <FormField
+                        label="Set Company Password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.companyPassword}
+                        onChange={(val) => setFormData({ ...formData, companyPassword: val })}
+                        placeholder="Enter a password for this company"
+                        required
+                        error={errors.companyPassword}
+                        icon={<Lock size={18} />}
+                        readOnly={readOnly}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        disabled={readOnly}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
           )}
-
+ 
           {/* Error Display */}
           {errors.submit && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">

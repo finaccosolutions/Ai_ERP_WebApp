@@ -99,8 +99,8 @@ function FormField({
         {showToggleVisibility && onToggleVisibility && (
           <button
             type="button"
-            onClick={onToggleVisibility} // MODIFIED: Use inset-y-0 my-auto for vertical centering
-            className="absolute right-3 inset-y-0 my-auto text-gray-400 hover:text-gray-600 transition-colors"  
+            onClick={onToggleVisibility}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
           >
             {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>

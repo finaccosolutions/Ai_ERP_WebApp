@@ -38,6 +38,7 @@ import FormField from '../../components/UI/FormField';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CompanySetup from './CompanySetup'; // Import CompanySetup
+import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
 
 interface Company {
   id: string;
@@ -69,7 +70,7 @@ interface Company {
     displayName: string;
     decimalPlaces: number;
     language: string;
-    enablePassword: boolean;
+    enablePassword?: boolean; // Make optional
     password?: string;
   };
 }
@@ -102,16 +103,22 @@ function CompanyManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [displayMode, setDisplayMode] = useState<'none' | 'overview' | 'view' | 'edit' | 'periods'>('none');
-  // Removed activeSettingsTab as CompanySetup will manage its own tabs
   const [loading, setLoading] = useState(false);
+
+  // Password protection states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state for password verification
+
+  // Confirmation modal for delete
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [companyToDeleteId, setCompanyToDeleteId] = useState<string | null>(null);
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // For general errors/messages
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Removed companyFormData as CompanySetup will manage its own form data
   const [periodFormData, setPeriodFormData] = useState({
     id: '',
     name: '',
@@ -128,16 +135,22 @@ function CompanyManagement() {
       // Do not pre-select any company on initial load
       // setSelectedCompany(currentCompany || companies[0]);
     }
-  }, [companies, selectedCompany, currentCompany]);
-
-  // Removed useEffect that populated companyFormData, as CompanySetup will do this internally
+  }, [companies, selectedCompany]);
 
   const handleCompanySelect = (company: Company) => {
     setSelectedCompany(company);
-    setDisplayMode('overview'); // Show overview by default
-    // Removed setActiveSettingsTab as CompanySetup will manage its own tabs
     setSuccessMessage('');
     setFormErrors({});
+    setPassword(''); // Clear password field
+    setPasswordError(''); // Clear password error
+
+    if (company.settings?.enablePassword) {
+      setIsPasswordVerified(false); // Reset verification for new selection
+      setShowPasswordModal(true); // Always show modal if password enabled
+    } else {
+      setIsPasswordVerified(true); // No password, so it's verified
+      setDisplayMode('overview'); // Show overview by default
+    }
   };
 
   const filteredCompanies = companies.filter(company =>
@@ -179,29 +192,29 @@ function CompanyManagement() {
     }
   };
 
-  // --- Company Management Functions ---
-  // Removed updateCompanyFormData as CompanySetup will manage its own form data
-
-  // Removed validateCompanyForm as CompanySetup will manage its own form validation
-
-  // Removed handleSaveCompany as CompanySetup will handle its own save logic and call callbacks
   const handleCompanySettingsSaveSuccess = (message: string) => {
     setSuccessMessage(message);
     setFormErrors({}); // Clear any previous form errors
     refreshCompanies(); // Ensure company list is updated
     setDisplayMode('overview'); // Go back to overview after saving
+    setLoading(false); // Ensure loading state is reset
   };
 
   const handleCompanySettingsSaveError = (message: string) => {
     setFormErrors({ submit: message });
     setSuccessMessage('');
+    setLoading(false); // Ensure loading state is reset
   };
 
-  const handleDeleteCompany = async (companyId: string) => {
-    if (!confirm('Are you sure you want to delete this company and all its associated data? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteCompany = (companyId: string) => {
+    setCompanyToDeleteId(companyId);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteCompany = async () => {
+    if (!companyToDeleteId) return;
+
+    setShowDeleteConfirm(false); // Close modal immediately
     setLoading(true);
     setSuccessMessage('');
     setFormErrors({});
@@ -209,7 +222,7 @@ function CompanyManagement() {
       const { error } = await supabase
         .from('companies')
         .delete()
-        .eq('id', companyId);
+        .eq('id', companyToDeleteId);
 
       if (error) throw error;
 
@@ -222,15 +235,14 @@ function CompanyManagement() {
       setFormErrors({ submit: error.message || 'Failed to delete company.' });
     } finally {
       setLoading(false);
+      setCompanyToDeleteId(null); // Clear company to delete ID
     }
   };
 
   const handleOpenCompany = async (company: Company, periodId?: string) => {
-    if (company.settings?.enablePassword && company.id !== currentCompany?.id) {
-      setSelectedCompany(company); // Set for password modal context
-      setShowPasswordModal(true);
-      return;
-    }
+    // This function is for actually opening the company and navigating to dashboard.
+    // Password check for this is handled by the CompanySelector component in TopNavbar/CompanyPeriodModal.
+    // For direct access from here, we assume it's already verified or not password protected.
     switchCompany(company.id);
     if (periodId) {
       switchPeriod(periodId);
@@ -243,11 +255,11 @@ function CompanyManagement() {
 
     // In production, this should be properly validated against hashed password
     if (password === selectedCompany.settings?.password) {
-      switchCompany(selectedCompany.id);
+      setIsPasswordVerified(true); // Password verified
       setShowPasswordModal(false);
       setPassword('');
       setPasswordError('');
-      navigate('/'); // Navigate to dashboard after successful password entry
+      setDisplayMode('overview'); // Show overview after verification
     } else {
       setPasswordError('Incorrect password. Please try again.');
     }
@@ -529,7 +541,387 @@ function CompanyManagement() {
 
       {/* Right Panel - Company Details & Management */}
       <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-        {displayMode === 'none' && (
+        {selectedCompany ? (
+          (selectedCompany.settings?.enablePassword && !isPasswordVerified) ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <Lock size={64} className="mx-auto text-gray-300 mb-4" />
+                <h3 className={`text-xl font-medium ${theme.textPrimary} mb-2`}>
+                  Enter Password to Access Company Details
+                </h3>
+                <p className={`${theme.textMuted}`}>
+                  This company is password protected. Please enter the password to view its details.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
+                    {selectedCompany.name}
+                  </h1>
+                  <p className={theme.textSecondary}>Manage company details, periods, and settings</p>
+                </div>
+                <div className="flex space-x-2">
+                  {displayMode !== 'overview' && displayMode !== 'periods' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setDisplayMode('overview')}
+                      icon={<ArrowLeft size={16} />}
+                    >
+                      Back to Overview
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/')}
+                    icon={<LayoutDashboard size={16} />}
+                  >
+                    Back to Dashboard
+                  </Button>
+                  <button
+                    onClick={() => setDisplayMode('none')} // Close window option
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Success/Error Messages */}
+              {successMessage && (
+                <div className="p-3 mb-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800 text-sm">{successMessage}</p>
+                </div>
+              )}
+              {formErrors.submit && (
+                <div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm">{formErrors.submit}</p>
+                </div>
+              )}
+
+              {/* Overview Mode */}
+              {displayMode === 'overview' && (
+                <Card className="p-6">
+                  <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
+                    Company Overview
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Company Name</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.name}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Display Name</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.settings?.displayName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Email</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.email}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Phone</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Country</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.country}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Currency</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.currency}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Fiscal Year</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>
+                        {formatDate(selectedCompany.fiscal_year_start)} - {formatDate(selectedCompany.fiscal_year_end)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-sm ${theme.textMuted}`}>Timezone</p>
+                      <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.timezone}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => handleOpenCompany(selectedCompany)}
+                      icon={<FolderOpen size={16} />}
+                    >
+                      Open Company
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setDisplayMode('view')}
+                      icon={<ViewIcon size={16} />}
+                    >
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setDisplayMode('edit')}
+                      icon={<Edit size={16} />}
+                    >
+                      Edit Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setDisplayMode('periods')}
+                      icon={<Calendar size={16} />}
+                    >
+                      Manage Periods
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleDeleteCompany(selectedCompany.id)}
+                      disabled={loading || selectedCompany.id === currentCompany?.id}
+                      icon={<Trash2 size={16} />}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete Company
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {/* View/Edit Mode - Now rendering CompanySetup */}
+              {(displayMode === 'view' || displayMode === 'edit') && selectedCompany && (
+                <CompanySetup
+                  companyToEdit={selectedCompany}
+                  readOnly={displayMode === 'view'}
+                  onSaveSuccess={handleCompanySettingsSaveSuccess}
+                  onSaveError={handleCompanySettingsSaveError}
+                  onCancel={() => setDisplayMode('overview')} // Go back to overview on cancel
+                />
+              )}
+
+              {/* Periods Mode */}
+              {displayMode === 'periods' && (
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className={`text-xl font-semibold ${theme.textPrimary} flex items-center`}>
+                      <Calendar size={24} className="mr-3 text-[#6AC8A3]" />
+                      Accounting Periods
+                    </h2>
+                    <Button
+                      onClick={() => {
+                        setShowCreatePeriodForm(true);
+                        setEditingPeriod(null);
+                        resetPeriodForm();
+                      }}
+                      icon={<Plus size={16} />}
+                      disabled={loading}
+                    >
+                      Create Period
+                    </Button>
+                  </div>
+
+                  {/* Create/Edit Period Form */}
+                  {(showCreatePeriodForm || editingPeriod) && (
+                    <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
+                      <h3 className="font-medium text-blue-900 mb-4">
+                        {editingPeriod ? 'Edit Period' : 'Create New Period'}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          label="Period Name"
+                          value={periodFormData.name}
+                          onChange={(value) => setPeriodFormData(prev => ({ ...prev, name: value }))}
+                          placeholder="e.g., FY 2024-25, Q1 2024"
+                          required
+                          error={formErrors.name}
+                        />
+                        <div className="space-y-2">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                            Period Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={periodFormData.periodType}
+                            onChange={(e) => setPeriodFormData(prev => ({ ...prev, periodType: e.target.value as any }))}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.inputBg} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                            `}
+                          >
+                            <option value="fiscal_year">Fiscal Year</option>
+                            <option value="quarter">Quarter</option>
+                            <option value="month">Month</option>
+                          </select>
+                        </div>
+                        <FormField
+                          label="Start Date"
+                          type="date"
+                          value={periodFormData.startDate}
+                          onChange={(value) => setPeriodFormData(prev => ({ ...prev, startDate: value }))}
+                          required
+                          error={formErrors.startDate}
+                        />
+                        <FormField
+                          label="End Date"
+                          type="date"
+                          value={periodFormData.endDate}
+                          onChange={(value) => setPeriodFormData(prev => ({ ...prev, endDate: value }))}
+                          required
+                          error={formErrors.endDate}
+                        />
+                      </div>
+                      {formErrors.submit && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-800 text-sm">{formErrors.submit}</p>
+                        </div>
+                      )}
+                      <div className="flex justify-end space-x-3 mt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowCreatePeriodForm(false);
+                            cancelEditPeriod();
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={editingPeriod ? handleEditPeriod : handleCreatePeriod}
+                          disabled={loading}
+                        >
+                          {loading ? 'Saving...' : editingPeriod ? 'Update Period' : 'Create Period'}
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Periods List */}
+                  <div className="space-y-3">
+                    {companyPeriods.map((period) => (
+                      <div
+                        key={period.id}
+                        className={`
+                          p-4 border rounded-xl transition-all duration-300
+                          ${period.isActive
+                            ? 'border-[#6AC8A3] bg-[#6AC8A3]/5'
+                            : `${theme.borderColor} hover:border-[#6AC8A3]/50`
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className={`
+                              w-12 h-12 rounded-xl flex items-center justify-center
+                              ${period.isActive
+                                ? 'bg-[#6AC8A3] text-white'
+                                : 'bg-gray-100 text-gray-600'
+                              }
+                            `}>
+                              <Calendar size={20} />
+                            </div>
+                            <div>
+                              <div className="flex items-center space-x-3">
+                                <h3 className={`font-medium ${theme.textPrimary}`}>
+                                  {period.name}
+                                </h3>
+                                <span className={`
+                                  px-2 py-1 text-xs rounded-full
+                                  ${getPeriodTypeColor(period.periodType)}
+                                `}>
+                                  {getPeriodTypeLabel(period.periodType)}
+                                </span>
+                                {period.isActive && (
+                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center">
+                                    <Check size={12} className="mr-1" />
+                                    Active
+                                  </span>
+                                )}
+                                {period.isClosedPeriod && (
+                                  <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full flex items-center">
+                                    <X size={12} className="mr-1" />
+                                    Closed
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-sm ${theme.textMuted}`}>
+                                {formatDate(period.startDate)} - {formatDate(period.endDate)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {!period.isActive && !period.isClosedPeriod && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSetActivePeriod(period.id)}
+                                disabled={loading}
+                              >
+                                Set Active
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenCompany(selectedCompany, period.id)}
+                              icon={<FolderOpen size={14} />}
+                            >
+                              Open
+                            </Button>
+                            {!period.isClosedPeriod && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditPeriod(period)}
+                                disabled={loading}
+                                icon={<Edit size={14} />}
+                              />
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeletePeriod(period.id)}
+                              disabled={loading || period.isActive}
+                              icon={<Trash2 size={14} />}
+                              className="text-red-600 hover:text-red-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {companyPeriods.length === 0 && (
+                      <div className="text-center py-12">
+                        <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className={`text-lg font-medium ${theme.textPrimary} mb-2`}>
+                          No Periods Found
+                        </h3>
+                        <p className={`${theme.textMuted} mb-4`}>
+                          Create your first period to start managing your financial data.
+                        </p>
+                        <Button
+                          onClick={() => setShowCreatePeriodForm(true)}
+                          icon={<Plus size={16} />}
+                        >
+                          Create First Period
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle size={20} className="text-yellow-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-yellow-800 mb-1">Period Management Tips</h4>
+                        <ul className="text-sm text-yellow-700 space-y-1">
+                          <li>• Only one period can be active at a time</li>
+                          <li>• Periods cannot overlap in dates</li>
+                          <li>• Closed periods cannot be edited or deleted</li>
+                          <li>• All financial data is scoped to the active period</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </>
+          )
+        ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Building size={64} className="mx-auto text-gray-300 mb-4" />
@@ -541,374 +933,6 @@ function CompanyManagement() {
               </p>
             </div>
           </div>
-        )}
-
-        {selectedCompany && displayMode !== 'none' && (
-          <>
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-                  {selectedCompany.name}
-                </h1>
-                <p className={theme.textSecondary}>Manage company details, periods, and settings</p>
-              </div>
-              <div className="flex space-x-2">
-                {displayMode !== 'overview' && displayMode !== 'periods' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setDisplayMode('overview')}
-                    icon={<ArrowLeft size={16} />}
-                  >
-                    Back to Overview
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                  icon={<LayoutDashboard size={16} />}
-                >
-                  Back to Dashboard
-                </Button>
-                <button
-                  onClick={() => setDisplayMode('none')} // Close window option
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-
-            {/* Success/Error Messages */}
-            {successMessage && (
-              <div className="p-3 mb-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800 text-sm">{successMessage}</p>
-              </div>
-            )}
-            {formErrors.submit && (
-              <div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{formErrors.submit}</p>
-              </div>
-            )}
-
-            {/* Overview Mode */}
-            {displayMode === 'overview' && (
-              <Card className="p-6">
-                <h2 className={`text-xl font-semibold ${theme.textPrimary} mb-6`}>
-                  Company Overview
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Company Name</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.name}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Display Name</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.settings?.displayName || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Email</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.email}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Phone</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.contactInfo?.phone || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Country</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.country}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Currency</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.currency}</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Fiscal Year</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>
-                      {formatDate(selectedCompany.fiscalYearStart)} - {formatDate(selectedCompany.fiscalYearEnd)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${theme.textMuted}`}>Timezone</p>
-                    <p className={`font-medium ${theme.textPrimary}`}>{selectedCompany.timezone}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => handleOpenCompany(selectedCompany)}
-                    icon={<FolderOpen size={16} />}
-                  >
-                    Open Company
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDisplayMode('view')}
-                    icon={<ViewIcon size={16} />}
-                  >
-                    View Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDisplayMode('edit')}
-                    icon={<Edit size={16} />}
-                  >
-                    Edit Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDisplayMode('periods')}
-                    icon={<Calendar size={16} />}
-                  >
-                    Manage Periods
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDeleteCompany(selectedCompany.id)}
-                    disabled={loading || selectedCompany.id === currentCompany?.id}
-                    icon={<Trash2 size={16} />}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Delete Company
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {/* View/Edit Mode - Now rendering CompanySetup */}
-            {(displayMode === 'view' || displayMode === 'edit') && selectedCompany && (
-              <CompanySetup
-                companyToEdit={selectedCompany}
-                readOnly={displayMode === 'view'}
-                onSaveSuccess={handleCompanySettingsSaveSuccess}
-                onSaveError={handleCompanySettingsSaveError}
-                onCancel={() => setDisplayMode('overview')} // Go back to overview on cancel
-              />
-            )}
-
-            {/* Periods Mode */}
-            {displayMode === 'periods' && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className={`text-xl font-semibold ${theme.textPrimary} flex items-center`}>
-                    <Calendar size={24} className="mr-3 text-[#6AC8A3]" />
-                    Accounting Periods
-                  </h2>
-                  <Button
-                    onClick={() => {
-                      setShowCreatePeriodForm(true);
-                      setEditingPeriod(null);
-                      resetPeriodForm();
-                    }}
-                    icon={<Plus size={16} />}
-                    disabled={loading}
-                  >
-                    Create Period
-                  </Button>
-                </div>
-
-                {/* Create/Edit Period Form */}
-                {(showCreatePeriodForm || editingPeriod) && (
-                  <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
-                    <h3 className="font-medium text-blue-900 mb-4">
-                      {editingPeriod ? 'Edit Period' : 'Create New Period'}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        label="Period Name"
-                        value={periodFormData.name}
-                        onChange={(value) => setPeriodFormData(prev => ({ ...prev, name: value }))}
-                        placeholder="e.g., FY 2024-25, Q1 2024"
-                        required
-                        error={formErrors.name}
-                      />
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                          Period Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={periodFormData.periodType}
-                          onChange={(e) => setPeriodFormData(prev => ({ ...prev, periodType: e.target.value as any }))}
-                          className={`
-                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
-                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                          `}
-                        >
-                          <option value="fiscal_year">Fiscal Year</option>
-                          <option value="quarter">Quarter</option>
-                          <option value="month">Month</option>
-                        </select>
-                      </div>
-                      <FormField
-                        label="Start Date"
-                        type="date"
-                        value={periodFormData.startDate}
-                        onChange={(value) => setPeriodFormData(prev => ({ ...prev, startDate: value }))}
-                        required
-                        error={formErrors.startDate}
-                      />
-                      <FormField
-                        label="End Date"
-                        type="date"
-                        value={periodFormData.endDate}
-                        onChange={(value) => setPeriodFormData(prev => ({ ...prev, endDate: value }))}
-                        required
-                        error={formErrors.endDate}
-                      />
-                    </div>
-                    {formErrors.submit && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-red-800 text-sm">{formErrors.submit}</p>
-                      </div>
-                    )}
-                    <div className="flex justify-end space-x-3 mt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setShowCreatePeriodForm(false);
-                          cancelEditPeriod();
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={editingPeriod ? handleEditPeriod : handleCreatePeriod}
-                        disabled={loading}
-                      >
-                        {loading ? 'Saving...' : editingPeriod ? 'Update Period' : 'Create Period'}
-                      </Button>
-                    </div>
-                  </Card>
-                )}
-
-                {/* Periods List */}
-                <div className="space-y-3">
-                  {companyPeriods.map((period) => (
-                    <div
-                      key={period.id}
-                      className={`
-                        p-4 border rounded-xl transition-all duration-300
-                        ${period.isActive
-                          ? 'border-[#6AC8A3] bg-[#6AC8A3]/5'
-                          : `${theme.borderColor} hover:border-[#6AC8A3]/50`
-                        }
-                      `}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className={`
-                            w-12 h-12 rounded-xl flex items-center justify-center
-                            ${period.isActive
-                              ? 'bg-[#6AC8A3] text-white'
-                              : 'bg-gray-100 text-gray-600'
-                            }
-                          `}>
-                            <Calendar size={20} />
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-3">
-                              <h3 className={`font-medium ${theme.textPrimary}`}>
-                                {period.name}
-                              </h3>
-                              <span className={`
-                                px-2 py-1 text-xs rounded-full
-                                ${getPeriodTypeColor(period.periodType)}
-                              `}>
-                                {getPeriodTypeLabel(period.periodType)}
-                              </span>
-                              {period.isActive && (
-                                <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center">
-                                  <Check size={12} className="mr-1" />
-                                  Active
-                                </span>
-                              )}
-                              {period.isClosedPeriod && (
-                                <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full flex items-center">
-                                  <X size={12} className="mr-1" />
-                                  Closed
-                                </span>
-                              )}
-                            </div>
-                            <p className={`text-sm ${theme.textMuted}`}>
-                              {formatDate(period.startDate)} - {formatDate(period.endDate)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {!period.isActive && !period.isClosedPeriod && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleSetActivePeriod(period.id)}
-                              disabled={loading}
-                            >
-                              Set Active
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenCompany(selectedCompany, period.id)}
-                            icon={<FolderOpen size={14} />}
-                          >
-                            Open
-                          </Button>
-                          {!period.isClosedPeriod && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => startEditPeriod(period)}
-                              disabled={loading}
-                              icon={<Edit size={14} />}
-                            />
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeletePeriod(period.id)}
-                            disabled={loading || period.isActive}
-                            icon={<Trash2 size={14} />}
-                            className="text-red-600 hover:text-red-800"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {companyPeriods.length === 0 && (
-                    <div className="text-center py-12">
-                      <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-                      <h3 className={`text-lg font-medium ${theme.textPrimary} mb-2`}>
-                        No Periods Found
-                      </h3>
-                      <p className={`${theme.textMuted} mb-4`}>
-                        Create your first period to start managing your financial data.
-                      </p>
-                      <Button
-                        onClick={() => setShowCreatePeriodForm(true)}
-                        icon={<Plus size={16} />}
-                      >
-                        Create First Period
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle size={20} className="text-yellow-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-yellow-800 mb-1">Period Management Tips</h4>
-                      <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• Only one period can be active at a time</li>
-                        <li>• Periods cannot overlap in dates</li>
-                        <li>• Closed periods cannot be edited or deleted</li>
-                        <li>• All financial data is scoped to the active period</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </>
         )}
       </div>
 
@@ -939,6 +963,7 @@ function CompanyManagement() {
                     setShowPasswordModal(false);
                     setPassword('');
                     setPasswordError('');
+                    setSelectedCompany(null); // Clear selected company on close
                   }}
                   className={`${theme.textMuted} hover:${theme.textPrimary}`}
                 >
@@ -971,6 +996,7 @@ function CompanyManagement() {
                       setShowPasswordModal(false);
                       setPassword('');
                       setPasswordError('');
+                      setSelectedCompany(null); // Clear selected company on cancel
                     }}
                     className="flex-1"
                   >
@@ -989,6 +1015,16 @@ function CompanyManagement() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteCompany}
+        title="Confirm Company Deletion"
+        message="Are you sure you want to delete this company and all its associated data? This action cannot be undone."
+        confirmText="Yes, Delete Company"
+      />
     </div>
   );
 }
