@@ -32,6 +32,7 @@ import {
   CalendarCheck, // For Customer Aging Report
   FileBadge, // For Credit Notes
   PackageOpen, // For Delivery Challans
+  UserRoundCog, // For Customer Groups
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -43,7 +44,9 @@ import { supabase } from '../../lib/supabase'; // Import supabase
 import { useCompany } from '../../contexts/CompanyContext'; // Import useCompany
 
 // Import new submodule pages
-import CustomersPage from './CustomersPage';
+import CustomersListPage from './CustomersListPage'; // Renamed
+import CustomerFormPage from './CustomerFormPage'; // New
+import CustomerGroupsPage from './CustomerGroupsPage'; // New
 import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
@@ -81,6 +84,7 @@ function Sales() {
     salesRegister: '0',
     customerWiseSalesSummary: '0',
     deliveryChallans: '0',
+    customerGroups: '0', // New metric
   });
 
   useEffect(() => {
@@ -101,6 +105,7 @@ function Sales() {
       // const { count: salesReturnsCount } = await supabase.from('sales_returns').select('count', { count: 'exact', head: true }).eq('company_id', companyId); 
       const { count: priceListsCount } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: deliveryChallansCount } = await supabase.from('sales_orders').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'partially_delivered'); // Assuming delivery challans are linked to sales orders
+      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // New metric
 
       // For outstanding and aging, you'd typically aggregate data, here we'll use a placeholder count
       const { count: customerOutstandingCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId).gt('outstanding_amount', 0);
@@ -123,6 +128,7 @@ function Sales() {
         salesRegister: salesRegisterCount?.toString() || '0',
         customerWiseSalesSummary: customerWiseSalesSummaryCount?.toString() || '0',
         deliveryChallans: deliveryChallansCount?.toString() || '0',
+        customerGroups: customerGroupsCount?.toString() || '0', // New metric
       });
     } catch (error) {
       console.error('Error fetching sales metrics:', error);
@@ -164,6 +170,7 @@ function Sales() {
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
         { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers },
+        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups }, // New module
         { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists },
       ]
     },
@@ -241,7 +248,10 @@ function Sales() {
   if (!isMainSalesPage) {
     return (
       <Routes>
-        <Route path="/customers" element={<CustomersPage />} />
+        <Route path="/customers" element={<CustomersListPage />} /> {/* Renamed */}
+        <Route path="/customers/new" element={<CustomerFormPage />} /> {/* New route for creating customer */}
+        <Route path="/customers/edit/:id" element={<CustomerFormPage />} /> {/* New route for editing customer */}
+        <Route path="/customer-groups" element={<CustomerGroupsPage />} /> {/* New route for customer groups */}
         <Route path="/price-list" element={<SalesPriceListPage />} />
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
@@ -470,9 +480,11 @@ function Sales() {
               Create Invoice
             </Button>
           </Link>
-          <Button variant="outline" className="w-full justify-start" icon={<Users size={16} />}>
-            Add Customer
-          </Button>
+          <Link to="/sales/customers/new"> {/* Updated link */}
+            <Button variant="outline" className="w-full justify-start" icon={<Users size={16} />}>
+              Add Customer
+            </Button>
+          </Link>
           <Button variant="outline" className="w-full justify-start" icon={<BarChart3 size={16} />}>
             Sales Report
           </Button>

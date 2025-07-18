@@ -14,6 +14,8 @@ interface MasterSelectFieldProps {
   error?: string;
   className?: string;
   disabled?: boolean;
+  allowCreation?: boolean; // New prop to allow creation
+  onNewValue?: (value: string) => void; // Callback for new value creation
 }
 
 function MasterSelectField({
@@ -27,6 +29,8 @@ function MasterSelectField({
   error,
   className = '',
   disabled = false,
+  allowCreation = false, // Default to false
+  onNewValue,
 }: MasterSelectFieldProps) {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -41,22 +45,40 @@ function MasterSelectField({
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        // When focus is lost, check for new value if creation is allowed
+        if (allowCreation && onNewValue && searchTerm.trim() !== '') {
+          const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
+          if (!found) {
+            onNewValue(searchTerm.trim());
+          }
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [searchTerm, options, allowCreation, onNewValue]); // Added dependencies
 
   const filteredOptions = options.filter(option =>
-    option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    // Ensure option is not null/undefined and option.name is safely accessed
+    option && (option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     onValueChange(e.target.value);
     setIsOpen(true); // Open dropdown when typing
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && allowCreation && onNewValue && searchTerm.trim() !== '') {
+      const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
+      if (!found) {
+        onNewValue(searchTerm.trim());
+        setIsOpen(false); // Close dropdown after triggering new value
+      }
+    }
   };
 
   const handleOptionClick = (option: { id: string; name: string; [key: string]: any }) => {
@@ -77,12 +99,13 @@ function MasterSelectField({
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown} // Add keydown handler
           placeholder={placeholder}
           required={required}
           disabled={disabled}
           className={`
             w-full pl-10 pr-3 py-3 border ${theme.inputBorder}
-            ${theme.borderRadius} ${theme.inputBg} ${theme.textPrimary}
+            ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[#6AC8A3]
             placeholder:${theme.textMuted}
