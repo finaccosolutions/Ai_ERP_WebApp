@@ -16,6 +16,7 @@ interface MasterSelectFieldProps {
   disabled?: boolean;
   allowCreation?: boolean; // New prop to allow creation
   onNewValue?: (value: string) => void; // Callback for new value creation
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
 }
 
 function MasterSelectField({
@@ -31,6 +32,7 @@ function MasterSelectField({
   disabled = false,
   allowCreation = false, // Default to false
   onNewValue,
+  onKeyDown, // Destructure new prop
 }: MasterSelectFieldProps) {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -71,7 +73,11 @@ function MasterSelectField({
     setIsOpen(true); // Open dropdown when typing
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleInternalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (onKeyDown) {
+      onKeyDown(e); // Pass the event to the external handler first
+    }
+
     if (e.key === 'Enter' && allowCreation && onNewValue && searchTerm.trim() !== '') {
       const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
       if (!found) {
@@ -99,7 +105,7 @@ function MasterSelectField({
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown} // Add keydown handler
+          onKeyDown={handleInternalKeyDown} // Use the internal handler
           placeholder={placeholder}
           required={required}
           disabled={disabled}

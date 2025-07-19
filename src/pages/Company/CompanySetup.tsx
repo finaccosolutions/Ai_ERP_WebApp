@@ -53,6 +53,7 @@ import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext'; // Import useNotification
+import { populateDefaultChartOfAccounts } from '../../lib/coaSetup'; // NEW: Import COA population utility
  
 // --- ALL STATIC DATA DEFINED HERE, ABOVE THE COMPONENT FUNCTION ---
 const countries = [
@@ -508,8 +509,7 @@ const getInitialFormData = (company?: Company) => {
     enableMultiUserAccess: safeCompany.settings.multiUserAccess ?? defaultSettings.multiUserAccess, // Changed from settings
     companyPassword: safeCompany.settings.password || '', // Changed from settings
     enableCompanyPassword: safeCompany.settings.enablePassword ?? defaultSettings.enablePassword, // Changed from settings
-    enableBarcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettings.barcodeSupport, // Changed from settings
-    companyUsername: safeCompany.settings.companyUsername || '', // Changed from settings
+    barcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettings.barcodeSupport, // Changed from settings
     companyType: safeCompany.settings.companyType || defaultSettings.companyType, // Changed from settings
     inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettings.inventoryTracking // Changed from settings
   };
@@ -532,6 +532,7 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
   const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const [activeTab, setActiveTab] = useState('company_info'); // Initial active tab
+  const [defaultRoleId, setDefaultRoleId] = useState<string | null>(null); // NEW: State for default role ID
 
   const tabs = [
     { id: 'company_info', label: 'Company Info', icon: Briefcase },
@@ -543,6 +544,26 @@ function CompanySetup({ companyToEdit, readOnly, onSaveSuccess, onSaveError, onC
 
 
   const [formData, setFormData] = useState<any>(getInitialFormData());
+
+  // NEW: Fetch default role ID on component mount
+  useEffect(() => {
+    const fetchDefaultRole = async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('name', 'Admin') // Assuming 'Admin' is the default role for company creators
+        .single();
+
+      if (error) {
+        console.error('Error fetching default role:', error);
+        showNotification('Could not find default Admin role. Please ensure it exists in user_roles table.', 'error');
+      } else if (data) {
+        setDefaultRoleId(data.id);
+      }
+    };
+    fetchDefaultRole();
+  }, []);
+
 
   // Initialize form data from companyToEdit prop or reset for new company
   useEffect(() => {
@@ -888,11 +909,16 @@ const handleSubmit = async () => {
 
         if (companyId) {
           console.log("handleSubmit: Attempting to link user to new company in users_companies.");
+          // NEW: Check if defaultRoleId is available
+          if (!defaultRoleId) {
+            throw new Error("Default role ID not found. Cannot link user to company.");
+          }
           const { error: userCompanyLinkError } = await supabase
             .from('users_companies')
             .insert({
               user_id: user.id,
               company_id: companyId,
+              role_id: defaultRoleId, // NEW: Use the fetched defaultRoleId
               is_active: true,
             });
 
@@ -901,6 +927,12 @@ const handleSubmit = async () => {
             throw new Error(`Failed to link user to company: ${userCompanyLinkError.message}`);
           }
           console.log("handleSubmit: User successfully linked to new company.");
+
+          // NEW: Populate Chart of Accounts for the new company
+          console.log("handleSubmit: Populating default Chart of Accounts.");
+          await populateDefaultChartOfAccounts(supabase, companyId);
+          console.log("handleSubmit: Default Chart of Accounts populated.");
+          // END NEW
         } else {
           console.error("handleSubmit: No company ID returned after insert, cannot link user.");
           throw new Error("Failed to retrieve new company ID.");
@@ -1292,9 +1324,9 @@ const handleSubmit = async () => {
                           ${theme.borderRadius} shadow-lg z-50 max-h-60 overflow-y-auto
                         `}>
                           {countries.map((country) => (
-                            <button
+                            <option
                               key={country.id}
-                              type="button"
+                              value={country.id}
                               onClick={() => {
                                 setFormData({ ...formData, phoneCountry: country.id });
                                 setShowPhoneCountryDropdown(false);
@@ -1308,7 +1340,7 @@ const handleSubmit = async () => {
                               <span className="text-lg">{country.flag}</span>
                               <span className="text-sm">{country.dialCode}</span>
                               <span className="text-sm">{country.name}</span>
-                            </button>
+                            </option>
                           ))}
                         </div>
                       )}
@@ -1860,4 +1892,4 @@ const handleSubmit = async () => {
   );
 }
 
-export default CompanySetup;
+export default CompanySetup; 
