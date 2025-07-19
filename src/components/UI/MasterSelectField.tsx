@@ -1,5 +1,5 @@
 // src/components/UI/MasterSelectField.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -19,7 +19,15 @@ interface MasterSelectFieldProps {
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
 }
 
-function MasterSelectField({
+export interface MasterSelectFieldRef {
+  getSearchTerm: () => string;
+  getFilteredOptions: () => { id: string; name: string; [key: string]: any }[];
+  openDropdown: () => void;
+  closeDropdown: () => void;
+  selectOption: (id: string) => void;
+}
+
+const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProps>(({
   label,
   value,
   onValueChange,
@@ -33,11 +41,12 @@ function MasterSelectField({
   allowCreation = false, // Default to false
   onNewValue,
   onKeyDown, // Destructure new prop
-}: MasterSelectFieldProps) {
+}, ref) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null); // Ref for the input element
 
   useEffect(() => {
     setSearchTerm(value);
@@ -67,6 +76,22 @@ function MasterSelectField({
     option && (option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Expose imperative handle methods
+  useImperativeHandle(ref, () => ({
+    getSearchTerm: () => searchTerm,
+    getFilteredOptions: () => filteredOptions,
+    openDropdown: () => setIsOpen(true),
+    closeDropdown: () => setIsOpen(false),
+    selectOption: (id: string) => {
+      const option = options.find(opt => opt.id === id);
+      if (option) {
+        setSearchTerm(option.name);
+        onSelect(option.id, option.name, option);
+        setIsOpen(false);
+      }
+    },
+  }));
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     onValueChange(e.target.value);
@@ -78,11 +103,16 @@ function MasterSelectField({
       onKeyDown(e); // Pass the event to the external handler first
     }
 
-    if (e.key === 'Enter' && allowCreation && onNewValue && searchTerm.trim() !== '') {
-      const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
-      if (!found) {
-        onNewValue(searchTerm.trim());
-        setIsOpen(false); // Close dropdown after triggering new value
+    if (e.key === 'Enter') {
+      if (filteredOptions.length === 1) {
+        // If only one option is filtered, select it on Enter
+        handleOptionClick(filteredOptions[0]);
+      } else if (allowCreation && onNewValue && searchTerm.trim() !== '') {
+        const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
+        if (!found) {
+          onNewValue(searchTerm.trim());
+          setIsOpen(false); // Close dropdown after triggering new value
+        }
       }
     }
   };
@@ -95,12 +125,15 @@ function MasterSelectField({
 
   return (
     <div className={`relative ${className}`} ref={wrapperRef}>
-      <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
+      {label && ( // Only render label if it's not empty
+        <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
       <div className="relative">
         <input
+          ref={inputRef}
           type="text"
           value={searchTerm}
           onChange={handleInputChange}
@@ -119,7 +152,14 @@ function MasterSelectField({
           `}
         />
         <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        <ChevronDown size={18} className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-transform ${isOpen ? 'rotate-180' : ''} text-gray-400`} />
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)} // Toggle dropdown on icon click
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-transform"
+          disabled={disabled}
+        >
+          <ChevronDown size={18} className={`${isOpen ? 'rotate-180' : ''}`} />
+        </button>
       </div>
 
       {isOpen && filteredOptions.length > 0 && (
@@ -147,6 +187,7 @@ function MasterSelectField({
       )}
     </div>
   );
-}
+});
 
 export default MasterSelectField;
+

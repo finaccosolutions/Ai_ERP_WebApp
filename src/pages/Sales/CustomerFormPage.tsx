@@ -1,5 +1,5 @@
 // src/pages/Sales/CustomerFormPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User, Mail, Phone, MapPin, Building, CreditCard, Save, ArrowLeft,
   Globe, Tag, Users, Info, DollarSign, Calendar, FileText, Truck,
@@ -15,7 +15,7 @@ import {
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
-import MasterSelectField from '../../components/UI/MasterSelectField';
+import MasterSelectField, { MasterSelectFieldRef } from '../../components/UI/MasterSelectField'; // Import MasterSelectFieldRef
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -125,6 +125,12 @@ function CustomerFormPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState('basic-info');
 
+  // Ref for Customer Group MasterSelectField
+  const customerGroupRef = useRef<MasterSelectFieldRef>(null);
+
+  // State for "Same as Billing Address" checkbox
+  const [sameAsBilling, setSameAsBilling] = useState(false);
+
   const tabs = [
     { id: 'basic-info', label: 'Basic Info', icon: Home },
     { id: 'billing-address', label: 'Billing Address', icon: BookUser },
@@ -138,6 +144,15 @@ function CustomerFormPage() {
     if (currentCompany?.id) {
       fetchCustomerGroups();
       fetchPriceLists();
+      // Auto-fill country based on company's country
+      const companyCountryCode = currentCompany.country;
+      setSelectedBillingCountry(companyCountryCode);
+      setSelectedShippingCountry(companyCountryCode);
+      setFormData(prev => ({
+        ...prev,
+        billingAddress: { ...prev.billingAddress, country: companyCountryCode },
+        shippingAddress: { ...prev.shippingAddress, country: companyCountryCode },
+      }));
     }
   }, [currentCompany?.id]);
 
@@ -155,9 +170,8 @@ function CustomerFormPage() {
       setFormData(prev => ({ ...prev, customerGroupId: createdGroupId }));
       // Refresh customer groups list to include the new one
       fetchCustomerGroups().then(() => {
-        // Optionally, set the MasterSelectField's internal value to the new group name
-        // This might require a ref or a more direct way to update MasterSelectField's internal state
-        // For now, just ensuring it's selected in the form data is sufficient.
+        // Programmatically select the new group in MasterSelectField
+        customerGroupRef.current?.selectOption(createdGroupId);
       });
       showNotification(`Customer Group "${createdGroupName}" created and selected!`, 'success');
 
@@ -251,6 +265,10 @@ function CustomerFormPage() {
         // Attempt to set phone country code if available in stored phone/mobile
         const phoneCountryCode = getPhoneCountryCodes().find(c => data.phone?.startsWith(c.dialCode));
         if (phoneCountryCode) setSelectedPhoneCountryCode(phoneCountryCode.dialCode);
+
+        // Check if shipping address is same as billing
+        const isSameAddress = JSON.stringify(data.billing_address) === JSON.stringify(data.shipping_address);
+        setSameAsBilling(isSameAddress);
       }
     } catch (err: any) {
       showNotification(`Error loading customer: ${err.message}`, 'error');
@@ -275,13 +293,32 @@ function CustomerFormPage() {
     }));
   };
 
+  const handleSameAsBillingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    setSameAsBilling(isChecked);
+    if (isChecked) {
+      setFormData(prev => ({
+        ...prev,
+        shippingAddress: { ...prev.billingAddress },
+      }));
+      setSelectedShippingCountry(selectedBillingCountry);
+    } else {
+      // Clear shipping address or reset to initial empty state
+      setFormData(prev => ({
+        ...prev,
+        shippingAddress: { street1: '', street2: '', city: '', state: '', country: selectedBillingCountry, zipCode: '' },
+      }));
+      setSelectedShippingCountry(selectedBillingCountry); // Keep country same as billing by default
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = 'Customer Name is required.';
     if (!formData.customerCode.trim()) newErrors.customerCode = 'Customer Code is required.';
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format.';
 
-    // Dynamic tax field validation based on country
+    // Dynamic tax field validation based on billing country
     const countryTaxConfig = getCountryByCode(selectedBillingCountry)?.taxConfig;
     if (countryTaxConfig) {
       if (countryTaxConfig.type === 'GST') {
@@ -323,7 +360,7 @@ function CustomerFormPage() {
         pan: formData.pan,
         gstin: formData.gstin,
         billing_address: formData.billingAddress,
-        shipping_address: formData.shippingAddress,
+        shipping_address: sameAsBilling ? formData.billingAddress : formData.shippingAddress, // Use billing if sameAsBilling
         credit_limit: formData.creditLimit,
         credit_days: formData.creditDays,
         price_list_id: formData.priceListId || null,
@@ -393,7 +430,7 @@ function CustomerFormPage() {
       state: {
         newGroupName: customerGroupNewValue,
         fromCustomerForm: true,
-        returnPath: id ? `/sales/customers/edit/${id}` : '/sales/customers/new'
+        returnPath: location.pathname // Pass the current path back
       }
     });
   };
@@ -417,10 +454,22 @@ function CustomerFormPage() {
   const handleCustomerGroupKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'F2' || event.key === 'Enter') {
       event.preventDefault(); // Prevent default form submission or other actions
-      const typedValue = (event.target as HTMLInputElement).value;
-      if (typedValue.trim() !== '') {
-        setCustomerGroupNewValue(typedValue);
+
+      const currentSearchTerm = customerGroupRef.current?.getSearchTerm() || '';
+      const filteredOptions = customerGroupRef.current?.getFilteredOptions() || [];
+
+      const isNewItem = filteredOptions.length === 0 || !filteredOptions.some(opt => opt.name.toLowerCase() === currentSearchTerm.toLowerCase());
+
+      if (isNewItem) {
+        setCustomerGroupNewValue(currentSearchTerm);
         setShowCreateGroupConfirm(true);
+      } else {
+        // If it's an existing item, ensure it's selected and close dropdown
+        const matchedOption = filteredOptions.find(opt => opt.name.toLowerCase() === currentSearchTerm.toLowerCase());
+        if (matchedOption) {
+          customerGroupRef.current?.selectOption(matchedOption.id);
+        }
+        customerGroupRef.current?.closeDropdown();
       }
     }
   };
@@ -526,6 +575,7 @@ function CustomerFormPage() {
                   </select>
                 </div>
                 <MasterSelectField
+                  ref={customerGroupRef} // Attach ref here
                   label="Customer Group"
                   value={customerGroups.find(g => g.id === formData.customerGroupId)?.name || ''}
                   onValueChange={(val) => { /* This is for typing, actual selection is onSelect */ }}
@@ -629,34 +679,47 @@ function CustomerFormPage() {
                 <Truck size={20} className="mr-2 text-[#6AC8A3]" />
                 Shipping Address (Optional)
               </h3>
+              <div className="flex items-center space-x-3 mb-4">
+                <input
+                  type="checkbox"
+                  id="sameAsBilling"
+                  checked={sameAsBilling}
+                  onChange={handleSameAsBillingChange}
+                  className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  disabled={viewOnly}
+                />
+                <label htmlFor="sameAsBilling" className={`text-sm font-medium ${theme.textPrimary}`}>
+                  Same as Billing Address
+                </label>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   label="Address Line 1"
                   value={formData.shippingAddress.street1}
                   onChange={(val) => handleAddressChange('shippingAddress', 'street1', val)}
                   placeholder="Street address, P.O. box"
-                  readOnly={viewOnly}
+                  readOnly={viewOnly || sameAsBilling}
                 />
                 <FormField
                   label="Address Line 2"
                   value={formData.shippingAddress.street2}
                   onChange={(val) => handleAddressChange('shippingAddress', 'street2', val)}
                   placeholder="Apartment, suite, unit, building, floor, etc."
-                  readOnly={viewOnly}
+                  readOnly={viewOnly || sameAsBilling}
                 />
                 <FormField
                   label="City"
                   value={formData.shippingAddress.city}
                   onChange={(val) => handleAddressChange('shippingAddress', 'city', val)}
                   placeholder="City"
-                  readOnly={viewOnly}
+                  readOnly={viewOnly || sameAsBilling}
                 />
                 <FormField
                   label="ZIP Code"
                   value={formData.shippingAddress.zipCode}
                   onChange={(val) => handleAddressChange('shippingAddress', 'zipCode', val)}
                   placeholder="ZIP Code"
-                  readOnly={viewOnly}
+                  readOnly={viewOnly || sameAsBilling}
                 />
                 <MasterSelectField
                   label="Country"
@@ -669,7 +732,7 @@ function CustomerFormPage() {
                   }}
                   options={COUNTRIES.map(c => ({ id: c.code, name: c.name }))}
                   placeholder="Select Country"
-                  readOnly={viewOnly}
+                  readOnly={viewOnly || sameAsBilling}
                 />
                 <MasterSelectField
                   label="State"
@@ -678,8 +741,8 @@ function CustomerFormPage() {
                   onSelect={(id) => handleAddressChange('shippingAddress', 'state', id)}
                   options={getStatesForCountry(selectedShippingCountry)}
                   placeholder="Select State"
-                  disabled={!selectedShippingCountry || viewOnly}
-                  readOnly={viewOnly}
+                  disabled={!selectedShippingCountry || viewOnly || sameAsBilling}
+                  readOnly={viewOnly || sameAsBilling}
                 />
               </div>
             </>

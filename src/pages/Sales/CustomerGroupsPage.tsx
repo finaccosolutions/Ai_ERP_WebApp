@@ -1,6 +1,6 @@
 // src/pages/Sales/CustomerGroupsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Edit, Trash2, RefreshCw, AlertTriangle, CheckCircle, Search, Info, ArrowLeft } from 'lucide-react';
+import { Plus, Users, Edit, Trash2, RefreshCw, AlertTriangle, CheckCircle, Search, Info, ArrowLeft, Eye } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
@@ -11,6 +11,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import { useLocation, useNavigate } from 'react-router-dom';
+import AIButton from '../../components/UI/AIButton'; // Import AIButton
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
 
 interface CustomerGroup {
   id: string;
@@ -257,6 +259,13 @@ function CustomerGroupsPage() {
     setShowCreateForm(true);
   };
 
+  const numGroupsOptions = [
+    { id: '10', name: 'Show 10' },
+    { id: '25', name: 'Show 25' },
+    { id: '50', name: 'Show 50' },
+    { id: 'all', name: `Show All (${totalGroupsCount})` },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -265,12 +274,18 @@ function CustomerGroupsPage() {
           <p className={theme.textSecondary}>Organize your customers into manageable groups.</p>
         </div>
         <div className="flex space-x-2">
-          <Button icon={<Plus size={16} />} onClick={() => { setShowCreateForm(true); resetForm(); }}>
-            Create New Group
-          </Button>
-          <Button icon={<RefreshCw size={16} />} onClick={fetchCustomerGroups} disabled={loading}>
-            Refresh
-          </Button>
+          {/* Conditional rendering of buttons */}
+          {!showCreateForm && (
+            <>
+              <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+                Back
+              </Button>
+              <AIButton variant="suggest" onSuggest={() => console.log('AI Customer Group Suggestions')} />
+              <Button icon={<Plus size={16} />} onClick={() => { setShowCreateForm(true); resetForm(); }}>
+                Create New Group
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -386,20 +401,15 @@ function CustomerGroupsPage() {
               />
             </div>
             <div className="flex items-center space-x-2">
-              <select
-                value={numGroupsToShow}
-                onChange={(e) => setNumGroupsToShow(e.target.value)}
-                className={`
-                  px-3 py-2 border ${theme.inputBorder} rounded-lg
-                  ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                `}
-              >
-                <option value="10">Show 10</option>
-                <option value="25">Show 25</option>
-                <option value="50">Show 50</option>
-                <option value="all">Show All ({totalGroupsCount})</option>
-              </select>
+              <MasterSelectField
+                label="" // No label needed for this dropdown
+                value={numGroupsOptions.find(opt => opt.id === numGroupsToShow)?.name || ''}
+                onValueChange={() => {}} // Not used for typing
+                onSelect={(id) => setNumGroupsToShow(id)}
+                options={numGroupsOptions}
+                placeholder="Show"
+                className="w-32"
+              />
               <Button onClick={handleSearch} disabled={loading} icon={<RefreshCw size={16} />}>
                 {loading ? 'Loading...' : 'Refresh'}
               </Button>
@@ -432,8 +442,15 @@ function CustomerGroupsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.description || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(group.created_at).toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button variant="ghost" size="sm" onClick={() => startEditGroup(group)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)} className="text-red-600 hover:text-red-800">Delete</Button>
+                        <Button variant="ghost" size="sm" onClick={() => startEditGroup(group)} title="Edit">
+                          <Edit size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customer-groups/edit/${group.id}?viewOnly=true`)} title="View">
+                          <Eye size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                          <Trash2 size={16} />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -458,3 +475,4 @@ function CustomerGroupsPage() {
 }
 
 export default CustomerGroupsPage;
+

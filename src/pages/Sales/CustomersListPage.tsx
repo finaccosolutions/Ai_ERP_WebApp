@@ -1,6 +1,6 @@
 // src/pages/Sales/CustomersListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, Mail, Phone, RefreshCw, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Users, Mail, Phone, RefreshCw, Eye, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -11,6 +11,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Link, useNavigate } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
 
 interface Customer {
   id: string;
@@ -114,6 +115,13 @@ function CustomersListPage() {
     }
   };
 
+  const numCustomersOptions = [
+    { id: '10', name: 'Show 10' },
+    { id: '25', name: 'Show 25' },
+    { id: '50', name: 'Show 50' },
+    { id: 'all', name: `Show All (${totalCustomersCount})` },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -122,6 +130,9 @@ function CustomersListPage() {
           <p className={theme.textSecondary}>Manage your customer profiles and details.</p>
         </div>
         <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Customer Suggestions')} />
           <Link to="/sales/customers/new">
             <Button icon={<Plus size={16} />}>Add New Customer</Button>
@@ -148,20 +159,15 @@ function CustomersListPage() {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <select
-              value={numCustomersToShow}
-              onChange={(e) => setNumCustomersToShow(e.target.value)}
-              className={`
-                px-3 py-2 border ${theme.inputBorder} rounded-lg
-                ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-              `}
-            >
-              <option value="10">Show 10</option>
-              <option value="25">Show 25</option>
-              <option value="50">Show 50</option>
-              <option value="all">Show All ({totalCustomersCount})</option>
-            </select>
+            <MasterSelectField
+              label="" // No label needed for this dropdown
+              value={numCustomersOptions.find(opt => opt.id === numCustomersToShow)?.name || ''}
+              onValueChange={() => {}} // Not used for typing
+              onSelect={(id) => setNumCustomersToShow(id)}
+              options={numCustomersOptions}
+              placeholder="Show"
+              className="w-32"
+            />
             <Button onClick={handleSearch} disabled={loading} icon={<RefreshCw size={16} />}>
               {loading ? 'Loading...' : 'Refresh'}
             </Button>
@@ -198,14 +204,14 @@ function CustomersListPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.phone || customer.mobile || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.customer_groups?.name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customers/edit/${customer.id}`)}>
-                        <Edit size={16} /> Edit
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customers/edit/${customer.id}`)} title="Edit">
+                        <Edit size={16} />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customers/edit/${customer.id}?viewOnly=true`)}>
-                        <Eye size={16} /> View
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customers/edit/${customer.id}?viewOnly=true`)} title="View">
+                        <Eye size={16} />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800">
-                        <Trash2 size={16} /> Delete
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                        <Trash2 size={16} />
                       </Button>
                     </td>
                   </tr>
@@ -233,3 +239,4 @@ function CustomersListPage() {
 }
 
 export default CustomersListPage;
+
