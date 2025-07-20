@@ -1,9 +1,11 @@
+// src/pages/Sales/SalesReturnsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeftRight, Search, Calendar, Users, Package, DollarSign, List, Save, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeftRight, Search, Calendar, Users, Package, DollarSign, List, Save, Trash2, Calculator } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -60,6 +62,19 @@ interface SalesReturnItem {
   lineTotal: number;
 }
 
+// Define Item type for MasterSelectField options
+interface ItemOption {
+  id: string;
+  name: string;
+  item_code: string;
+  standard_rate: number;
+  unit_id: string;
+  tax_rate: number;
+  hsn_code: string;
+  description: string;
+  units_of_measure: { name: string } | null; // Nested unit name
+}
+
 function SalesReturnsPage() {
   const { theme } = useTheme();
   const { suggestWithAI } = useAI();
@@ -103,10 +118,12 @@ function SalesReturnsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [availableItems, setAvailableItems] = useState<ItemOption[]>([]); // State to store available items
 
   useEffect(() => {
-    if (viewMode === 'list') {
+    if (currentCompany?.id) {
       fetchSalesReturns();
+      fetchAvailableItems(currentCompany.id);
     }
   }, [viewMode, currentCompany?.id]);
 
@@ -129,6 +146,40 @@ function SalesReturnsPage() {
       console.error('Error fetching sales returns:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableItems = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select(`
+          id,
+          item_code,
+          item_name,
+          standard_rate,
+          tax_rate,
+          hsn_code,
+          description,
+          units_of_measure ( name )
+        `)
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setAvailableItems(data.map(item => ({
+        id: item.id,
+        name: item.item_name,
+        item_code: item.item_code,
+        standard_rate: item.standard_rate,
+        unit_id: item.units_of_measure?.name || 'Nos', // Assuming unit_id is the name of the unit
+        tax_rate: item.tax_rate,
+        hsn_code: item.hsn_code,
+        description: item.description,
+        units_of_measure: item.units_of_measure,
+      })));
+    } catch (error) {
+      console.error('Error fetching available items:', error);
     }
   };
 
@@ -362,6 +413,38 @@ function SalesReturnsPage() {
     }
   };
 
+  // New handler for MasterSelectField item selection
+  const handleItemSelect = (index: number, selectedId: string, selectedName: string, additionalData: ItemOption) => {
+    updateItem(index, 'itemId', selectedId); // Store item ID
+    updateItem(index, 'itemName', selectedName);
+    updateItem(index, 'description', additionalData.description);
+    updateItem(index, 'quantity', 1); // Default to 1
+    updateItem(index, 'unit', additionalData.units_of_measure?.name || 'Nos');
+    updateItem(index, 'rate', additionalData.standard_rate);
+    updateItem(index, 'taxRate', additionalData.tax_rate);
+  };
+
+  // AI suggestion for item name (can suggest an item from availableItems)
+  const handleItemAISuggestion = async (index: number, suggestedValue: string) => {
+    try {
+      const suggestions = await suggestWithAI({
+        type: 'item_lookup',
+        query: suggestedValue,
+        context: 'sales_return',
+        availableItems: availableItems.map(item => ({ id: item.id, name: item.name, code: item.item_code }))
+      });
+      
+      if (suggestions?.item) {
+        const suggestedItem = availableItems.find(item => item.id === suggestions.item.id || item.item_name === suggestions.item.name);
+        if (suggestedItem) {
+          handleItemSelect(index, suggestedItem.id, suggestedItem.name, suggestedItem);
+        }
+      }
+    } catch (error) {
+      console.error('Item AI suggestion error:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -483,12 +566,17 @@ function SalesReturnsPage() {
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
                       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div className="md:col-span-2">
-                          <FormField
+                          <MasterSelectField
                             label="Item Name"
                             value={item.itemName}
-                            onChange={(value) => updateItem(index, 'itemName', value)}
+                            onValueChange={(value) => updateItem(index, 'itemName', value)}
+                            onSelect={(id, name, data) => handleItemSelect(index, id, name, data as ItemOption)}
+                            options={availableItems.map(item => ({ id: item.id, name: item.item_name, ...item }))}
                             placeholder="Product/Service name"
                             required
+                            aiHelper={true}
+                            context="sales_return_item_selection"
+                            onAISuggestion={(val) => handleItemAISuggestion(index, val)}
                           />
                         </div>
                         <div>

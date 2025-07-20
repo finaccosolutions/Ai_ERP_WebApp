@@ -38,25 +38,26 @@ import {
   AlertTriangle, // For AI Insights
   Lightbulb, // For AI Insights
   Target, // For AI Insights
+  Download, // For Export
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
-import CreateInvoice from './CreateInvoice'; // This will be removed later if CreateInvoice is integrated into SalesInvoicesPage
+import CreateInvoice from './CreateInvoice';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
-import { supabase } from '../../lib/supabase'; // Import supabase
-import { useCompany } from '../../contexts/CompanyContext'; // Import useCompany
+import { supabase } from '../../lib/supabase';
+import { useCompany } from '../../contexts/CompanyContext';
 
 // Import new submodule pages
-import CustomersListPage from './CustomersListPage'; // Renamed
-import CustomerFormPage from './CustomerFormPage'; // New
-import CustomerGroupsPage from './CustomerGroupsPage'; // New
+import CustomersListPage from './CustomersListPage';
+import CustomerFormPage from './CustomerFormPage';
+import CustomerGroupsPage from './CustomerGroupsPage';
 import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
 import DeliveryChallansPage from './DeliveryChallansPage';
-import SalesInvoicesPage from './SalesInvoicesPage'; // Renamed for clarity
+import SalesInvoicesPage from './SalesInvoicesPage';
 import CreditNotesPage from './CreditNotesPage';
 import ReceiptsPage from './ReceiptsPage';
 import SalesReturnsPage from './SalesReturnsPage';
@@ -66,12 +67,47 @@ import SalesAnalysisPage from './SalesAnalysisPage';
 import SalesRegisterPage from './SalesRegisterPage';
 import CustomerWiseSalesSummaryPage from './CustomerWiseSalesSummaryPage';
 
+// Filter Modal Component (simplified for this example)
+const FilterModal = ({ isOpen, onClose, filters, onApplyFilters, onFilterChange }: any) => {
+  const { theme } = useTheme();
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <Card className="p-6 w-full max-w-md space-y-4">
+        <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Filter Sales Data</h3>
+        <FormField
+          label="Start Date"
+          type="date"
+          value={filters.startDate}
+          onChange={(val: string) => onFilterChange('startDate', val)}
+        />
+        <FormField
+          label="End Date"
+          type="date"
+          value={filters.endDate}
+          onChange={(val: string) => onFilterChange('endDate', val)}
+        />
+        <FormField
+          label="Customer Name"
+          value={filters.customerName}
+          onChange={(val: string) => onFilterChange('customerName', val)}
+          placeholder="e.g., ABC Corp"
+        />
+        <div className="flex justify-end space-x-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={onApplyFilters}>Apply Filters</Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
 
 function Sales() {
   const location = useLocation();
   const { theme } = useTheme();
   const { smartSearch, voiceCommand, predictiveAnalysis } = useAI();
-  const { currentCompany } = useCompany(); // Use currentCompany for data fetching
+  const { currentCompany } = useCompany();
   const [searchTerm, setSearchTerm] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [salesMetrics, setSalesMetrics] = useState({
@@ -94,16 +130,23 @@ function Sales() {
   const [recentSalesData, setRecentSalesData] = useState<any[]>([]);
   const [salesAiInsights, setSalesAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
-  const [isLoadingSalesData, setIsLoadingSalesData] = useState(false); // New state for local loading
-  const [activeSalesTab, setActiveSalesTab] = useState('Core Sales Operations'); // New state for active tab
+  const [isLoadingSalesData, setIsLoadingSalesData] = useState(false);
+  const [activeSalesTab, setActiveSalesTab] = useState('Core Sales Operations');
 
+  // State for Filter and Export
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    startDate: '',
+    endDate: '',
+    customerName: '',
+  });
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   useEffect(() => {
     if (currentCompany?.id) {
       fetchSalesData(currentCompany.id);
     }
 
-    // Add visibility change listener to re-fetch data when tab becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && currentCompany?.id) {
         console.log('Sales.tsx: Document became visible, re-fetching sales data.');
@@ -116,32 +159,42 @@ function Sales() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [currentCompany?.id]); // Depend on currentCompany.id to re-attach listener if company changes
+  }, [currentCompany?.id, filterCriteria]); // Re-fetch data when filterCriteria changes
 
   const fetchSalesData = async (companyId: string) => {
-    setIsLoadingSalesData(true); // Set local loading true
+    setIsLoadingSalesData(true);
     try {
-      // Fetch Counts
+      // Base query for sales invoices
+      let salesInvoicesQuery = supabase
+        .from('sales_invoices')
+        .select('id, invoice_no, total_amount, invoice_date, status, customers(name)', { count: 'exact' })
+        .eq('company_id', companyId);
+
+      // Apply filters
+      if (filterCriteria.startDate) {
+        salesInvoicesQuery = salesInvoicesQuery.gte('invoice_date', filterCriteria.startDate);
+      }
+      if (filterCriteria.endDate) {
+        salesInvoicesQuery = salesInvoicesQuery.lte('invoice_date', filterCriteria.endDate);
+      }
+      if (filterCriteria.customerName) {
+        salesInvoicesQuery = salesInvoicesQuery.ilike('customers.name', `%${filterCriteria.customerName}%`);
+      }
+
+      const { data: salesInvoicesData, count: salesInvoicesCount, error: salesInvoicesError } = await salesInvoicesQuery;
+      if (salesInvoicesError) throw salesInvoicesError;
+
+      // Fetch other counts (simplified, not applying filters to all for brevity)
       const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: priceListsCount } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-
-      // Fetch Counts and Sums for transactional modules
       const { count: quotationsCount, data: quotationsData } = await supabase.from('quotations').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
       const { count: salesOrdersCount, data: salesOrdersData } = await supabase.from('sales_orders').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      const { count: salesInvoicesCount, data: salesInvoicesData } = await supabase.from('sales_invoices').select('total_amount, outstanding_amount', { count: 'exact' }).eq('company_id', companyId);
       const { count: receiptsCount, data: receiptsData } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
-      
-      // Credit Notes (assuming they are sales_invoices with status 'credit_note')
       const { count: creditNotesCount, data: creditNotesData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
-      
-      // Sales Returns (if sales_returns table exists)
       const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      
-      // Delivery Challans (no total amount column in schema)
       const { count: deliveryChallansCount } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
 
-      // Calculate total amounts
       const totalQuotationsAmount = quotationsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
       const totalSalesOrdersAmount = salesOrdersData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
       const totalSalesInvoicesAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
@@ -149,7 +202,6 @@ function Sales() {
       const totalCreditNotesAmount = creditNotesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
       const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
       const totalCustomerOutstandingAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.outstanding_amount || 0), 0) || 0;
-
 
       setSalesMetrics({
         customers: { count: customersCount?.toString() || '0' },
@@ -160,41 +212,31 @@ function Sales() {
         creditNotes: { count: creditNotesCount?.toString() || '0', totalAmount: totalCreditNotesAmount.toLocaleString() },
         salesReturns: { count: salesReturnsCount?.toString() || '0', totalAmount: totalSalesReturnsAmount.toLocaleString() },
         priceLists: { count: priceListsCount?.toString() || '0' },
-        customerOutstanding: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalCustomerOutstandingAmount.toLocaleString() }, // Reusing invoice count for outstanding
-        customerAgingReport: { count: salesInvoicesCount?.toString() || '0', totalAmount: salesInvoicesCount?.toString() || '0' }, // Reusing invoice count for aging report
-        salesAnalysis: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for analysis
-        salesRegister: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for register
-        customerWiseSalesSummary: { count: customersCount?.toString() || '0' }, // Placeholder for summary
+        customerOutstanding: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalCustomerOutstandingAmount.toLocaleString() },
+        customerAgingReport: { count: salesInvoicesCount?.toString() || '0', totalAmount: salesInvoicesCount?.toString() || '0' },
+        salesAnalysis: { count: salesInvoicesCount?.toString() || '0' },
+        salesRegister: { count: salesInvoicesCount?.toString() || '0' },
+        customerWiseSalesSummary: { count: customersCount?.toString() || '0' },
         deliveryChallans: { count: deliveryChallansCount?.toString() || '0' },
         customerGroups: { count: customerGroupsCount?.toString() || '0' },
       });
 
-      // Fetch Recent Sales Data
-      const { data: recentInvoices, error: recentInvoicesError } = await supabase
-        .from('sales_invoices')
-        .select('id, customer_id, total_amount, invoice_date, status, customers(name)')
-        .eq('company_id', companyId)
-        .order('invoice_date', { ascending: false })
-        .limit(5); // Get top 5 recent invoices
-
-      if (recentInvoicesError) throw recentInvoicesError;
-      setRecentSalesData(recentInvoices.map(inv => ({
+      // Update recent sales data based on filtered invoices
+      setRecentSalesData(salesInvoicesData.map((inv: any) => ({
+        type: 'invoice',
         id: inv.id,
-        customer: inv.customers?.name || 'N/A',
+        refNo: inv.invoice_no,
+        party: inv.customers?.name || 'N/A',
         amount: inv.total_amount,
         date: inv.invoice_date,
         status: inv.status,
-        confidence: 'high' // Placeholder for AI confidence
+        description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
       })));
-
-      // Removed automatic AI Insights generation here
-      // await generateSalesAIInsights(companyId, recentInvoices);
 
     } catch (error) {
       console.error('Error fetching sales data:', error);
-      // Optionally set all counts to 'N/A' or 'Error'
     } finally {
-      setIsLoadingSalesData(false); // Corrected: Use setIsLoadingSalesData
+      setIsLoadingSalesData(false);
     }
   };
 
@@ -202,7 +244,6 @@ function Sales() {
     setRefreshingInsights(true);
     try {
       let insights;
-      // Generate different mock insights based on the active tab
       if (activeSalesTab === 'Core Sales Operations') {
         insights = {
           predictions: [
@@ -263,7 +304,6 @@ function Sales() {
     }
   };
 
-  // Define a set of light color palettes for the cards
   const moduleColors = [
     { cardBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', textColor: 'text-emerald-800', iconBg: 'bg-emerald-500' },
     { cardBg: 'bg-gradient-to-br from-sky-50 to-sky-100', textColor: 'text-sky-800', iconBg: 'bg-sky-500' },
@@ -274,7 +314,6 @@ function Sales() {
     { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
     { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
     { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
-    // Adding more variety for tiles
     { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
     { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
     { cardBg: 'bg-gradient-to-br from-lime-50 to-lime-100', textColor: 'text-lime-800', iconBg: 'bg-lime-500' },
@@ -282,8 +321,6 @@ function Sales() {
     { cardBg: 'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100', textColor: 'text-fuchsia-800', iconBg: 'bg-fuchsia-500' },
   ];
 
-
-  // Consolidated and categorized sales modules
   const salesCategories = [
     {
       title: 'Core Sales Operations',
@@ -303,7 +340,7 @@ function Sales() {
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
         { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
-        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups.count, totalAmount: null }, // New module
+        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups.count, totalAmount: null },
         { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists.count, totalAmount: null },
       ]
     },
@@ -366,7 +403,6 @@ function Sales() {
   const handleVoiceSearch = async () => {
     setIsVoiceActive(true);
     try {
-      // Mock voice recognition
       setTimeout(async () => {
         const mockCommand = "Show me top 5 customers by revenue this quarter";
         const result = await voiceCommand(mockCommand);
@@ -380,7 +416,6 @@ function Sales() {
 
   const handleSmartSearch = async () => {
     if (!searchTerm.trim()) return;
-
     try {
       const result = await smartSearch(searchTerm);
       console.log('Smart search result:', result);
@@ -389,85 +424,21 @@ function Sales() {
     }
   };
 
-  // --- Dynamic Content for Recent Sales and AI Insights ---
   const getContextualRecentSales = async () => {
     if (!currentCompany?.id) return [];
-
     let data: any[] = [];
     try {
-      if (activeSalesTab === 'Core Sales Operations') {
-        const { data: invoices, error } = await supabase
-          .from('sales_invoices')
-          .select('id, invoice_no, total_amount, invoice_date, status, customers(name)')
-          .eq('company_id', currentCompany.id)
-          .order('invoice_date', { ascending: false })
-          .limit(5);
-        if (error) throw error;
-        data = invoices.map(inv => ({
-          type: 'invoice',
-          id: inv.id,
-          refNo: inv.invoice_no,
-          party: inv.customers?.name || 'N/A',
-          amount: inv.total_amount,
-          date: inv.invoice_date,
-          status: inv.status,
-          description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
-        }));
-      } else if (activeSalesTab === 'Customer & Pricing Management') {
-        const { data: customers, error: custError } = await supabase
-          .from('customers')
-          .select('id, name, created_at, customer_code')
-          .eq('company_id', currentCompany.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        if (custError) throw custError;
-        data = customers.map(cust => ({
-          type: 'customer',
-          id: cust.id,
-          refNo: cust.customer_code,
-          party: cust.name,
-          date: cust.created_at,
-          status: 'Active',
-          description: `New Customer: ${cust.name}`
-        }));
-        const { data: priceLists, error: plError } = await supabase
-          .from('price_lists')
-          .select('id, name, created_at')
-          .eq('company_id', currentCompany.id)
-          .order('created_at', { ascending: false })
-          .limit(2); // Get a couple of recent price list changes
-        if (plError) throw plError;
-        data = [...data, ...priceLists.map(pl => ({
-          type: 'price_list',
-          id: pl.id,
-          refNo: pl.name,
-          party: 'N/A',
-          date: pl.created_at,
-          status: 'Updated',
-          description: `Price List: ${pl.name} created/updated`
-        }))];
-        data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      } else if (activeSalesTab === 'Sales Analytics & Reporting') {
-        const { data: overdueInvoices, error: overdueError } = await supabase
-          .from('sales_invoices')
-          .select('id, invoice_no, outstanding_amount, due_date, customers(name)')
-          .eq('company_id', currentCompany.id)
-          .gt('outstanding_amount', 0)
-          .lt('due_date', new Date().toISOString().split('T')[0]) // Overdue
-          .order('due_date', { ascending: true })
-          .limit(5);
-        if (overdueError) throw overdueError;
-        data = overdueInvoices.map(inv => ({
-          type: 'overdue_invoice',
-          id: inv.id,
-          refNo: inv.invoice_no,
-          party: inv.customers?.name || 'N/A',
-          amount: inv.outstanding_amount,
-          date: inv.due_date,
-          status: 'Overdue',
-          description: `Overdue: ${inv.invoice_no} from ${inv.customers?.name || 'N/A'}`
-        }));
-      }
+      // This now uses the filtered salesInvoicesData from fetchSalesData
+      data = recentSalesData.map((inv: any) => ({
+        type: 'invoice',
+        id: inv.id,
+        refNo: inv.invoice_no,
+        party: inv.customers?.name || 'N/A',
+        amount: inv.total_amount,
+        date: inv.invoice_date,
+        status: inv.status,
+        description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
+      }));
     } catch (error) {
       console.error('Error fetching contextual recent sales:', error);
       return [];
@@ -476,8 +447,6 @@ function Sales() {
   };
 
   const getContextualAIInsights = () => {
-    // This function now just returns the current state of salesAiInsights
-    // The actual generation is triggered by the button click
     if (salesAiInsights.length > 0) {
       return salesAiInsights.map((insight, index) => (
         <div
@@ -515,30 +484,28 @@ function Sales() {
     }
   };
 
-  // Effect to update recent sales data when active tab changes
   useEffect(() => {
     const fetchRecentData = async () => {
       const data = await getContextualRecentSales();
       setRecentSalesData(data);
     };
     fetchRecentData();
-    setSalesAiInsights([]); // Clear AI insights when tab changes
-  }, [activeSalesTab, currentCompany?.id]);
-
+    setSalesAiInsights([]);
+  }, [activeSalesTab, currentCompany?.id, recentSalesData]); // Added recentSalesData to trigger re-render
 
   if (!isMainSalesPage) {
     return (
       <Routes>
-        <Route path="/customers" element={<CustomersListPage />} /> {/* Renamed */}
-        <Route path="/customers/new" element={<CustomerFormPage />} /> {/* New route for creating customer */}
-        <Route path="/customers/edit/:id" element={<CustomerFormPage />} /> {/* New route for editing customer */}
-        <Route path="/customer-groups" element={<CustomerGroupsPage />} /> {/* New route for customer groups */}
+        <Route path="/customers" element={<CustomersListPage />} />
+        <Route path="/customers/new" element={<CustomerFormPage />} />
+        <Route path="/customers/edit/:id" element={<CustomerFormPage />} />
+        <Route path="/customer-groups" element={<CustomerGroupsPage />} />
         <Route path="/price-list" element={<SalesPriceListPage />} />
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
         <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
-        <Route path="/invoices" element={<SalesInvoicesPage />} /> {/* Point to list page */}
-        <Route path="/invoices/create" element={<CreateInvoice />} /> {/* Keep create page separate */}
+        <Route path="/invoices" element={<SalesInvoicesPage />} />
+        <Route path="/invoices/create" element={<CreateInvoice />} />
         <Route path="/credit-notes" element={<CreditNotesPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />
         <Route path="/returns" element={<SalesReturnsPage />} />
@@ -552,7 +519,6 @@ function Sales() {
     );
   }
 
-  // Render a local loader if isLoadingSalesData is true and no data is yet available
   if (isLoadingSalesData && recentSalesData.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -561,12 +527,66 @@ function Sales() {
     );
   }
 
+  const getActiveTabBorderColor = (tabTitle: string) => {
+    switch (tabTitle) {
+      case 'Core Sales Operations':
+        return 'border-sky-500';
+      case 'Customer & Pricing Management':
+        return 'border-purple-500';
+      case 'Sales Analytics & Reporting':
+        return 'border-emerald-500';
+      default:
+        return theme.borderColor;
+    }
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterCriteria((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    setShowFilterModal(false);
+    fetchSalesData(currentCompany?.id || ''); // Re-fetch data with new filters
+  };
+
+  const handleExport = (format: string) => {
+    console.log(`Exporting data in ${format} format...`);
+    console.log('Current Sales Data:', recentSalesData);
+    setShowExportDropdown(false);
+
+    // Basic CSV export example (client-side)
+    if (format === 'csv') {
+      const headers = ['Invoice No', 'Customer', 'Date', 'Amount', 'Status'];
+      const rows = recentSalesData.map((item: any) => [
+        item.refNo,
+        item.party,
+        item.date,
+        item.amount,
+        item.status,
+      ]);
+
+      let csvContent = headers.join(',') + '\n' + rows.map((e: string[]) => e.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) { // Feature detection
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `sales_data_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        document.body.removeChild(link);
+      }
+    } else {
+      alert(`Export to ${format} is not fully implemented yet. Check console for data.`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Sales Management</h1>
+          <h1 className={`text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-transparent bg-clip-text drop-shadow-lg`}>Sales Management</h1>
           <p className={theme.textSecondary}>AI-powered sales operations and customer management</p>
         </div>
         <div className="flex space-x-2">
@@ -590,7 +610,7 @@ function Sales() {
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSmartSearch()}
               className={`
-                w-full pl-10 pr-12 py-2 border ${theme.inputBorder} rounded-lg
+                w-full pl-10 pr-14 py-2 border ${theme.inputBorder} rounded-lg
                 focus:ring-2 focus:ring-sky-500 focus:border-transparent
                 ${theme.inputBg} ${theme.textPrimary}
                 placeholder:text-gray-400
@@ -610,86 +630,127 @@ function Sales() {
             </button>
           </div>
           <Button onClick={handleSmartSearch}>Search</Button>
-          <Button variant="outline">Filter</Button>
-          <Button variant="outline">Export</Button>
+          <Button onClick={() => setShowFilterModal(true)} icon={<ListFilter size={16} />}>Filter</Button>
+          <div className="relative">
+            <Button onClick={() => setShowExportDropdown(!showExportDropdown)} icon={<Download size={16} />}>
+              Export
+            </Button>
+            {showExportDropdown && (
+              <div className={`absolute right-0 mt-2 w-40 ${theme.cardBg} border ${theme.borderColor} rounded-lg shadow-lg z-10`}>
+                <button
+                  onClick={() => handleExport('csv')}
+                  className={`block w-full text-left px-4 py-2 text-sm ${theme.textPrimary} hover:bg-gray-100`}
+                >
+                  Export to CSV
+                </button>
+                <button
+                  onClick={() => handleExport('excel')}
+                  className={`block w-full text-left px-4 py-2 text-sm ${theme.textPrimary} hover:bg-gray-100`}
+                >
+                  Export to Excel
+                </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className={`block w-full text-left px-4 py-2 text-sm ${theme.textPrimary} hover:bg-gray-100`}
+                >
+                  Export to PDF
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
-      {/* Tab Navigation */}
-      <Card className="p-4">
-        <nav className="flex flex-wrap justify-center md:justify-start gap-2">
-          {salesCategories.map((category) => (
-            <button
-              key={category.title}
-              onClick={() => setActiveSalesTab(category.title)}
-              className={`
-                px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 ease-in-out
-                ${activeSalesTab === category.title
-                  ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700` // Active pill
-                  : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200` // Inactive pill
-                }
-              `}
-            >
-              {category.title}
-            </button>
-          ))}
-        </nav>
-      </Card>
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onFilterChange={handleFilterChange}
+        onApplyFilters={handleApplyFilters}
+      />
 
-      {/* Tab Content */}
+      {/* Tab Navigation - Redesigned for visual distinction */}
+      <div className="flex flex-wrap justify-center md:justify-start gap-2">
+        {salesCategories.map((category) => (
+          <button
+            key={category.title}
+            onClick={() => setActiveSalesTab(category.title)}
+            className={`
+              flex-1 px-6 py-3 text-sm font-semibold transition-all duration-300 ease-in-out
+              ${activeSalesTab === category.title
+                ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700 rounded-t-lg rounded-b-none`
+                : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200 rounded-lg`
+              }
+            `}
+          >
+            {category.title}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content - Each content area is a Card with a dynamic top border */}
       {salesCategories.map((category) => (
         <div
           key={category.title}
-          className={`${activeSalesTab === category.title ? 'block' : 'hidden'} space-y-4`}
+          className={`${activeSalesTab === category.title ? 'block' : 'hidden'}`}
         >
-          <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
-          <p className={theme.textSecondary}>{category.description}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {category.modules.map((module, moduleIndex) => {
-              const Icon = module.icon;
-              const colors = moduleColors[moduleIndex % moduleColors.length]; // Get colors for this module
-              return (
-                <Link key={module.name} to={module.path} className="flex">
-                  <Card hover className={`
-                    p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                    ${colors.cardBg}
-                    transform transition-all duration-300 ease-in-out
-                    hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                  `}>
-                    {/* Background overlay for hover effect */}
-                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"></div>
-                    
-                    <div className="relative z-10"> {/* Ensure content is above overlay */}
-                      <h3 className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
-                        {module.name}
-                      </h3>
-                      <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-3 relative z-10">
-                      <p className={`text-xl font-bold ${colors.textColor}`}>{module.count}</p>
-                      {module.totalAmount && (
-                        <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
-                      )}
-                      <div className={`
-                        p-3 rounded-2xl shadow-md
-                        ${colors.iconBg} text-white
-                        group-hover:scale-125 transition-transform duration-300
-                      `}>
-                        <Icon size={24} className="text-white" />
+          <Card className={`
+            p-6 space-y-4 rounded-t-none rounded-b-lg
+            border-t-4 ${getActiveTabBorderColor(category.title)}
+            bg-white shadow-lg
+          `}>
+            {/* Category Header (inside the content div) */}
+            <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
+            <p className={theme.textSecondary}>{category.description}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {category.modules.map((module, moduleIndex) => {
+                const Icon = module.icon;
+                const colors = moduleColors[moduleIndex % moduleColors.length];
+                return (
+                  <Link key={module.name} to={module.path} className="flex">
+                    <Card hover className={`
+                      p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                      ${colors.cardBg}
+                      transform transition-all duration-300 ease-in-out
+                      hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                    `}>
+                      {/* Background overlay for hover effect */}
+                      <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"></div>
+                      
+                      <div className="relative z-10"> {/* Ensure content is above overlay */}
+                        <h3 className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
+                          {module.name}
+                        </h3>
+                        <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
                       </div>
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+                      <div className="flex items-center justify-between mt-3 relative z-10">
+                        <p className={`text-xl font-bold ${colors.textColor}`}>{module.count}</p>
+                        {module.totalAmount && (
+                          <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
+                        )}
+                        <div className={`
+                          p-3 rounded-2xl shadow-md
+                          ${colors.iconBg} text-white
+                          group-hover:scale-125 transition-transform duration-300
+                        `}>
+                          <Icon size={24} className="text-white" />
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
         </div>
       ))}
 
       {/* Recent Sales and AI Insights (Separated Section) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pt-8 border-t border-gray-200"> {/* Increased mt and pt */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pt-8 border-t border-gray-200">
         {/* Recent Sales */}
-        <Card className="p-6 bg-white shadow-lg"> {/* Added distinct background and shadow */}
+        <Card className="p-6 bg-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales Activity</h3>
             <div className="flex items-center space-x-2">
@@ -735,7 +796,7 @@ function Sales() {
         </Card>
 
         {/* AI Sales Insights */}
-        <Card className="p-6 bg-white shadow-lg"> {/* Added distinct background and shadow */}
+        <Card className="p-6 bg-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
               <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />

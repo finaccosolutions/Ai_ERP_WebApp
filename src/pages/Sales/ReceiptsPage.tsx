@@ -1,9 +1,11 @@
+// src/pages/Sales/ReceiptsPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Plus, Receipt, Search, Calendar, Users, DollarSign, CreditCard, List, Save, Trash2 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -37,10 +39,12 @@ function ReceiptsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [availableCustomers, setAvailableCustomers] = useState<{ id: string; name: string }[]>([]); // State to store available customers
 
   useEffect(() => {
-    if (viewMode === 'list') {
+    if (currentCompany?.id) {
       fetchReceipts();
+      fetchAvailableCustomers(currentCompany.id);
     }
   }, [viewMode, currentCompany?.id]);
 
@@ -62,6 +66,21 @@ function ReceiptsPage() {
       console.error('Error fetching receipts:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableCustomers = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setAvailableCustomers(data || []);
+    } catch (error) {
+      console.error('Error fetching available customers:', error);
     }
   };
 
@@ -171,6 +190,33 @@ function ReceiptsPage() {
     }
   };
 
+  // New handler for MasterSelectField customer selection
+  const handleCustomerSelect = (selectedId: string, selectedName: string) => {
+    handleInputChange('customerId', selectedId);
+    handleInputChange('customerName', selectedName);
+  };
+
+  // AI suggestion for customer name
+  const handleCustomerAISuggestion = async (suggestedValue: string) => {
+    try {
+      const suggestions = await suggestWithAI({
+        type: 'customer_lookup',
+        query: suggestedValue,
+        context: 'receipt_customer_selection',
+        availableCustomers: availableCustomers.map(cust => ({ id: cust.id, name: cust.name }))
+      });
+      
+      if (suggestions?.customer) {
+        const suggestedCustomer = availableCustomers.find(cust => cust.id === suggestions.customer.id || cust.name === suggestions.customer.name);
+        if (suggestedCustomer) {
+          handleCustomerSelect(suggestedCustomer.id, suggestedCustomer.name);
+        }
+      }
+    } catch (error) {
+      console.error('Customer AI suggestion error:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -273,14 +319,17 @@ function ReceiptsPage() {
             <Card className="p-6">
               <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Customer & Notes</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
+                <MasterSelectField
                   label="Customer Name"
                   value={receiptData.customerName}
-                  onChange={(val) => handleInputChange('customerName', val)}
-                  placeholder="Start typing customer name..."
+                  onValueChange={(val) => handleInputChange('customerName', val)}
+                  onSelect={handleCustomerSelect}
+                  options={availableCustomers}
+                  placeholder="Select or type customer name..."
                   required
                   aiHelper={true}
-                  context="customer_selection"
+                  context="receipt_customer_selection"
+                  onAISuggestion={handleCustomerAISuggestion}
                 />
                 <FormField
                   label="Notes"
