@@ -48,6 +48,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
+import FormField from '../../components/UI/FormField'; // Assuming FormField is used in FilterModal
 
 // Import new submodule pages
 import CustomersListPage from './CustomersListPage';
@@ -240,7 +241,7 @@ function Sales() {
     }
   };
 
-  const generateSalesAIInsights = async (companyId: string, salesData: any[] = recentSalesData) => {
+  const generateSalesAIInsights = async (companyId: string) => {
     setRefreshingInsights(true);
     try {
       let insights;
@@ -281,7 +282,7 @@ function Sales() {
             type: 'info',
             title: 'No New Insights',
             message: 'No specific AI insights generated at this moment. Try again later.',
-            confidence: 'medium',
+            confidence: 'low',
             impact: 'low',
             actionable: false
           }
@@ -424,28 +425,6 @@ function Sales() {
     }
   };
 
-  const getContextualRecentSales = async () => {
-    if (!currentCompany?.id) return [];
-    let data: any[] = [];
-    try {
-      // This now uses the filtered salesInvoicesData from fetchSalesData
-      data = recentSalesData.map((inv: any) => ({
-        type: 'invoice',
-        id: inv.id,
-        refNo: inv.invoice_no,
-        party: inv.customers?.name || 'N/A',
-        amount: inv.total_amount,
-        date: inv.invoice_date,
-        status: inv.status,
-        description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
-      }));
-    } catch (error) {
-      console.error('Error fetching contextual recent sales:', error);
-      return [];
-    }
-    return data;
-  };
-
   const getContextualAIInsights = () => {
     if (salesAiInsights.length > 0) {
       return salesAiInsights.map((insight, index) => (
@@ -484,14 +463,9 @@ function Sales() {
     }
   };
 
-  useEffect(() => {
-    const fetchRecentData = async () => {
-      const data = await getContextualRecentSales();
-      setRecentSalesData(data);
-    };
-    fetchRecentData();
-    setSalesAiInsights([]);
-  }, [activeSalesTab, currentCompany?.id, recentSalesData]); // Added recentSalesData to trigger re-render
+  // Removed the problematic useEffect and getContextualRecentSales function
+  // The recentSalesData is now correctly populated by fetchSalesData
+  // AI insights are only generated on explicit button click
 
   if (!isMainSalesPage) {
     return (
