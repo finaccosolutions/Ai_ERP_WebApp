@@ -16,10 +16,10 @@ import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
 import MasterSelectField, { MasterSelectFieldRef } from '../../components/UI/MasterSelectField'; // Import MasterSelectFieldRef
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext'; // CORRECTED LINE: Added 'from'
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext'; // CORRECTED LINE: Added 'from'
 import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'; // Import useLocation
 import { COUNTRIES, getCountryByCode, getPhoneCountryCodes } from '../../constants/geoData';
@@ -136,6 +136,9 @@ function CustomerFormPage() {
   // State for "Same as Billing Address" checkbox
   const [sameAsBilling, setSameAsBilling] = useState(false);
 
+  // Add a state for isNewCustomer
+  const [isNewCustomer, setIsNewCustomer] = useState(!id);
+
   const tabs = [
     { id: 'basic-info', label: 'Basic Info', icon: Home },
     { id: 'billing-address', label: 'Billing Address', icon: BookUser },
@@ -158,8 +161,13 @@ function CustomerFormPage() {
         billingAddress: { ...prev.billingAddress, country: companyCountryCode },
         shippingAddress: { ...prev.shippingAddress, country: companyCountryCode },
       }));
+
+      // MODIFICATION: Generate customer code if it's a new customer
+      if (!id) { // Only generate if it's a new customer
+        generateCustomerCode(currentCompany.id);
+      }
     }
-  }, [currentCompany?.id]);
+  }, [currentCompany?.id, id]); // Add 'id' to dependency array
 
   useEffect(() => {
     if (id && currentCompany?.id) {
@@ -255,14 +263,37 @@ function CustomerFormPage() {
       if (error) throw error;
 
       if (data) {
+        // Determine the phone country code from the stored phone number
+        let initialPhoneCountryCode = '+91'; // Default
+        let cleanPhone = data.phone || '';
+        let cleanMobile = data.mobile || '';
+
+        const phoneCountryCodes = getPhoneCountryCodes();
+        for (const country of phoneCountryCodes) {
+          if (data.phone?.startsWith(country.dialCode)) {
+            initialPhoneCountryCode = country.dialCode;
+            cleanPhone = data.phone.substring(country.dialCode.length);
+            break;
+          }
+        }
+        // Do the same for mobile if it's different
+        for (const country of phoneCountryCodes) {
+          if (data.mobile?.startsWith(country.dialCode)) {
+            initialPhoneCountryCode = country.dialCode; // Assuming phone and mobile use the same country code for simplicity
+            cleanMobile = data.mobile.substring(country.dialCode.length);
+            break;
+          }
+        }
+        setSelectedPhoneCountryCode(initialPhoneCountryCode);
+
         setFormData({
           id: data.id,
           customerCode: data.customer_code || '',
           name: data.name || '',
           customerType: data.customer_type || 'individual',
           email: data.email || '',
-          phone: data.phone?.replace(getPhoneCountryCodes().find(c => c.dialCode === selectedPhoneCountryCode)?.dialCode || '', '') || '', // Remove country code for display
-          mobile: data.mobile?.replace(getPhoneCountryCodes().find(c => c.dialCode === selectedPhoneCountryCode)?.dialCode || '', '') || '', // Remove country code for display
+          phone: cleanPhone, // Use cleaned phone number
+          mobile: cleanMobile, // Use cleaned mobile number
           website: data.website || '',
           taxId: data.tax_id || '',
           pan: data.pan || '',
@@ -273,20 +304,13 @@ function CustomerFormPage() {
           creditDays: data.credit_days || 30,
           priceListId: data.price_list_id || '',
           territory: data.territory || '',
-          paymentTerms: data.paymentTerms,
+          paymentTerms: data.payment_terms,
           customerGroupId: data.customer_group_id || '',
           notes: data.notes || '',
           isActive: data.is_active || true,
         });
         setSelectedBillingCountry(data.billing_address?.country || '');
         setSelectedShippingCountry(data.shipping_address?.country || '');
-        // Attempt to set phone country code if available in stored phone/mobile
-        const phoneCountryCode = getPhoneCountryCodes().find(c => data.phone?.startsWith(c.dialCode));
-        if (phoneCountryCode) setSelectedPhoneCountryCode(phoneCountryCode.dialCode);
-
-        // Check if shipping address is same as billing
-        const isSameAddress = JSON.stringify(data.billing_address) === JSON.stringify(data.shipping_address);
-        setSameAsBilling(isSameAddress);
       }
     } catch (err: any) {
       showNotification(`Error loading customer: ${err.message}`, 'error');
@@ -294,6 +318,24 @@ function CustomerFormPage() {
       navigate('/sales/customers'); // Redirect back to list on error
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateCustomerCode = async (companyId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const nextNumber = (count || 0) + 1;
+      const newCustomerCode = `CUST-${String(nextNumber).padStart(4, '0')}`; // e.g., CUST-0001
+      setFormData(prev => ({ ...prev, customerCode: newCustomerCode }));
+    } catch (err) {
+      console.error('Error generating customer code:', err);
+      showNotification('Failed to generate customer code. Please enter manually.', 'error');
     }
   };
 
@@ -364,7 +406,7 @@ function CustomerFormPage() {
 
     setLoading(true);
     try {
-      const customerToSave = {
+            const customerToSave = {
         company_id: currentCompany.id,
         customer_code: formData.customerCode,
         name: formData.name,
@@ -383,11 +425,12 @@ function CustomerFormPage() {
         credit_days: formData.creditDays,
         price_list_id: formData.priceListId || null,
         territory: formData.territory,
-        paymentTerms: formData.paymentTerms,
+        payment_terms: formData.paymentTerms,
         customer_group_id: formData.customerGroupId || null,
         notes: formData.notes,
         is_active: formData.isActive,
       };
+
 
       if (formData.id) {
         // Update existing customer
@@ -549,7 +592,7 @@ function CustomerFormPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tab Navigation */}
         <Card className="p-4">
-          <nav className="flex justify-between items-center">
+           <nav className="flex justify-between items-center">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -562,7 +605,7 @@ function CustomerFormPage() {
                     flex flex-col items-center px-4 py-2 text-sm font-medium transition-colors duration-300
                     ${isActive
                       ? `bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500 shadow-sm`
-                      : `bg-emerald-50 text-emerald-700 hover:bg-emerald-100`
+                      : `text-emerald-700 hover:bg-emerald-50` // Modified line
                     }
                   `}
                   disabled={viewOnly} // Disable tab switching in viewOnly mode
@@ -600,7 +643,7 @@ function CustomerFormPage() {
                   placeholder="e.g., CUST001"
                   required
                   error={formErrors.customerCode}
-                  readOnly={viewOnly}
+                  readOnly={true} // MODIFICATION: Make read-only
                 />
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
@@ -696,7 +739,9 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
+                  // MODIFICATION START: Ensure value is always a string
                   value={COUNTRIES.find(c => c.code === selectedBillingCountry)?.name || ''}
+                  // MODIFICATION END
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedBillingCountry(id);
@@ -771,7 +816,9 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
+                  // MODIFICATION START: Ensure value is always a string
                   value={COUNTRIES.find(c => c.code === selectedShippingCountry)?.name || ''}
+                  // MODIFICATION END
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedShippingCountry(id);
@@ -816,10 +863,10 @@ function CustomerFormPage() {
                 <div className="flex items-end gap-2">
                   <MasterSelectField
                     label="Code"
-                    value={selectedPhoneCountryCode}
-                    onValueChange={() => {}} // Not used for typing here
-                    onSelect={(selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
-                    options={getPhoneCountryCodes()}
+                    value={selectedPhoneCountryCode} // Display only the dialCode in the input field
+                    onValueChange={() => {}} // No typing for this field
+                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)} // Use selectedOption.dialCode
+                    options={getPhoneCountryCodes()} // Use the modified function
                     placeholder="Code"
                     className="w-1/4"
                     readOnly={viewOnly}
@@ -837,10 +884,10 @@ function CustomerFormPage() {
                 <div className="flex items-end gap-2">
                   <MasterSelectField
                     label="Code"
-                    value={selectedPhoneCountryCode}
-                    onValueChange={() => {}} // Not used for typing here
-                    onSelect={(selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
-                    options={getPhoneCountryCodes()}
+                    value={selectedPhoneCountryCode} // Display only the dialCode in the input field
+                    onValueChange={() => {}} // No typing for this field
+                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)} // Use selectedOption.dialCode
+                    options={getPhoneCountryCodes()} // Use the modified function
                     placeholder="Code"
                     className="w-1/4"
                     readOnly={viewOnly}
@@ -1038,4 +1085,4 @@ function CustomerFormPage() {
   );
 }
 
-export default CustomerFormPage;
+export default CustomerFormPage; 

@@ -342,7 +342,7 @@ export const getStateByCode = (countryCode: string, stateCode: string) => {
 export const getPhoneCountryCodes = () => {
   return COUNTRIES.map(country => ({
     id: country.dialCode,
-    name: `${country.flag} ${country.name} (${country.dialCode})`,
-    dialCode: country.dialCode,
+    name: `${country.flag} ${country.dialCode}`, // Display flag + dialCode in the list
+    dialCode: country.dialCode, // Keep dialCode for selection
   }));
 };

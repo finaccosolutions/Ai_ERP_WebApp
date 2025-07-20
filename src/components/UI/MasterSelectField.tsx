@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-
+ 
 interface MasterSelectFieldProps {
   label: string;
   value: string; // The displayed name
@@ -17,7 +17,7 @@ interface MasterSelectFieldProps {
   allowCreation?: boolean; // New prop to allow creation
   onNewValueConfirmed?: (value: string) => void; // Callback for new value creation confirmed by F2/Enter
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
-  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void; // <--- ADD THIS PROP
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 export interface MasterSelectFieldRef {
@@ -39,19 +39,22 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   error,
   className = '',
   disabled = false,
-  allowCreation = false, // Default to false
-  onNewValueConfirmed, // Destructure new prop
-  onKeyDown, // Destructure new prop
-  onBlur, // <--- DESTRUCTURE THE NEW PROP HERE
+  allowCreation = false,
+  onNewValueConfirmed,
+  onKeyDown,
+  onBlur,
 }, ref) => {
   const { theme } = useTheme();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(value);
+  const [searchTerm, setSearchTerm] = useState(value || ''); // Initialize with empty string if value is null/undefined
+
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null); // Ref for the input element
+  const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setSearchTerm(value);
+    setSearchTerm(value || ''); // Also update with empty string if value becomes null/undefined
   }, [value]);
 
   useEffect(() => {
@@ -67,11 +70,10 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   }, []);
 
   const filteredOptions = options.filter(option =>
-    // Ensure option is not null/undefined and option.name is safely accessed
+    // MODIFICATION: Ensure option itself is not null/undefined before accessing its properties
     option && (option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Expose imperative handle methods
+ 
   useImperativeHandle(ref, () => ({
     getSearchTerm: () => searchTerm,
     getFilteredOptions: () => filteredOptions,
@@ -80,7 +82,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
     selectOption: (id: string) => {
       const option = options.find(opt => opt.id === id);
       if (option) {
-        setSearchTerm(option.name);
+        setSearchTerm(option.name); // This will display the full name in the input
         onSelect(option.id, option.name, option);
         setIsOpen(false);
       }
@@ -90,29 +92,28 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     onValueChange(e.target.value);
-    setIsOpen(true); // Open dropdown when typing
+    setIsOpen(true);
   };
 
   const handleInternalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (onKeyDown) {
-      onKeyDown(e); // Pass the event to the external handler first
+      onKeyDown(e);
     }
 
-    // Trigger new value confirmation on F2 or Enter if no matching option
     if (allowCreation && onNewValueConfirmed) {
       if (e.key === 'F2') {
-        e.preventDefault(); // Prevent default F2 behavior (e.g., browser dev tools)
+        e.preventDefault();
         if (searchTerm.trim() !== '') {
           onNewValueConfirmed(searchTerm.trim());
-          setIsOpen(false); // Close dropdown immediately
+          setIsOpen(false);
         }
       } else if (e.key === 'Enter') {
         if (filteredOptions.length === 0 && searchTerm.trim() !== '') {
-          e.preventDefault(); // Prevent form submission or other default behavior
+          e.preventDefault();
           onNewValueConfirmed(searchTerm.trim());
-          setIsOpen(false); // Close dropdown immediately
+          setIsOpen(false);
         } else if (filteredOptions.length === 1) {
-          e.preventDefault(); // Prevent form submission
+          e.preventDefault();
           handleOptionClick(filteredOptions[0]);
         }
       }
@@ -120,14 +121,19 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   };
 
   const handleOptionClick = (option: { id: string; name: string; [key: string]: any }) => {
-    setSearchTerm(option.name);
-    onSelect(option.id, option.name, option); // Pass additional data
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+
+    setSearchTerm(option.name); // This will display the full name in the input
+    onSelect(option.id, option.name, option);
     setIsOpen(false);
   };
 
   return (
     <div className={`relative ${className}`} ref={wrapperRef}>
-      {label && ( // Only render label if it's not empty
+      {label && (
         <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
@@ -140,10 +146,12 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
-          onKeyDown={handleInternalKeyDown} // Use the internal handler
-          onBlur={(e) => { // <--- PASS THE onBlur PROP HERE
-            setIsOpen(false); // Internal logic to close dropdown
-            if (onBlur) onBlur(e); // Call the external onBlur handler
+          onKeyDown={handleInternalKeyDown}
+          onBlur={(e) => {
+            blurTimeoutRef.current = setTimeout(() => {
+              setIsOpen(false);
+              if (onBlur) onBlur(e);
+            }, 150);
           }}
           placeholder={placeholder}
           required={required}
@@ -160,7 +168,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
         <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)} // Toggle dropdown on icon click
+          onClick={() => setIsOpen(!isOpen)}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-transform"
           disabled={disabled}
         >
@@ -195,4 +203,4 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   );
 });
 
-export default MasterSelectField;
+export default MasterSelectField; 
