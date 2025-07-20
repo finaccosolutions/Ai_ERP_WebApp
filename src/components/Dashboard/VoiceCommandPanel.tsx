@@ -93,7 +93,7 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
         {/* Header */}
         <div className={`
           flex items-center justify-between p-4 border-b ${theme.borderColor}
-          bg-gradient-to-r from-[#5DBF99] to-[#6AC8A3]
+          bg-gradient-to-r from-emerald-500 to-emerald-600
         `}>
           <div className="flex items-center space-x-2">
             <Mic size={20} className="text-white" />
@@ -116,7 +116,7 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
               relative w-32 h-32 mx-auto mb-4 rounded-full border-4 transition-all duration-300
               ${isListening 
                 ? 'border-red-500 bg-red-50 animate-pulse' 
-                : 'border-[#6AC8A3] bg-[#6AC8A3]/10'
+                : 'border-[${theme.hoverAccent}] bg-[${theme.hoverAccent}]/10'
               }
               flex items-center justify-center cursor-pointer hover:scale-105
             `}>
@@ -127,7 +127,7 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
                   w-20 h-20 rounded-full transition-all duration-300
                   ${isListening 
                     ? 'bg-red-500 hover:bg-red-600' 
-                    : 'bg-[#6AC8A3] hover:bg-[#5DBF99]'
+                    : 'bg-[${theme.hoverAccent}] hover:bg-emerald-600'
                   }
                   flex items-center justify-center text-white shadow-lg
                   disabled:opacity-50 disabled:cursor-not-allowed
@@ -166,7 +166,7 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
                 className={`
                   w-full px-3 py-2 border ${theme.borderColor} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary} resize-none
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               />
               {transcript && (
@@ -174,8 +174,8 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
                   onClick={handleSendCommand}
                   disabled={isProcessing}
                   className={`
-                    absolute bottom-2 right-2 p-2 bg-[#6AC8A3] text-white rounded-lg
-                    hover:bg-[#5DBF99] transition-colors disabled:opacity-50
+                    absolute bottom-2 right-2 p-2 bg-[${theme.hoverAccent}] text-white rounded-lg
+                    hover:bg-emerald-600 transition-colors disabled:opacity-50
                   `}
                 >
                   <Send size={16} />
@@ -197,11 +197,11 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
                   onClick={() => handleSuggestionClick(suggestion)}
                   className={`
                     p-3 text-left text-sm border ${theme.borderColor} rounded-lg
-                    ${theme.inputBg} hover:border-[#6AC8A3] hover:bg-[#6AC8A3]/5
+                    ${theme.inputBg} hover:border-[${theme.hoverAccent}] hover:bg-[${theme.hoverAccent}]/5
                     transition-all duration-300 group
                   `}
                 >
-                  <span className={`${theme.textPrimary} group-hover:text-[#5DBF99]`}>
+                  <span className={`${theme.textPrimary} group-hover:text-[${theme.hoverAccent}]`}>
                     "{suggestion}"
                   </span>
                 </button>
@@ -228,9 +228,9 @@ function VoiceCommandPanel({ isOpen, onClose, onCommand }: VoiceCommandPanelProp
           </div>
 
           {/* Tips */}
-          <div className={`p-3 bg-blue-50 border border-blue-200 rounded-lg`}>
-            <h5 className="text-sm font-medium text-blue-800 mb-1">Tips:</h5>
-            <ul className="text-xs text-blue-700 space-y-1">
+          <div className={`p-3 bg-sky-50 border border-sky-200 rounded-lg`}>
+            <h5 className="text-sm font-medium text-sky-800 mb-1">Tips:</h5>
+            <ul className="text-xs text-sky-700 space-y-1">
               <li>• Speak clearly and at normal pace</li>
               <li>• Use specific terms like "this month", "Q1", "overdue"</li>
               <li>• Ask for reports, summaries, or specific data</li>

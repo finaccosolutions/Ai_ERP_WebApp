@@ -34,7 +34,7 @@ function Button({
       bg-gradient-to-r ${theme.primaryGradient} text-white 
       hover:bg-gradient-to-r hover:${theme.primaryGradientHover}
       shadow-md hover:shadow-lg
-      hover:shadow-[#6AC8A3]/25
+      hover:shadow-[${theme.hoverAccent}]/25
     `,
     secondary: `
       ${theme.cardBg} ${theme.textPrimary} hover:bg-slate-300 
@@ -42,19 +42,21 @@ function Button({
     `,
     outline: `
       border-2 ${theme.borderColor} ${theme.textPrimary} 
-      hover:border-[#6AC8A3] hover:text-[#6AC8A3] hover:bg-slate-50
-      ${theme.isDark ? 'hover:bg-slate-800' : ''}
+      hover:border-[${theme.hoverAccent}] hover:text-[${theme.hoverAccent}] 
+      ${theme.isDark ? `hover:${theme.buttonOutlineHoverBg}` : `hover:${theme.buttonOutlineHoverBg}`}
     `,
     ghost: `
-      ${theme.textPrimary} hover:bg-slate-100 hover:text-[#6AC8A3]
-      ${theme.isDark ? 'hover:bg-slate-700' : ''}
+      ${theme.textPrimary} 
+      ${theme.isDark ? `hover:${theme.buttonGhostHoverBg}` : `hover:${theme.buttonGhostHoverBg}`}
+      hover:text-[${theme.hoverAccent}]
     `
   };
 
+  // Define the sizes object
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
+    md: 'px-4 py-2 text-base',
+    lg: 'px-5 py-2.5 text-lg',
   };
 
   return (
@@ -70,4 +72,4 @@ function Button({
   );
 }
 
-export default Button;
+export default Button; 

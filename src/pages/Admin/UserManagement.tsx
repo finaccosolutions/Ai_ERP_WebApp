@@ -381,7 +381,7 @@ function UserManagement() {
 
       {showCreateForm && (
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+          <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
             {editingUser ? 'Edit User' : 'Create New User'}
           </h3>
           <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser} className="space-y-4">
@@ -423,7 +423,7 @@ function UserManagement() {
                   className={`
                     w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                     ${theme.inputBg} ${theme.textPrimary}
-                    focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                   `}
                   required
                 >
@@ -444,7 +444,7 @@ function UserManagement() {
                   className={`
                     w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                     ${theme.inputBg} ${theme.textPrimary}
-                    focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                   `}
                   required
                 >
@@ -481,8 +481,8 @@ function UserManagement() {
             {generatedPassword && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle size={20} className="text-green-600" />
-                  <div className="text-green-600 text-sm font-medium">
+                  <CheckCircle size={20} className="text-emerald-600" />
+                  <div className="text-emerald-600 text-sm font-medium">
                     User created. Temporary Password: <span className="font-bold">{generatedPassword}</span>. Please provide this to the user.
                   </div>
                 </div>
@@ -517,7 +517,7 @@ function UserManagement() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
             </div>
           ) : users.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">

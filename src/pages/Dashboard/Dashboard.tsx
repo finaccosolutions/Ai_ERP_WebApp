@@ -516,7 +516,7 @@ function Dashboard() {
       value: formatCurrency(dashboardData.totalIncome), 
       change: '+12.5%', 
       icon: TrendingUp, 
-      color: 'from-green-500 to-green-600',
+      color: 'from-emerald-500 to-emerald-600',
       trend: 'up'
     },
     { 
@@ -534,7 +534,7 @@ function Dashboard() {
       value: formatCurrency(dashboardData.netProfit), 
       change: dashboardData.netProfit > 0 ? '+15.7%' : '-5.2%', 
       icon: BarChart3, 
-      color: dashboardData.netProfit > 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600',
+      color: dashboardData.netProfit > 0 ? 'from-sky-500 to-sky-600' : 'from-orange-500 to-orange-600',
       trend: dashboardData.netProfit > 0 ? 'up' : 'down'
     },
     { 
@@ -587,7 +587,7 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
       </div>
     );
   }
@@ -598,7 +598,7 @@ function Dashboard() {
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
           <h1 className={`text-4xl font-bold ${theme.textPrimary} flex items-center`}>
-            <Home size={32} className="mr-3 text-[#6AC8A3]" />
+            <Home size={32} className="mr-3 text-[${theme.hoverAccent}]" />
             Business Dashboard
           </h1>
           <p className={`${theme.textSecondary} text-lg mt-1`}>
@@ -613,7 +613,7 @@ function Dashboard() {
             onChange={(e) => setDateRange(e.target.value)}
             className={`
               px-4 py-2 border ${theme.borderColor} rounded-xl ${theme.inputBg} 
-              ${theme.textPrimary} focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+              ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
             `}
           >
             <option value="current_month">This Month</option>
@@ -665,10 +665,10 @@ function Dashboard() {
 
       {/* AI Insights Banner */}
       {isAIEnabled && aiInsights.length > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-blue-50 via-green-50 to-purple-50 border-l-4 border-l-[#6AC8A3]">
+        <Card className="p-4 bg-gradient-to-r from-sky-50 via-emerald-50 to-purple-50 border-l-4 border-l-[${theme.hoverAccent}]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Bot size={24} className="text-[#6AC8A3]" />
+              <Bot size={24} className="text-[${theme.hoverAccent}]" />
               <div>
                 <h3 className="font-semibold text-gray-900">AI Business Insights</h3>
                 <p className="text-sm text-gray-600">
@@ -692,7 +692,7 @@ function Dashboard() {
               <div className="flex items-center justify-between relative z-10">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <p className={`text-sm font-medium ${theme.textMuted}`}>
+                    <p className={`text-sm ${theme.textMuted}`}>
                       {kpi.title}
                     </p>
                     <button
@@ -731,7 +731,7 @@ function Dashboard() {
               `} />
               
               {/* Hover Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#6AC8A3]/5 to-transparent 
+              <div className="absolute inset-0 bg-gradient-to-r from-[${theme.hoverAccent}]/5 to-transparent 
                              opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
             </Card>
           );
@@ -754,7 +754,7 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <BarChart3 className="text-[#6AC8A3]" size={20} />
+                <BarChart3 className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <DashboardChart 
@@ -779,7 +779,7 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <PieChart className="text-[#6AC8A3]" size={20} />
+                <PieChart className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <DashboardChart 
@@ -804,7 +804,7 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <TrendingUp className="text-[#6AC8A3]" size={20} />
+                <TrendingUp className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <DashboardChart 
@@ -829,15 +829,15 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <Wallet className="text-[#6AC8A3]" size={20} />
+                <Wallet className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="text-center p-4 bg-green-50 rounded-xl">
-                <p className="text-2xl font-bold text-green-600">
+              <div className="text-center p-4 bg-emerald-50 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-600">
                   {formatCurrency(dashboardData.totalIncome)}
                 </p>
-                <p className="text-sm text-green-700">Cash Inflow</p>
+                <p className="text-sm text-emerald-700">Cash Inflow</p>
               </div>
               <div className="text-center p-4 bg-red-50 rounded-xl">
                 <p className="text-2xl font-bold text-red-600">
@@ -846,11 +846,11 @@ function Dashboard() {
                 <p className="text-sm text-red-700">Cash Outflow</p>
               </div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl">
-              <p className="text-3xl font-bold text-blue-600">
+            <div className="text-center p-4 bg-sky-50 rounded-xl">
+              <p className="text-3xl font-bold text-sky-600">
                 {formatCurrency(dashboardData.cashBalance)}
               </p>
-              <p className="text-sm text-blue-700">Net Cash Flow</p>
+              <p className="text-sm text-sky-700">Net Cash Flow</p>
             </div>
           </Card>
         )}
@@ -900,7 +900,7 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <Calendar className="text-[#6AC8A3]" size={20} />
+                <Calendar className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <div className="space-y-3">
@@ -912,7 +912,7 @@ function Dashboard() {
                     ${payment.overdue 
                       ? 'border-l-red-500 bg-red-50 hover:bg-red-100' 
                       : payment.type === 'receivable'
-                        ? 'border-l-green-500 bg-green-50 hover:bg-green-100'
+                        ? 'border-l-emerald-500 bg-emerald-50 hover:bg-emerald-100'
                         : 'border-l-orange-500 bg-orange-50 hover:bg-orange-100'
                     }
                   `}
@@ -933,7 +933,7 @@ function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className={`font-bold ${
-                        payment.type === 'receivable' ? 'text-green-600' : 'text-red-600'
+                        payment.type === 'receivable' ? 'text-emerald-600' : 'text-red-600'
                       }`}>
                         {payment.type === 'receivable' ? '+' : '-'}{formatCurrency(Math.abs(payment.amount))}
                       </p>
@@ -943,7 +943,7 @@ function Dashboard() {
               ))}
               {dashboardData.upcomingPayments.length === 0 && (
                 <div className="text-center py-8">
-                  <CheckCircle size={48} className="mx-auto text-green-500 mb-2" />
+                  <CheckCircle size={48} className="mx-auto text-emerald-500 mb-2" />
                   <p className={theme.textMuted}>No upcoming payments</p>
                 </div>
               )}
@@ -965,7 +965,7 @@ function Dashboard() {
                 >
                   <EyeOff size={16} />
                 </button>
-                <AlertCircle className="text-[#6AC8A3]" size={20} />
+                <AlertCircle className="text-[${theme.hoverAccent}]" size={20} />
               </div>
             </div>
             <div className="space-y-3">
@@ -1000,7 +1000,7 @@ function Dashboard() {
                         `}>
                           {alert.priority} priority
                         </span>
-                        <button className="text-xs text-blue-600 hover:text-blue-800">
+                        <button className="text-xs text-sky-600 hover:text-sky-800">
                           Review →
                         </button>
                       </div>
@@ -1010,7 +1010,7 @@ function Dashboard() {
               ))}
               {dashboardData.auditAlerts.length === 0 && (
                 <div className="text-center py-8">
-                  <CheckCircle size={48} className="mx-auto text-green-500 mb-2" />
+                  <CheckCircle size={48} className="mx-auto text-emerald-500 mb-2" />
                   <p className={theme.textMuted}>No audit alerts</p>
                 </div>
               )}
@@ -1054,4 +1054,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default Dashboard; 

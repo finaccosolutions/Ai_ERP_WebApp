@@ -143,4 +143,4 @@ function DashboardChart({ data, type, height = 300 }: DashboardChartProps) {
   return null;
 }
 
-export default DashboardChart;
+export default DashboardChart; 

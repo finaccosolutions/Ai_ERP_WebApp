@@ -242,15 +242,15 @@ function Sales() {
 
   // Define a set of light color palettes for the cards
   const moduleColors = [
-    { cardBg: 'bg-blue-50', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
-    { cardBg: 'bg-green-50', textColor: 'text-green-800', iconBg: 'bg-green-500' },
-    { cardBg: 'bg-purple-50', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
-    { cardBg: 'bg-orange-50', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
-    { cardBg: 'bg-teal-50', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
-    { cardBg: 'bg-indigo-50', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
-    { cardBg: 'bg-pink-50', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
-    { cardBg: 'bg-red-50', textColor: 'text-red-800', iconBg: 'bg-red-500' },
-    { cardBg: 'bg-yellow-50', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
+    { cardBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', textColor: 'text-emerald-800', iconBg: 'bg-emerald-500' },
+    { cardBg: 'bg-gradient-to-br from-sky-50 to-sky-100', textColor: 'text-sky-800', iconBg: 'bg-sky-500' },
+    { cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
+    { cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
+    { cardBg: 'bg-gradient-to-br from-teal-50 to-teal-100', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
+    { cardBg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
+    { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
+    { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
+    { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
   ];
 
 
@@ -294,13 +294,13 @@ function Sales() {
   const getInsightIcon = (type: string) => {
     switch (type) {
       case 'prediction':
-        return <TrendingUp size={16} className="text-blue-500" />;
+        return <TrendingUp size={16} className="text-sky-500" />;
       case 'alert':
         return <AlertTriangle size={16} className="text-red-500" />;
       case 'suggestion':
         return <Lightbulb size={16} className="text-yellow-500" />;
       case 'trend':
-        return <Target size={16} className="text-green-500" />;
+        return <Target size={16} className="text-emerald-500" />;
       default:
         return <Bot size={16} className="text-purple-500" />;
     }
@@ -326,7 +326,7 @@ function Sales() {
       case 'medium':
         return 'border-l-yellow-500 bg-yellow-50';
       case 'low':
-        return 'border-l-green-500 bg-green-50';
+        return 'border-l-emerald-500 bg-emerald-50';
       default:
         return 'border-l-gray-500 bg-gray-50';
     }
@@ -390,7 +390,7 @@ function Sales() {
   if (isLoadingSalesData && recentSalesData.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
       </div>
     );
   }
@@ -425,7 +425,7 @@ function Sales() {
               onKeyPress={(e) => e.key === 'Enter' && handleSmartSearch()}
               className={`
                 w-full pl-10 pr-12 py-2 border ${theme.inputBorder} rounded-lg
-                focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                focus:ring-2 focus:ring-sky-500 focus:border-transparent
                 ${theme.inputBg} ${theme.textPrimary}
                 placeholder:text-gray-400
               `}
@@ -436,7 +436,7 @@ function Sales() {
                 absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors
                 ${isVoiceActive
                   ? 'text-red-500 animate-pulse'
-                  : 'text-gray-400 hover:text-[#5DBF99]'
+                  : `text-gray-400 hover:text-[${theme.hoverAccent}]`
                 }
               `}
             >
@@ -459,8 +459,8 @@ function Sales() {
               className={`
                 px-5 py-2 text-sm font-medium rounded-2xl transition-all duration-300
                 ${activeSalesTab === category.title
-                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white shadow-md`
-                  : `${theme.cardBg} ${theme.textPrimary} hover:bg-slate-200 hover:shadow-sm`
+                  ? `bg-sky-600 text-white shadow-md border-b-2 border-sky-600` // Selected tab style
+                  : `bg-sky-50 text-sky-800 hover:bg-sky-100 hover:shadow-sm border-b-2 border-transparent` // Unselected tab style
                 }
               `}
             >
@@ -486,7 +486,7 @@ function Sales() {
                 <Link key={module.name} to={module.path} className="flex">
                   <Card hover className={`p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}>
                     <div>
-                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#5DBF99] transition-colors`}>
+                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
                         {module.name}
                       </h3>
                       <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
@@ -519,7 +519,7 @@ function Sales() {
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales</h3>
             <div className="flex items-center space-x-2">
-              <Link to="/sales/invoices" className="text-sm text-blue-600 hover:text-blue-800">
+              <Link to="/sales/invoices" className="text-sm text-sky-600 hover:text-sky-800">
                 View All
               </Link>
             </div>
@@ -529,7 +529,7 @@ function Sales() {
               recentSalesData.map((sale) => (
                 <div key={sale.id} className={`
                   flex items-center justify-between p-3 ${theme.inputBg} rounded-2xl
-                  border ${theme.borderColor} hover:border-[#5DBF99] transition-all duration-300
+                  border ${theme.borderColor} hover:border-[${theme.hoverAccent}] transition-all duration-300
                 `}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
@@ -564,9 +564,9 @@ function Sales() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-              <Bot size={20} className="mr-2 text-[#5DBF99]" />
+              <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
               AI Sales Insights
-              <div className="ml-2 w-2 h-2 bg-[#5DBF99] rounded-full animate-pulse" />
+              <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
             </h3>
             <Button
               size="sm"
@@ -601,7 +601,7 @@ function Sales() {
                   </div>
                   <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
                   {insight.actionable && (
-                    <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    <button className="text-xs text-sky-600 hover:text-sky-800 font-medium">
                       {insight.action || 'View Details'} →
                     </button>
                   )}
@@ -643,4 +643,3 @@ function Sales() {
 }
 
 export default Sales;
-

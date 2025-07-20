@@ -525,7 +525,7 @@ function CustomerFormPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
       </div>
     );
   }
@@ -561,7 +561,7 @@ function CustomerFormPage() {
                   className={`
                     flex flex-col items-center px-4 py-2 text-sm font-medium transition-colors duration-300
                     ${isActive
-                      ? `text-[#6AC8A3] border-b-2 border-[#6AC8A3]`
+                      ? `text-[${theme.hoverAccent}] border-b-2 border-[${theme.hoverAccent}]`
                       : `text-gray-500 hover:text-gray-700`
                     }
                   `}
@@ -580,7 +580,7 @@ function CustomerFormPage() {
           {activeTab === 'basic-info' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <Info size={20} className="mr-2 text-[#6AC8A3]" />
+                <Info size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Basic Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -612,7 +612,7 @@ function CustomerFormPage() {
                     className={`
                       w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                       ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                       ${viewOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
                     `}
                     disabled={viewOnly}
@@ -648,7 +648,7 @@ function CustomerFormPage() {
                     id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
                     disabled={viewOnly}
                   />
                   <label htmlFor="isActive" className={`text-sm font-medium ${theme.textPrimary}`}>
@@ -662,7 +662,7 @@ function CustomerFormPage() {
           {activeTab === 'billing-address' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <MapPin size={20} className="mr-2 text-[#6AC8A3]" />
+                <MapPin size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Billing Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -724,7 +724,7 @@ function CustomerFormPage() {
           {activeTab === 'shipping-address' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <Truck size={20} className="mr-2 text-[#6AC8A3]" />
+                <Truck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Shipping Address (Optional)
               </h3>
               <div className="flex items-center space-x-3 mb-4">
@@ -733,7 +733,7 @@ function CustomerFormPage() {
                   id="sameAsBilling"
                   checked={sameAsBilling}
                   onChange={handleSameAsBillingChange}
-                  className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
                   disabled={viewOnly}
                 />
                 <label htmlFor="sameAsBilling" className={`text-sm font-medium ${theme.textPrimary}`}>
@@ -799,7 +799,7 @@ function CustomerFormPage() {
           {activeTab === 'contact-details' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <PhoneCall size={20} className="mr-2 text-[#6AC8A3]" />
+                <PhoneCall size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Contact Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -862,7 +862,7 @@ function CustomerFormPage() {
           {activeTab === 'financial-tax' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <DollarSign size={20} className="mr-2 text-[#6AC8A3]" />
+                <DollarSign size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Financial & Tax Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -958,7 +958,7 @@ function CustomerFormPage() {
           {activeTab === 'other-details' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <ClipboardList size={20} className="mr-2 text-[#6AC8A3]" />
+                <ClipboardList size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Other Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

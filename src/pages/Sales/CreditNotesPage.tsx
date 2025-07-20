@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileBadge, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2 } from 'lucide-react';
+import { Plus, FileBadge, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -470,7 +470,7 @@ function CreditNotesPage() {
                         </div>
                         <div>
                           <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Line Total</label>
-                          <div className={`px-3 py-2 bg-green-50 border border-green-200 rounded-lg font-semibold`}>
+                          <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold`}>
                             ₹{item.lineTotal.toLocaleString()}
                           </div>
                         </div>
@@ -540,7 +540,7 @@ function CreditNotesPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
               </div>
             ) : creditNotesList.length === 0 ? (
               <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">

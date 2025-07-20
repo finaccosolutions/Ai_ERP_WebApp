@@ -65,7 +65,7 @@ function DeliveryChallansPage() {
     customerId: '',
     customerName: '',
     salesOrderId: '',
-    challanDate: new Date().toISOString().split('T')[0],
+    challanDate: new Date().toISOString().split('T'),
     deliveryAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
     notes: '',
     status: 'draft', // draft, dispatched, delivered, cancelled
@@ -122,7 +122,7 @@ function DeliveryChallansPage() {
       customerId: '',
       customerName: '',
       salesOrderId: '',
-      challanDate: new Date().toISOString().split('T')[0],
+      challanDate: new Date().toISOString().split('T'),
       deliveryAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
       notes: '',
       status: 'draft',
@@ -223,7 +223,7 @@ function DeliveryChallansPage() {
           .insert(challanToSave)
           .select();
         if (error) throw error;
-        challanId = data[0].id;
+        challanId = data.id;
         setSuccessMessage('Delivery Challan created successfully!');
       }
 
@@ -507,7 +507,7 @@ function DeliveryChallansPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
               </div>
             ) : deliveryChallans.length === 0 ? (
               <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">

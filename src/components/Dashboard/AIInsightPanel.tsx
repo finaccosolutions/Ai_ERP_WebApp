@@ -44,13 +44,13 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
   const getInsightIcon = (type: string) => {
     switch (type) {
       case 'prediction':
-        return <TrendingUp size={16} className="text-blue-500" />;
+        return <TrendingUp size={16} className="text-sky-500" />;
       case 'alert':
         return <AlertTriangle size={16} className="text-red-500" />;
       case 'suggestion':
         return <Lightbulb size={16} className="text-yellow-500" />;
       case 'trend':
-        return <Target size={16} className="text-green-500" />;
+        return <Target size={16} className="text-emerald-500" />;
       default:
         return <Brain size={16} className="text-purple-500" />;
     }
@@ -76,7 +76,7 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
       case 'medium':
         return 'border-l-yellow-500 bg-yellow-50';
       case 'low':
-        return 'border-l-green-500 bg-green-50';
+        return 'border-l-emerald-500 bg-emerald-50';
       default:
         return 'border-l-gray-500 bg-gray-50';
     }
@@ -127,9 +127,9 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className={`text-xl font-semibold ${theme.textPrimary} flex items-center`}>
-          <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+          <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
           AI Business Insights
-          <div className="ml-2 w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse" />
+          <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
         </h3>
         <div className="flex items-center space-x-2">
           <button
@@ -137,7 +137,7 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
             disabled={refreshing}
             className={`
               p-1 rounded-lg transition-colors
-              ${refreshing ? 'text-gray-400' : 'text-[#6AC8A3] hover:text-[#5DBF99]'}
+              ${refreshing ? 'text-gray-400' : 'text-[${theme.hoverAccent}] hover:text-emerald-600'}
             `}
           >
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
@@ -179,7 +179,7 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
                     ? 'bg-red-100 text-red-800' 
                     : insight.impact === 'medium'
                       ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-green-100 text-green-800'
+                      : 'bg-emerald-100 text-emerald-800'
                   }
                 `}>
                   {insight.impact} impact
@@ -216,7 +216,7 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
             <Bot size={14} />
             <span>Last updated: {new Date().toLocaleTimeString()}</span>
           </div>
-          <button className="text-[#6AC8A3] hover:text-[#5DBF99] font-medium text-sm transition-colors">
+          <button className="text-[${theme.hoverAccent}] hover:text-emerald-600 font-medium text-sm transition-colors">
             View All Insights →
           </button>
         </div>

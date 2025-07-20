@@ -79,11 +79,11 @@ function SalesPriceListPage() {
               <FormField label="Valid From" type="date" value={priceListData.validFrom} onChange={(val) => handleInputChange('validFrom', val)} icon={<Calendar size={18} />} />
               <FormField label="Valid To" type="date" value={priceListData.validTo} onChange={(val) => handleInputChange('validTo', val)} icon={<Calendar size={18} />} />
               <div className="flex items-center space-x-2">
-                <input type="checkbox" id="isDefault" checked={priceListData.isDefault} onChange={(e) => handleInputChange('isDefault', e.target.checked)} className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]" />
+                <input type="checkbox" id="isDefault" checked={priceListData.isDefault} onChange={(e) => handleInputChange('isDefault', e.target.checked)} className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]" />
                 <label htmlFor="isDefault" className={`text-sm font-medium ${theme.textPrimary}`}>Set as Default</label>
               </div>
               <div className="flex items-center space-x-2">
-                <input type="checkbox" id="isActive" checked={priceListData.isActive} onChange={(e) => handleInputChange('isActive', e.target.checked)} className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]" />
+                <input type="checkbox" id="isActive" checked={priceListData.isActive} onChange={(e) => handleInputChange('isActive', e.target.checked)} className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]" />
                 <label htmlFor="isActive" className={`text-sm font-medium ${theme.textPrimary}`}>Is Active</label>
               </div>
             </div>

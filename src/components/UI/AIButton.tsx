@@ -58,7 +58,7 @@ function AIButton({
       tooltip: 'Use voice commands'
     },
     document: {
-      icon: <Upload size={16} />,
+      icon: <FileText size={16} />,
       text: 'AI Extract',
       onClick: onSuggest,
       variant: 'outline' as const,
@@ -105,14 +105,14 @@ function AIButton({
         size={size}
         className={`
           ${className} 
-          animate-pulse-soft hover:shadow-[#6AC8A3]/25
+          animate-pulse-soft hover:shadow-[${theme.hoverAccent}]/25
           relative overflow-hidden
         `}
       >
         {currentConfig.text}
         
         {/* AI Glow Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent 
                        transform -skew-x-12 -translate-x-full group-hover:translate-x-full 
                        transition-transform duration-1000 ease-out" />
       </Button>
@@ -127,7 +127,7 @@ function AIButton({
       `}>
         {currentConfig.tooltip}
         <div className={`absolute top-full left-1/2 transform -translate-x-1/2 
-                      border-4 border-transparent border-t-gray-800`} />
+                      border-4 border-transparent border-b-gray-800`} />
       </div>
     </div>
   );

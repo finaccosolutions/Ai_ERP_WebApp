@@ -86,7 +86,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'ai': return <Bot size={16} className="text-[#6AC8A3]" />; // Changed from Sparkles
+      case 'ai': return <Bot size={16} className="text-[${theme.hoverAccent}]" />; // Changed from Sparkles
       case 'payment': return <span className="w-4 h-4 bg-green-500 rounded-full" />;
       case 'compliance': return <span className="w-4 h-4 bg-orange-500 rounded-full" />;
       case 'audit': return <span className="w-4 h-4 bg-red-500 rounded-full" />;
@@ -121,7 +121,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`
               lg:hidden p-1.5 rounded-lg transition-all duration-300
-              text-white hover:bg-white hover:bg-opacity-10 hover:text-[#5DBF99]
+              text-white hover:bg-white hover:bg-opacity-10 hover:text-[${theme.hoverAccent}]
             `}
           >
             <div className="group relative"> {/* Added group for tooltip */}
@@ -168,16 +168,16 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`
-                w-full pl-9 pr-14 py-2.5 border border-slate-600/30
+                w-full pl-10 pr-14 py-2.5 border border-slate-600/30
                 rounded-xl bg-slate-800/40 text-white placeholder:text-slate-400
-                focus:ring-2 focus:ring-[#6AC8A3]/50 focus:border-[#6AC8A3]/50 focus:bg-slate-800/60
+                focus:ring-2 focus:ring-[${theme.hoverAccent}]/50 focus:border-[${theme.hoverAccent}]/50 focus:bg-slate-800/60
                 transition-all duration-300 hover:bg-slate-800/50 backdrop-blur-sm
                 ${isAIEnabled ? 'shadow-inner' : ''}
               `}
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {isAIEnabled && (
-                <span className="text-[#6AC8A3] animate-pulse text-xs">AI</span>
+                <span className="text-[${theme.hoverAccent}] animate-pulse text-xs">AI</span>
               )}
               <button
                 type="button"
@@ -188,7 +188,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                   ${isVoiceSearch 
                     ? 'text-red-400 animate-pulse' 
                     : isAIEnabled 
-                      ? 'text-slate-400 hover:text-[#6AC8A3]' 
+                      ? 'text-slate-400 hover:text-[${theme.hoverAccent}]' 
                       : 'text-slate-300 cursor-not-allowed'
                   }
                 `}
@@ -236,14 +236,14 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               p-2 rounded-xl transition-all duration-300 transform hover:scale-110 relative group
               relative overflow-hidden shadow-md
               ${isAIEnabled 
-                ? `bg-gradient-to-r ${theme.primaryGradient} text-white hover:shadow-[#6AC8A3]/25` 
+                ? `bg-gradient-to-r ${theme.primaryGradient} text-white hover:shadow-[${theme.hoverAccent}]/25` 
                 : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
               }
             `}
           >
             <Bot size={20} className="relative z-10" /> {/* Increased size to 20 */}
             {isAIEnabled && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent 
                            transform -skew-x-12 -translate-x-full hover:translate-x-full 
                            transition-transform duration-1000 ease-out" />
             )}
@@ -265,7 +265,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               onClick={() => setShowNotifications(!showNotifications)}
               className={`
                 p-2 rounded-xl transition-all duration-300 relative group
-                text-white hover:bg-white hover:bg-opacity-10 hover:text-[#6AC8A3]
+                text-white hover:bg-white hover:bg-opacity-10 hover:text-[${theme.hoverAccent}]
               `}
             >
               <Bell size={20} /> {/* Increased size to 20 */}
@@ -306,8 +306,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                         key={notification.id}
                         className={`
                           p-4 border-b ${theme.borderColor} transition-all duration-300
-                          hover:bg-[#5DBF99] hover:bg-opacity-10
-                          ${notification.unread ? 'bg-blue-50 border-l-4 border-l-[#5DBF99]' : ''}
+                          hover:bg-[${theme.hoverAccent}] hover:bg-opacity-10
+                          ${notification.unread ? 'bg-blue-50 border-l-4 border-l-[${theme.hoverAccent}]' : ''}
                         `}
                       >
                         <div className="flex items-start space-x-3">
@@ -325,7 +325,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                               {notification.message}
                             </p>
                             {notification.type === 'ai' && (
-                              <button className="text-xs text-[#5DBF99] hover:text-[#4FB085] mt-2">
+                              <button className="text-xs text-[${theme.hoverAccent}] hover:text-emerald-600 mt-2">
                                 View AI Suggestion →
                               </button>
                             )}
@@ -336,7 +336,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                   )}
                 </div>
                 <div className={`p-3 border-t ${theme.borderColor} text-center`}>
-                  <button className="text-sm text-[#6AC8A3] hover:text-[#5DBF99]">
+                  <button className="text-sm text-[${theme.hoverAccent}] hover:text-emerald-600">
                     View All Notifications
                   </button>
                 </div>
@@ -357,10 +357,10 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 <img
                   src={user.avatar}
                   alt="User Avatar"
-                  className="w-8 h-8 rounded-full border-2 border-[#6AC8A3]"
+                  className="w-8 h-8 rounded-full border-2 border-[${theme.hoverAccent}]"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full border-2 border-[#6AC8A3] bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                <div className="w-8 h-8 rounded-full border-2 border-[${theme.hoverAccent}] bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
                   {getUserInitials(user?.name)}
                 </div>
               )}
@@ -377,7 +377,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                   {/* Consolidated link */}
                   <Link to="/user/profile" onClick={() => setShowUserMenu(false)} className={`
                     w-full px-4 py-2 text-left text-sm flex items-center transition-all duration-300
-                    ${theme.textPrimary} hover:bg-[#6AC8A3]/10 hover:text-[#6AC8A3]
+                    ${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10 hover:text-[${theme.hoverAccent}]
                   `}>
                     <User size={16} className="mr-2" />
                     My Account

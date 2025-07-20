@@ -5,12 +5,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Updated theme colors with your gradient
-        'theme-green-light': '#7AD4B0',
-        'theme-green-medium': '#6AC8A3', 
-        'theme-green-base': '#5DBF99',
-        'theme-green-dark': '#4FB085',
-        'theme-green-darker': '#41A171',
+        // New Emerald Glow palette
+        'emerald-50': '#ECFDF5',
+        'emerald-100': '#D1FAE5',
+        'emerald-200': '#A7F3D0',
+        'emerald-300': '#6EE7B7',
+        'emerald-400': '#34D399', // Core vibrant green
+        'emerald-500': '#10B981',
+        'emerald-600': '#059669',
+        'emerald-700': '#047857',
+        'emerald-800': '#065F46',
+        'emerald-900': '#064E3B',
+        'emerald-950': '#022C22',
+        // Complementary Sky Blue palette
+        'sky-50': '#F0F9FF',
+        'sky-100': '#E0F2FE',
+        'sky-200': '#BAE6FD',
+        'sky-300': '#7DD3FC',
+        'sky-400': '#38BFF8',
+        'sky-500': '#0EA5E9',
+        'sky-600': '#0284C7',
+        'sky-700': '#0369A1',
+        'sky-800': '#075985',
+        'sky-900': '#0C4A6E',
+        'sky-950': '#082F49',
         gray: {
           750: '#374151',
           850: '#1F2937',
@@ -34,9 +52,10 @@ export default {
         }
       },
       boxShadow: {
-        'theme': '0 10px 25px -3px rgba(93, 191, 153, 0.1), 0 4px 6px -2px rgba(93, 191, 153, 0.05)',
-        'theme-lg': '0 20px 25px -5px rgba(93, 191, 153, 0.1), 0 10px 10px -5px rgba(93, 191, 153, 0.04)',
-        'theme-xl': '0 25px 50px -12px rgba(93, 191, 153, 0.25)',
+        // Updated shadows to use the new emerald-400 base
+        'theme': '0 10px 25px -3px rgba(52, 211, 153, 0.1), 0 4px 6px -2px rgba(52, 211, 153, 0.05)',
+        'theme-lg': '0 20px 25px -5px rgba(52, 211, 153, 0.1), 0 10px 10px -5px rgba(52, 211, 153, 0.04)',
+        'theme-xl': '0 25px 50px -12px rgba(52, 211, 153, 0.25)',
       }
     },
   },

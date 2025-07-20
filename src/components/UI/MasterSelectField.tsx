@@ -152,7 +152,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
             w-full pl-10 pr-3 py-3 border ${theme.inputBorder}
             ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
-            transition-all duration-300 hover:border-[#6AC8A3]
+            transition-all duration-300 hover:border-[${theme.hoverAccent}]
             placeholder:${theme.textMuted}
             ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
           `}
@@ -180,7 +180,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
               onClick={() => handleOptionClick(option)}
               className={`
                 w-full text-left px-4 py-2 text-sm
-                ${theme.textPrimary} hover:bg-[#6AC8A3]/10
+                ${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10
               `}
             >
               {option.name}
@@ -196,4 +196,3 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
 });
 
 export default MasterSelectField;
-

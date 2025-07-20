@@ -109,7 +109,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
       {activeSection === 'ai-general' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+            <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             General AI Features
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -119,7 +119,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="globalAIEnabled"
                 checked={aiSettings.globalAIEnabled}
                 onChange={(e) => handleAISettingChange('globalAIEnabled', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="globalAIEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Globally Enable/Disable AI Features
@@ -131,7 +131,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="enableSuggestions"
                 checked={aiSettings.enableSuggestions}
                 onChange={(e) => handleAISettingChange('enableSuggestions', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="enableSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable AI Suggestions
@@ -143,7 +143,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="enableVoiceCommands"
                 checked={aiSettings.enableVoiceCommands}
                 onChange={(e) => handleAISettingChange('enableVoiceCommands', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="enableVoiceCommands" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable Voice Commands
@@ -155,7 +155,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="enableDocumentProcessing"
                 checked={aiSettings.enableDocumentProcessing}
                 onChange={(e) => handleAISettingChange('enableDocumentProcessing', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="enableDocumentProcessing" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable Document Processing
@@ -168,7 +168,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
       {activeSection === 'ai-suggestions' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Lightbulb size={20} className="mr-2 text-[#6AC8A3]" />
+            <Lightbulb size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Suggestion & Response
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -182,7 +182,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="high">High</option>
@@ -200,7 +200,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="concise">Concise</option>
@@ -214,7 +214,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="aiLearningEnabled"
                 checked={aiSettings.aiLearningEnabled}
                 onChange={(e) => handleAISettingChange('aiLearningEnabled', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="aiLearningEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Allow AI to Learn from My Corrections
@@ -227,7 +227,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
       {activeSection === 'ai-advanced' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Brain size={20} className="mr-2 text-[#6AC8A3]" />
+            <Brain size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Advanced AI Features
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -237,7 +237,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="aiSearchEnabled"
                 checked={aiSettings.aiSearchEnabled}
                 onChange={(e) => handleAISettingChange('aiSearchEnabled', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="aiSearchEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable AI-Powered Smart Search
@@ -249,7 +249,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="aiReportGenerationEnabled"
                 checked={aiSettings.aiReportGenerationEnabled}
                 onChange={(e) => handleAISettingChange('aiReportGenerationEnabled', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="aiReportGenerationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable AI-Driven Report Generation
@@ -261,7 +261,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                 id="aiNotificationEnabled"
                 checked={aiSettings.aiNotificationEnabled}
                 onChange={(e) => handleAISettingChange('aiNotificationEnabled', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="aiNotificationEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Enable AI Notifications
@@ -278,7 +278,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
                   className={`
                     w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                     ${theme.inputBg} ${theme.textPrimary}
-                    focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                   `}
                 >
                   <option value="high">High Confidence Only</option>
@@ -294,7 +294,7 @@ function AIPreferencesPage({ activeSection }: AIPreferencesPageProps) {
       {activeSection === 'ai-model' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Zap size={20} className="mr-2 text-[#6AC8A3]" />
+            <Zap size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             AI Model & Integration
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

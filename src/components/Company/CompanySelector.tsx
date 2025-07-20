@@ -123,7 +123,7 @@ function CompanySelector({ onCompanySelect, onPeriodSelect, showCreateButton = t
                 ? 'bg-slate-700 hover:bg-slate-600 text-white border border-slate-600' 
                 : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-200'
               }
-              hover:border-[#6AC8A3] hover:shadow-md min-w-[200px]
+              hover:border-[${theme.hoverAccent}] hover:shadow-md min-w-[200px]
             `}
           >
             <div className="flex items-center space-x-2 flex-1">
@@ -172,10 +172,10 @@ function CompanySelector({ onCompanySelect, onPeriodSelect, showCreateButton = t
                     onClick={() => handleCompanySelect(company)}
                     className={`
                       w-full px-4 py-3 text-left transition-all duration-300 flex items-center space-x-3
-                      hover:bg-[#6AC8A3] hover:text-white group
+                      hover:bg-[${theme.hoverAccent}] hover:text-white group
                       ${company.id === currentCompany?.id 
-                        ? 'bg-[#6AC8A3] text-white' 
-                        : `${theme.textPrimary} hover:bg-[#6AC8A3]/10`
+                        ? 'bg-[${theme.hoverAccent}] text-white' 
+                        : `${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10`
                       }
                     `}
                   >
@@ -227,10 +227,10 @@ function CompanySelector({ onCompanySelect, onPeriodSelect, showCreateButton = t
                   ? 'bg-slate-700 hover:bg-slate-600 text-white border border-slate-600' 
                   : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-200'
                 }
-                hover:border-[#6AC8A3] hover:shadow-md min-w-[180px]
+                hover:border-[${theme.hoverAccent}] hover:shadow-md min-w-[180px]
               `}
             >
-              <Calendar size={16} className="text-[#6AC8A3]" />
+              <Calendar size={16} className="text-[${theme.hoverAccent}]" />
               <div className="text-left flex-1">
                 <p className={`text-sm font-medium ${theme.textPrimary}`}>
                   {currentPeriod?.name || 'Select Period'}
@@ -262,10 +262,10 @@ function CompanySelector({ onCompanySelect, onPeriodSelect, showCreateButton = t
                       onClick={() => handlePeriodSelect(period)}
                       className={`
                         w-full px-4 py-3 text-left transition-all duration-300
-                        hover:bg-[#6AC8A3] hover:text-white
+                        hover:bg-[${theme.hoverAccent}] hover:text-white
                         ${period.id === currentPeriod?.id 
-                          ? 'bg-[#6AC8A3] text-white' 
-                          : `${theme.textPrimary} hover:bg-[#6AC8A3]/10`
+                          ? 'bg-[${theme.hoverAccent}] text-white' 
+                          : `${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10`
                         }
                       `}
                     >

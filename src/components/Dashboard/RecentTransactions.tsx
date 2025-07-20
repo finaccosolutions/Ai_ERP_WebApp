@@ -61,7 +61,7 @@ function RecentTransactions({ transactions, onToggle }: RecentTransactionsProps)
           >
             <EyeOff size={16} />
           </button>
-          <button className="text-[#6AC8A3] hover:text-[#5DBF99]">
+          <button className="text-[${theme.hoverAccent}] hover:text-emerald-600">
             <ExternalLink size={16} />
           </button>
         </div>
@@ -73,7 +73,7 @@ function RecentTransactions({ transactions, onToggle }: RecentTransactionsProps)
             key={transaction.id}
             className={`
               flex items-center justify-between p-4 rounded-xl border transition-all duration-300
-              ${theme.borderColor} hover:border-[#6AC8A3] hover:bg-[#6AC8A3]/5
+              ${theme.borderColor} hover:border-[${theme.hoverAccent}] hover:bg-[${theme.hoverAccent}]/5
               cursor-pointer group
             `}
           >
@@ -88,7 +88,7 @@ function RecentTransactions({ transactions, onToggle }: RecentTransactionsProps)
                 {getTransactionIcon(transaction.type, transaction.amount)}
               </div>
               <div>
-                <p className={`font-medium ${theme.textPrimary} group-hover:text-[#5DBF99]`}>
+                <p className={`font-medium ${theme.textPrimary} group-hover:text-[${theme.hoverAccent}]`}>
                   {transaction.description}
                 </p>
                 <p className={`text-sm ${theme.textMuted}`}>
@@ -128,7 +128,7 @@ function RecentTransactions({ transactions, onToggle }: RecentTransactionsProps)
       
       {transactions.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <button className="w-full text-center text-[#6AC8A3] hover:text-[#5DBF99] font-medium transition-colors">
+          <button className="w-full text-center text-[${theme.hoverAccent}] hover:text-emerald-600 font-medium transition-colors">
             View All Transactions →
           </button>
         </div>

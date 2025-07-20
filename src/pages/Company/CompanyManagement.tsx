@@ -133,7 +133,7 @@ function CompanyManagement() {
   useEffect(() => {
     if (companies.length > 0 && !selectedCompany) {
       // Do not pre-select any company on initial load
-      // setSelectedCompany(currentCompany || companies[0]);
+      // setSelectedCompany(currentCompany || companies);
     }
   }, [companies, selectedCompany]);
 
@@ -176,8 +176,8 @@ function CompanyManagement() {
 
   const getPeriodTypeColor = (type: string) => {
     switch (type) {
-      case 'fiscal_year': return 'bg-blue-100 text-blue-800';
-      case 'quarter': return 'bg-green-100 text-green-800';
+      case 'fiscal_year': return 'bg-sky-100 text-sky-800';
+      case 'quarter': return 'bg-emerald-100 text-emerald-800';
       case 'month': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -255,7 +255,7 @@ function CompanyManagement() {
 
     // In production, this should be properly validated against hashed password
     if (password === selectedCompany.settings?.password) {
-      setIsPasswordVerified(true); // Password verified
+      setIsPasswordVerified(true); // Reset verification for new selection
       setShowPasswordModal(false);
       setPassword('');
       setPasswordError('');
@@ -457,7 +457,7 @@ function CompanyManagement() {
   if (loading && companies.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
       </div>
     );
   }
@@ -480,7 +480,7 @@ function CompanyManagement() {
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                 ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
               `}
             />
           </div>
@@ -505,7 +505,7 @@ function CompanyManagement() {
                 w-full p-3 text-left rounded-lg transition-all duration-200
                 flex items-center space-x-3
                 ${selectedCompany?.id === company.id
-                  ? 'bg-gradient-to-r from-[#5DBF99] to-[#6AC8A3] text-white shadow-md'
+                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white shadow-md`
                   : `${theme.cardBg} ${theme.textPrimary} hover:bg-gray-100 hover:shadow-sm`
                 }
               `}
@@ -526,7 +526,7 @@ function CompanyManagement() {
                 </p>
               </div>
               {company.id === currentCompany?.id && (
-                <Check size={16} className={selectedCompany?.id === company.id ? 'text-white' : 'text-[#6AC8A3]'} />
+                <Check size={16} className={selectedCompany?.id === company.id ? 'text-white' : 'text-[${theme.hoverAccent}]'} />
               )}
             </button>
           ))}
@@ -593,7 +593,7 @@ function CompanyManagement() {
               {/* Success/Error Messages */}
               {successMessage && (
                 <div className="p-3 mb-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-green-800 text-sm">{successMessage}</p>
+                  <p className="text-emerald-800 text-sm">{successMessage}</p>
                 </div>
               )}
               {formErrors.submit && (
@@ -701,7 +701,7 @@ function CompanyManagement() {
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className={`text-xl font-semibold ${theme.textPrimary} flex items-center`}>
-                      <Calendar size={24} className="mr-3 text-[#6AC8A3]" />
+                      <Calendar size={24} className="mr-3 text-[${theme.hoverAccent}]" />
                       Accounting Periods
                     </h2>
                     <Button
@@ -719,8 +719,8 @@ function CompanyManagement() {
 
                   {/* Create/Edit Period Form */}
                   {(showCreatePeriodForm || editingPeriod) && (
-                    <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
-                      <h3 className="font-medium text-blue-900 mb-4">
+                    <Card className="p-4 mb-6 bg-sky-50 border-sky-200">
+                      <h3 className="font-medium text-sky-900 mb-4">
                         {editingPeriod ? 'Edit Period' : 'Create New Period'}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -742,7 +742,7 @@ function CompanyManagement() {
                             className={`
                               w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                               ${theme.inputBg} ${theme.textPrimary}
-                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                              focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                             `}
                           >
                             <option value="fiscal_year">Fiscal Year</option>
@@ -800,8 +800,8 @@ function CompanyManagement() {
                         className={`
                           p-4 border rounded-xl transition-all duration-300
                           ${period.isActive
-                            ? 'border-[#6AC8A3] bg-[#6AC8A3]/5'
-                            : `${theme.borderColor} hover:border-[#6AC8A3]/50`
+                            ? 'border-[${theme.hoverAccent}] bg-[${theme.hoverAccent}]/5'
+                            : `${theme.borderColor} hover:border-[${theme.hoverAccent}]/50`
                           }
                         `}
                       >
@@ -810,7 +810,7 @@ function CompanyManagement() {
                             <div className={`
                               w-12 h-12 rounded-xl flex items-center justify-center
                               ${period.isActive
-                                ? 'bg-[#6AC8A3] text-white'
+                                ? 'bg-[${theme.hoverAccent}] text-white'
                                 : 'bg-gray-100 text-gray-600'
                               }
                             `}>
@@ -828,7 +828,7 @@ function CompanyManagement() {
                                   {getPeriodTypeLabel(period.periodType)}
                                 </span>
                                 {period.isActive && (
-                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center">
+                                  <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-800 rounded-full flex items-center">
                                     <Check size={12} className="mr-1" />
                                     Active
                                   </span>

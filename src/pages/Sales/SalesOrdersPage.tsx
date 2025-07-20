@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ShoppingCart, Search, Calendar, Users, DollarSign, Truck, List, Save, Send, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, Search, Calendar, Users, DollarSign, Truck, List, Save, Send, Trash2, Calculator } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -386,7 +386,7 @@ function SalesOrdersPage() {
                 className={`
                   px-3 py-1 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="item_mode">Item Order Mode</option>
@@ -536,7 +536,7 @@ function SalesOrdersPage() {
                         </div>
                         <div>
                           <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Line Total</label>
-                          <div className={`px-3 py-2 bg-green-50 border border-green-200 rounded-lg font-semibold`}>
+                          <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold`}>
                             ₹{item.lineTotal.toLocaleString()}
                           </div>
                         </div>
@@ -566,7 +566,7 @@ function SalesOrdersPage() {
                   <hr className={theme.borderColor} />
                   <div className="flex justify-between text-lg font-semibold">
                     <span className={theme.textPrimary}>Total Amount:</span>
-                    <span className="text-green-600">₹{salesOrder.totalAmount.toLocaleString()}</span>
+                    <span className="text-emerald-600">₹{salesOrder.totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -612,7 +612,7 @@ function SalesOrdersPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
               </div>
             ) : salesOrders.length === 0 ? (
               <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">

@@ -21,12 +21,15 @@ interface ThemeSettings {
   shadowHover: string;
   fontSize: 'sm' | 'md' | 'lg';
   isDark: boolean;
+  // New properties for button hover backgrounds
+  buttonOutlineHoverBg: string;
+  buttonGhostHoverBg: string;
 }
 
 const lightTheme: ThemeSettings = {
-  // Main gradient: Your specified green colors with subtle transition
-  primaryGradient: 'from-[#58B891] via-[#6AC8A3] to-[#7AD4B0]', // Slightly darker start for better white text contrast
-  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Corresponding hover
+  // Main gradient: Using the new emerald colors
+  primaryGradient: 'from-emerald-400 via-emerald-300 to-emerald-200',
+  primaryGradientHover: 'from-emerald-700 via-emerald-600 to-emerald-500', // Darker emerald shades for hover
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-800 to-slate-900',
@@ -43,23 +46,27 @@ const lightTheme: ThemeSettings = {
   borderColor: 'border-slate-300',
   inputBg: 'bg-slate-100',
   inputBorder: 'border-slate-300',
-  inputFocus: 'ring-[#6AC8A3] border-[#6AC8A3]',
+  inputFocus: 'ring-emerald-400 border-emerald-400', // Using new base emerald
   
   // Hover effects
-  hoverAccent: '#5DBF99',
+  hoverAccent: '#34D399', // New emerald-400 base
   
   // Design elements
-  borderRadius: 'rounded-2xl', // Changed to rounded-2xl
+  borderRadius: 'rounded-2xl',
   shadowLevel: 'shadow-lg',
-  shadowHover: 'shadow-xl', // Deeper shadow on hover
+  shadowHover: 'shadow-xl',
   fontSize: 'md',
-  isDark: false
+  isDark: false,
+
+  // Button specific hover backgrounds
+  buttonOutlineHoverBg: 'bg-emerald-100', // Clearly green, not white-ish
+  buttonGhostHoverBg: 'bg-emerald-200', // Clearly green, not white-ish
 };
 
 const darkTheme: ThemeSettings = {
-  // Main gradient: Darker version with your colors
-  primaryGradient: 'from-[#58B891] via-[#6AC8A3] to-[#7AD4B0]', // Consistent with light for primary
-  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Consistent with light for primary
+  // Main gradient: Using the new emerald colors
+  primaryGradient: 'from-emerald-400 via-emerald-300 to-emerald-200', // Consistent with light for primary
+  primaryGradientHover: 'from-emerald-700 via-emerald-600 to-emerald-500', // Darker emerald shades for hover
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-900 to-black',
@@ -76,17 +83,21 @@ const darkTheme: ThemeSettings = {
   borderColor: 'border-slate-600',
   inputBg: 'bg-slate-700',
   inputBorder: 'border-slate-600',
-  inputFocus: 'ring-[#6AC8A3] border-[#6AC8A3]',
+  inputFocus: 'ring-emerald-400 border-emerald-400', // Using new base emerald
   
   // Hover effects
-  hoverAccent: '#5DBF99',
+  hoverAccent: '#34D399', // New emerald-400 base
   
   // Design elements
-  borderRadius: 'rounded-2xl', // Changed to rounded-2xl
+  borderRadius: 'rounded-2xl',
   shadowLevel: 'shadow-lg',
-  shadowHover: 'shadow-xl', // Deeper shadow on hover
+  shadowHover: 'shadow-xl',
   fontSize: 'md',
-  isDark: true
+  isDark: true,
+
+  // Button specific hover backgrounds
+  buttonOutlineHoverBg: 'bg-emerald-900', // Dark emerald for outline hover
+  buttonGhostHoverBg: 'bg-emerald-800', // Darker emerald for ghost hover
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -121,8 +132,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleDarkMode = () => {
     const newTheme = theme.isDark ? lightTheme : darkTheme;
     setTheme(newTheme);
-    localStorage.setItem('erp-theme', JSON.stringify(newTheme));
-    localStorage.setItem('erp-dark-mode', newTheme.isDark.toString());
+    localStorage.setItem('erp-theme', newTheme.isDark.toString()); // Store only dark mode preference
+    localStorage.removeItem('erp-theme'); // Remove the full theme object to ensure it defaults to light/dark based on preference
   };
 
   return (
@@ -141,4 +152,3 @@ export function useTheme() {
   }
   return context;
 }
-

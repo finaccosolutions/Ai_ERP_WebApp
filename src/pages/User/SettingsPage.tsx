@@ -112,14 +112,14 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
           <p className={theme.textSecondary}>Configure your application preferences.</p>
         </div>
         <Button onClick={handleSaveSettings} disabled={loading} icon={<Save size={16} />}>
-          {loading ? 'Saving...' : 'Save Settings'}
+          {loading ? 'Saving...' : 'Save Preferences'}
         </Button>
       </div>
 
       {activeSection === 'settings-appearance' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Palette size={20} className="mr-2 text-[#6AC8A3]" />
+            <Palette size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Appearance
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -133,7 +133,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="light">Light</option>
@@ -154,7 +154,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
       {activeSection === 'settings-localization' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Globe size={20} className="mr-2 text-[#6AC8A3]" />
+            <Globe size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Localization
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,7 +168,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="en">English</option>
@@ -186,7 +186,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="DD-MM-YYYY">DD-MM-YYYY</option>
@@ -201,7 +201,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
       {activeSection === 'settings-notifications' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Bell size={20} className="mr-2 text-[#6AC8A3]" />
+            <Bell size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Notification Preferences
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -211,7 +211,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 id="notificationEmail"
                 checked={settings.notificationEmail}
                 onChange={(e) => handleSettingChange('notificationEmail', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="notificationEmail" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Email Notifications
@@ -223,7 +223,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 id="notificationInApp"
                 checked={settings.notificationInApp}
                 onChange={(e) => handleSettingChange('notificationInApp', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="notificationInApp" className={`text-sm font-medium ${theme.textPrimary}`}>
                 In-App Notifications
@@ -235,7 +235,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 id="notificationSound"
                 checked={settings.notificationSound}
                 onChange={(e) => handleSettingChange('notificationSound', e.target.checked)}
-                className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
               />
               <label htmlFor="notificationSound" className={`text-sm font-medium ${theme.textPrimary}`}>
                 Play Notification Sound
@@ -248,7 +248,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
       {activeSection === 'settings-dashboard' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <LayoutDashboard size={20} className="mr-2 text-[#6AC8A3]" />
+            <LayoutDashboard size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Dashboard & Module Views
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,7 +262,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="default">Default</option>
@@ -280,7 +280,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 <option value="dashboard">Sales Dashboard</option>
@@ -297,7 +297,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
       {activeSection === 'settings-security' && (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-            <Lock size={20} className="mr-2 text-[#6AC8A3]" />
+            <Lock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
             Security
           </h3>
           <div className="flex items-center space-x-3">
@@ -306,7 +306,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
               id="twoFactorAuth"
               checked={settings.enableTwoFactorAuth}
               onChange={(e) => handleSettingChange('enableTwoFactorAuth', e.target.checked)}
-              className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+              className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
             />
             <label htmlFor="twoFactorAuth" className={`text-sm font-medium ${theme.textPrimary}`}>
               Enable Two-Factor Authentication

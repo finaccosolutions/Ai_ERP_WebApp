@@ -154,7 +154,7 @@ function CustomersListPage() {
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                 ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
               `}
             />
           </div>
@@ -177,7 +177,7 @@ function CustomersListPage() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
             </div>
           ) : customers.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
@@ -239,4 +239,3 @@ function CustomersListPage() {
 }
 
 export default CustomersListPage;
-

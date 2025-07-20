@@ -68,7 +68,7 @@ function CreatePriceListModal({ isOpen, onClose, onSuccess, initialName = '' }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z- flex items-center justify-center p-4 bg-black bg-opacity-50">
       <Card className={`w-full max-w-md ${theme.cardBg}`}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -112,7 +112,7 @@ function CreatePriceListModal({ isOpen, onClose, onSuccess, initialName = '' }: 
                 className={`
                   w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               >
                 {/* You might want to fetch currencies from a global constant or DB */}

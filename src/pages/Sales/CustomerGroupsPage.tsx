@@ -323,7 +323,7 @@ function CustomerGroupsPage() {
                     className={`
                       flex flex-col items-center px-4 py-2 text-sm font-medium transition-colors duration-300
                       ${isActive
-                        ? `text-[#6AC8A3] border-b-2 border-[#6AC8A3]`
+                        ? `text-[${theme.hoverAccent}] border-b-2 border-[${theme.hoverAccent}]`
                         : `text-gray-500 hover:text-gray-700`
                       }
                     `}
@@ -341,7 +341,7 @@ function CustomerGroupsPage() {
             {activeFormTab === 'general_info' && (
               <>
                 <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                  <Info size={20} className="mr-2 text-[#6AC8A3]" />
+                  <Info size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                   General Information
                 </h3>
                 <FormField
@@ -409,7 +409,7 @@ function CustomerGroupsPage() {
                 className={`
                   w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
-                  focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
               />
             </div>
@@ -432,7 +432,7 @@ function CustomerGroupsPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
               </div>
             ) : customerGroups.length === 0 ? (
               <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">

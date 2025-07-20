@@ -1,6 +1,6 @@
 // src/pages/Admin/RoleManagement.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, KeyRound, Check, X, AlertTriangle, Save, Info } from 'lucide-react';
+import { Plus, Edit, Trash2, KeyRound, Check, X, AlertTriangle, Save, Info, RefreshCw } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
@@ -77,25 +77,6 @@ function RoleManagement() {
 
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePermissionChange = (module: string, action: string, checked: boolean) => {
-    setFormData(prev => {
-      const newPermissions = { ...prev.permissions };
-      if (!newPermissions[module]) {
-        newPermissions[module] = {};
-      }
-      newPermissions[module][action] = checked;
-
-      // Clean up empty modules/actions
-      if (!checked) {
-        const allFalse = Object.values(newPermissions[module]).every(val => val === false);
-        if (allFalse) {
-          delete newPermissions[module];
-        }
-      }
-      return { ...prev, permissions: newPermissions };
-    });
   };
 
   const handleCreateRole = async (e: React.FormEvent) => {
@@ -254,7 +235,7 @@ function RoleManagement() {
 
       {showCreateForm && (
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+          <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
             {editingRole ? 'Edit Role' : 'Create New Role'}
           </h3>
           <form onSubmit={editingRole ? handleUpdateRole : handleCreateRole} className="space-y-4">
@@ -279,7 +260,7 @@ function RoleManagement() {
                   id="is_system_role"
                   checked={formData.is_system_role}
                   onChange={(e) => setFormData(prev => ({ ...prev, is_system_role: e.target.checked }))}
-                  className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
                   disabled={editingRole?.is_system_role} // Prevent changing system role status
                 />
                 <label htmlFor="is_system_role" className={`text-sm font-medium ${theme.textPrimary}`}>
@@ -305,7 +286,7 @@ function RoleManagement() {
                           id={`${moduleName}-${actionName}`}
                           checked={!!formData.permissions[moduleName]?.[actionName]}
                           onChange={(e) => handlePermissionChange(moduleName, actionName, e.target.checked)}
-                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                          className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
                         />
                         <label htmlFor={`${moduleName}-${actionName}`} className={`text-sm ${theme.textPrimary}`}>
                           {description as string}
@@ -345,7 +326,7 @@ function RoleManagement() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
             </div>
           ) : roles.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
@@ -367,7 +348,7 @@ function RoleManagement() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{role.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{role.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {role.is_system_role ? <Check size={18} className="text-green-500" /> : <X size={18} className="text-red-500" />}
+                      {role.is_system_role ? <Check size={18} className="text-emerald-500" /> : <X size={18} className="text-red-500" />}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {hasPermission('role_management', 'update') && (
@@ -383,11 +364,11 @@ function RoleManagement() {
             </table>
           )}
         </div>
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start space-x-3">
-          <Info size={20} className="text-blue-600 mt-0.5" />
+        <div className="mt-4 p-4 bg-sky-50 border border-sky-200 rounded-lg flex items-start space-x-3">
+          <Info size={20} className="text-sky-600 mt-0.5" />
           <div>
-            <h4 className="font-medium text-blue-800 mb-1">Important Notes:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
+            <h4 className="font-medium text-sky-800 mb-1">Important Notes:</h4>
+            <ul className="text-sm text-sky-700 space-y-1">
               <li>System roles (like 'Admin') cannot be deleted or have their 'System Role' status changed.</li>
               <li>A role cannot be deleted if any users are currently assigned to it.</li>
               <li>Permissions are additive: if a user has multiple roles (not currently supported in this implementation, but common in advanced RBAC), their effective permissions would be the union of all granted permissions.</li>
