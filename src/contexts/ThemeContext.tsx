@@ -25,8 +25,8 @@ interface ThemeSettings {
 
 const lightTheme: ThemeSettings = {
   // Main gradient: Your specified green colors with subtle transition
-  primaryGradient: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Slightly darker start for better white text contrast
-  primaryGradientHover: 'from-[#41A171] via-[#4FB085] to-[#5DBF99]', // Corresponding hover
+  primaryGradient: 'from-[#58B891] via-[#6AC8A3] to-[#7AD4B0]', // Slightly darker start for better white text contrast
+  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Corresponding hover
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-800 to-slate-900',
@@ -35,8 +35,8 @@ const lightTheme: ThemeSettings = {
   cardBg: 'bg-slate-100',
   
   // Text colors
-  textPrimary: 'text-slate-900', // Dark grey for headings
-  textSecondary: 'text-slate-800', // Grey-black for normal text
+  textPrimary: 'text-gray-950', // Dark grey for headings
+  textSecondary: 'text-gray-750', // Grey-black for normal text
   textMuted: 'text-slate-600',
   
   // Borders and inputs
@@ -49,17 +49,17 @@ const lightTheme: ThemeSettings = {
   hoverAccent: '#5DBF99',
   
   // Design elements
-  borderRadius: 'rounded-xl',
+  borderRadius: 'rounded-2xl', // Changed to rounded-2xl
   shadowLevel: 'shadow-lg',
-  shadowHover: 'shadow-2xl',
+  shadowHover: 'shadow-xl', // Deeper shadow on hover
   fontSize: 'md',
   isDark: false
 };
 
 const darkTheme: ThemeSettings = {
   // Main gradient: Darker version with your colors
-  primaryGradient: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Consistent with light for primary
-  primaryGradientHover: 'from-[#41A171] via-[#4FB085] to-[#5DBF99]', // Consistent with light for primary
+  primaryGradient: 'from-[#58B891] via-[#6AC8A3] to-[#7AD4B0]', // Consistent with light for primary
+  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Consistent with light for primary
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-900 to-black',
@@ -82,9 +82,9 @@ const darkTheme: ThemeSettings = {
   hoverAccent: '#5DBF99',
   
   // Design elements
-  borderRadius: 'rounded-xl',
-  shadowLevel: 'shadow-2xl',
-  shadowHover: 'shadow-3xl',
+  borderRadius: 'rounded-2xl', // Changed to rounded-2xl
+  shadowLevel: 'shadow-lg',
+  shadowHover: 'shadow-xl', // Deeper shadow on hover
   fontSize: 'md',
   isDark: true
 };
@@ -141,3 +141,4 @@ export function useTheme() {
   }
   return context;
 }
+

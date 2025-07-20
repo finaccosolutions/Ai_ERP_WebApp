@@ -95,6 +95,7 @@ function Sales() {
   const [salesAiInsights, setSalesAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [isLoadingSalesData, setIsLoadingSalesData] = useState(false); // New state for local loading
+  const [activeSalesTab, setActiveSalesTab] = useState('Core Sales Operations'); // New state for active tab
 
 
   useEffect(() => {
@@ -186,8 +187,8 @@ function Sales() {
         confidence: 'high' // Placeholder for AI confidence
       })));
 
-      // Generate initial AI Insights
-      await generateSalesAIInsights(companyId, recentInvoices);
+      // Removed automatic AI Insights generation here
+      // await generateSalesAIInsights(companyId, recentInvoices);
 
     } catch (error) {
       console.error('Error fetching sales data:', error);
@@ -448,9 +449,33 @@ function Sales() {
         </div>
       </Card>
 
-      {/* Categorized Sales Modules */}
-      {salesCategories.map((category, catIndex) => (
-        <div key={catIndex} className="space-y-4 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
+      {/* Tab Navigation */}
+      <Card className="p-4">
+        <nav className="flex flex-wrap justify-center md:justify-start gap-2">
+          {salesCategories.map((category) => (
+            <button
+              key={category.title}
+              onClick={() => setActiveSalesTab(category.title)}
+              className={`
+                px-5 py-2 text-sm font-medium rounded-2xl transition-all duration-300
+                ${activeSalesTab === category.title
+                  ? `bg-gradient-to-r ${theme.primaryGradient} text-white shadow-md`
+                  : `${theme.cardBg} ${theme.textPrimary} hover:bg-slate-200 hover:shadow-sm`
+                }
+              `}
+            >
+              {category.title}
+            </button>
+          ))}
+        </nav>
+      </Card>
+
+      {/* Tab Content */}
+      {salesCategories.map((category) => (
+        <div
+          key={category.title}
+          className={`${activeSalesTab === category.title ? 'block' : 'hidden'} space-y-4`}
+        >
           <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -461,7 +486,7 @@ function Sales() {
                 <Link key={module.name} to={module.path} className="flex">
                   <Card hover className={`p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}>
                     <div>
-                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#6AC8A3] transition-colors`}>
+                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#5DBF99] transition-colors`}>
                         {module.name}
                       </h3>
                       <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
@@ -472,11 +497,11 @@ function Sales() {
                         <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
                       )}
                       <div className={`
-                        p-2 rounded-lg shadow-md
+                        p-3 rounded-2xl shadow-md
                         ${colors.iconBg} text-white
                         group-hover:scale-110 transition-transform duration-300
                       `}>
-                        <Icon size={20} className="text-white" />
+                        <Icon size={24} className="text-white" />
                       </div>
                     </div>
                   </Card>
@@ -487,8 +512,8 @@ function Sales() {
         </div>
       ))}
 
-      {/* Recent Sales and AI Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
+      {/* Recent Sales and AI Insights (Always Visible) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 pt-4 border-t border-gray-200">
         {/* Recent Sales */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -503,8 +528,8 @@ function Sales() {
             {recentSalesData.length > 0 ? (
               recentSalesData.map((sale) => (
                 <div key={sale.id} className={`
-                  flex items-center justify-between p-3 ${theme.inputBg} rounded-lg
-                  border ${theme.borderColor} hover:border-[#6AC8A3] transition-all duration-300
+                  flex items-center justify-between p-3 ${theme.inputBg} rounded-2xl
+                  border ${theme.borderColor} hover:border-[#5DBF99] transition-all duration-300
                 `}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
@@ -539,9 +564,9 @@ function Sales() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-              <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+              <Bot size={20} className="mr-2 text-[#5DBF99]" />
               AI Sales Insights
-              <div className="ml-2 w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse" />
+              <div className="ml-2 w-2 h-2 bg-[#5DBF99] rounded-full animate-pulse" />
             </h3>
             <Button
               size="sm"
@@ -559,7 +584,7 @@ function Sales() {
                 <div
                   key={index}
                   className={`
-                    p-3 rounded-lg border-l-4
+                    p-3 rounded-2xl border-l-4
                     ${getImpactColor(insight.impact)}
                   `}
                 >
@@ -591,8 +616,8 @@ function Sales() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="p-6 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
+      {/* Quick Actions (Always Visible) */}
+      <Card className="p-6 mt-8 pt-4 border-t border-gray-200">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link to="/sales/invoices/create">
@@ -618,3 +643,4 @@ function Sales() {
 }
 
 export default Sales;
+
