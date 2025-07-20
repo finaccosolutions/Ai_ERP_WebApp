@@ -24,6 +24,9 @@ interface ThemeSettings {
   // New properties for button hover backgrounds
   buttonOutlineHoverBg: string;
   buttonGhostHoverBg: string;
+  // Explicit full class names for Tailwind JIT
+  buttonOutlineHoverClass: string;
+  buttonGhostHoverClass: string;
 }
 
 const lightTheme: ThemeSettings = {
@@ -61,6 +64,8 @@ const lightTheme: ThemeSettings = {
   // Button specific hover backgrounds
   buttonOutlineHoverBg: 'bg-emerald-100', // Clearly green, not white-ish
   buttonGhostHoverBg: 'bg-emerald-200', // Clearly green, not white-ish
+  buttonOutlineHoverClass: 'hover:bg-emerald-100',
+  buttonGhostHoverClass: 'hover:bg-emerald-200',
 };
 
 const darkTheme: ThemeSettings = {
@@ -98,6 +103,8 @@ const darkTheme: ThemeSettings = {
   // Button specific hover backgrounds
   buttonOutlineHoverBg: 'bg-emerald-900', // Dark emerald for outline hover
   buttonGhostHoverBg: 'bg-emerald-800', // Darker emerald for ghost hover
+  buttonOutlineHoverClass: 'hover:bg-emerald-900',
+  buttonGhostHoverClass: 'hover:bg-emerald-800',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -151,4 +158,4 @@ export function useTheme() {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
-}
+} 

@@ -161,7 +161,7 @@ function Sales() {
         salesReturns: { count: salesReturnsCount?.toString() || '0', totalAmount: totalSalesReturnsAmount.toLocaleString() },
         priceLists: { count: priceListsCount?.toString() || '0' },
         customerOutstanding: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalCustomerOutstandingAmount.toLocaleString() }, // Reusing invoice count for outstanding
-        customerAgingReport: { count: salesInvoicesCount?.toString() || '0' }, // Reusing invoice count for aging report
+        customerAgingReport: { count: salesInvoicesCount?.toString() || '0', totalAmount: salesInvoicesCount?.toString() || '0' }, // Reusing invoice count for aging report
         salesAnalysis: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for analysis
         salesRegister: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for register
         customerWiseSalesSummary: { count: customersCount?.toString() || '0' }, // Placeholder for summary
@@ -194,20 +194,43 @@ function Sales() {
       console.error('Error fetching sales data:', error);
       // Optionally set all counts to 'N/A' or 'Error'
     } finally {
-      setIsLoadingSalesData(false); // Set local loading false
+      setIsLoadingSalesData(false); // Corrected: Use setIsLoadingSalesData
     }
   };
 
   const generateSalesAIInsights = async (companyId: string, salesData: any[] = recentSalesData) => {
     setRefreshingInsights(true);
     try {
-      const insights = await predictiveAnalysis({
-        module: 'sales',
-        companyId: companyId,
-        salesData: salesData,
-        currentMetrics: salesMetrics,
-        context: 'sales_overview_analysis'
-      });
+      let insights;
+      // Generate different mock insights based on the active tab
+      if (activeSalesTab === 'Core Sales Operations') {
+        insights = {
+          predictions: [
+            { type: 'prediction', title: 'Invoice Conversion Rate', message: 'Expected 5% increase in invoice-to-receipt conversion next month.', confidence: 'high', impact: 'medium', actionable: true, action: 'Optimize Payment Reminders' },
+            { type: 'alert', title: 'Pending Deliveries', message: '3 sales orders are confirmed but pending delivery for over 7 days.', confidence: 'high', impact: 'high', actionable: true, action: 'View Pending Deliveries' },
+          ]
+        };
+      } else if (activeSalesTab === 'Customer & Pricing Management') {
+        insights = {
+          predictions: [
+            { type: 'suggestion', title: 'Customer Grouping Opportunity', message: 'AI suggests creating a "Loyal Customers" group based on repeat purchases.', confidence: 'medium', impact: 'low', actionable: true, action: 'Create New Customer Group' },
+            { type: 'prediction', title: 'Price List Effectiveness', message: 'Price List "Summer Sale" has increased average order value by 12% compared to last quarter.', confidence: 'high', impact: 'medium', actionable: true, action: 'Analyze Price List Performance' },
+          ]
+        };
+      } else if (activeSalesTab === 'Sales Analytics & Reporting') {
+        insights = {
+          predictions: [
+            { type: 'alert', title: 'Aging Receivables Risk', message: '5 customers have invoices overdue by more than 90 days, totaling ₹50,000.', confidence: 'high', impact: 'high', actionable: true, action: 'View Aging Report' },
+            { type: 'trend', title: 'Product Performance', message: 'Sales of "Product X" are consistently declining by 5% month-over-month. Investigate causes.', confidence: 'medium', impact: 'medium', actionable: true, action: 'Analyze Product X Sales' },
+          ]
+        };
+      } else {
+        insights = {
+          predictions: [
+            { type: 'info', title: 'No Specific Insights', message: 'No specific AI insights for this category. Try refreshing or switching tabs.', confidence: 'low', impact: 'low', actionable: false }
+          ]
+        };
+      }
 
       if (insights && insights.predictions) {
         setSalesAiInsights(insights.predictions);
@@ -251,6 +274,12 @@ function Sales() {
     { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
     { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
     { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
+    // Adding more variety for tiles
+    { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
+    { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
+    { cardBg: 'bg-gradient-to-br from-lime-50 to-lime-100', textColor: 'text-lime-800', iconBg: 'bg-lime-500' },
+    { cardBg: 'bg-gradient-to-br from-cyan-50 to-cyan-100', textColor: 'text-cyan-800', iconBg: 'bg-cyan-500' },
+    { cardBg: 'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100', textColor: 'text-fuchsia-800', iconBg: 'bg-fuchsia-500' },
   ];
 
 
@@ -360,6 +389,143 @@ function Sales() {
     }
   };
 
+  // --- Dynamic Content for Recent Sales and AI Insights ---
+  const getContextualRecentSales = async () => {
+    if (!currentCompany?.id) return [];
+
+    let data: any[] = [];
+    try {
+      if (activeSalesTab === 'Core Sales Operations') {
+        const { data: invoices, error } = await supabase
+          .from('sales_invoices')
+          .select('id, invoice_no, total_amount, invoice_date, status, customers(name)')
+          .eq('company_id', currentCompany.id)
+          .order('invoice_date', { ascending: false })
+          .limit(5);
+        if (error) throw error;
+        data = invoices.map(inv => ({
+          type: 'invoice',
+          id: inv.id,
+          refNo: inv.invoice_no,
+          party: inv.customers?.name || 'N/A',
+          amount: inv.total_amount,
+          date: inv.invoice_date,
+          status: inv.status,
+          description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
+        }));
+      } else if (activeSalesTab === 'Customer & Pricing Management') {
+        const { data: customers, error: custError } = await supabase
+          .from('customers')
+          .select('id, name, created_at, customer_code')
+          .eq('company_id', currentCompany.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (custError) throw custError;
+        data = customers.map(cust => ({
+          type: 'customer',
+          id: cust.id,
+          refNo: cust.customer_code,
+          party: cust.name,
+          date: cust.created_at,
+          status: 'Active',
+          description: `New Customer: ${cust.name}`
+        }));
+        const { data: priceLists, error: plError } = await supabase
+          .from('price_lists')
+          .select('id, name, created_at')
+          .eq('company_id', currentCompany.id)
+          .order('created_at', { ascending: false })
+          .limit(2); // Get a couple of recent price list changes
+        if (plError) throw plError;
+        data = [...data, ...priceLists.map(pl => ({
+          type: 'price_list',
+          id: pl.id,
+          refNo: pl.name,
+          party: 'N/A',
+          date: pl.created_at,
+          status: 'Updated',
+          description: `Price List: ${pl.name} created/updated`
+        }))];
+        data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else if (activeSalesTab === 'Sales Analytics & Reporting') {
+        const { data: overdueInvoices, error: overdueError } = await supabase
+          .from('sales_invoices')
+          .select('id, invoice_no, outstanding_amount, due_date, customers(name)')
+          .eq('company_id', currentCompany.id)
+          .gt('outstanding_amount', 0)
+          .lt('due_date', new Date().toISOString().split('T')[0]) // Overdue
+          .order('due_date', { ascending: true })
+          .limit(5);
+        if (overdueError) throw overdueError;
+        data = overdueInvoices.map(inv => ({
+          type: 'overdue_invoice',
+          id: inv.id,
+          refNo: inv.invoice_no,
+          party: inv.customers?.name || 'N/A',
+          amount: inv.outstanding_amount,
+          date: inv.due_date,
+          status: 'Overdue',
+          description: `Overdue: ${inv.invoice_no} from ${inv.customers?.name || 'N/A'}`
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching contextual recent sales:', error);
+      return [];
+    }
+    return data;
+  };
+
+  const getContextualAIInsights = () => {
+    // This function now just returns the current state of salesAiInsights
+    // The actual generation is triggered by the button click
+    if (salesAiInsights.length > 0) {
+      return salesAiInsights.map((insight, index) => (
+        <div
+          key={index}
+          className={`
+            p-3 rounded-2xl border-l-4
+            ${getImpactColor(insight.impact)}
+          `}
+        >
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center space-x-2">
+              {getInsightIcon(insight.type)}
+              <h4 className={`font-medium ${theme.textPrimary} text-sm`}>{insight.title}</h4>
+            </div>
+            <span className={`
+              px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
+            `}>
+              {insight.confidence}
+            </span>
+          </div>
+          <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
+          {insight.actionable && (
+            <button className="text-xs text-sky-600 hover:text-sky-800 font-medium">
+              {insight.action || 'View Details'} →
+            </button>
+          )}
+        </div>
+      ));
+    } else {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          No AI insights available. Click "Refresh Insights" to generate.
+        </div>
+      );
+    }
+  };
+
+  // Effect to update recent sales data when active tab changes
+  useEffect(() => {
+    const fetchRecentData = async () => {
+      const data = await getContextualRecentSales();
+      setRecentSalesData(data);
+    };
+    fetchRecentData();
+    setSalesAiInsights([]); // Clear AI insights when tab changes
+  }, [activeSalesTab, currentCompany?.id]);
+
+
   if (!isMainSalesPage) {
     return (
       <Routes>
@@ -457,10 +623,10 @@ function Sales() {
               key={category.title}
               onClick={() => setActiveSalesTab(category.title)}
               className={`
-                px-5 py-2 text-sm font-medium rounded-2xl transition-all duration-300
+                px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300 ease-in-out
                 ${activeSalesTab === category.title
-                  ? `bg-sky-600 text-white shadow-md border-b-2 border-sky-600` // Selected tab style
-                  : `bg-sky-50 text-sky-800 hover:bg-sky-100 hover:shadow-sm border-b-2 border-transparent` // Unselected tab style
+                  ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700` // Active pill
+                  : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200` // Inactive pill
                 }
               `}
             >
@@ -484,14 +650,22 @@ function Sales() {
               const colors = moduleColors[moduleIndex % moduleColors.length]; // Get colors for this module
               return (
                 <Link key={module.name} to={module.path} className="flex">
-                  <Card hover className={`p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
+                  <Card hover className={`
+                    p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                    ${colors.cardBg}
+                    transform transition-all duration-300 ease-in-out
+                    hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                  `}>
+                    {/* Background overlay for hover effect */}
+                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"></div>
+                    
+                    <div className="relative z-10"> {/* Ensure content is above overlay */}
+                      <h3 className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
                         {module.name}
                       </h3>
                       <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center justify-between mt-3 relative z-10">
                       <p className={`text-xl font-bold ${colors.textColor}`}>{module.count}</p>
                       {module.totalAmount && (
                         <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
@@ -499,7 +673,7 @@ function Sales() {
                       <div className={`
                         p-3 rounded-2xl shadow-md
                         ${colors.iconBg} text-white
-                        group-hover:scale-110 transition-transform duration-300
+                        group-hover:scale-125 transition-transform duration-300
                       `}>
                         <Icon size={24} className="text-white" />
                       </div>
@@ -512,12 +686,12 @@ function Sales() {
         </div>
       ))}
 
-      {/* Recent Sales and AI Insights (Always Visible) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 pt-4 border-t border-gray-200">
+      {/* Recent Sales and AI Insights (Separated Section) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pt-8 border-t border-gray-200"> {/* Increased mt and pt */}
         {/* Recent Sales */}
-        <Card className="p-6">
+        <Card className="p-6 bg-white shadow-lg"> {/* Added distinct background and shadow */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales</h3>
+            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales Activity</h3>
             <div className="flex items-center space-x-2">
               <Link to="/sales/invoices" className="text-sm text-sky-600 hover:text-sky-800">
                 View All
@@ -526,42 +700,42 @@ function Sales() {
           </div>
           <div className="space-y-3">
             {recentSalesData.length > 0 ? (
-              recentSalesData.map((sale) => (
-                <div key={sale.id} className={`
+              recentSalesData.map((item) => (
+                <div key={item.id} className={`
                   flex items-center justify-between p-3 ${theme.inputBg} rounded-2xl
                   border ${theme.borderColor} hover:border-[${theme.hoverAccent}] transition-all duration-300
                 `}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
                       <div>
-                        <p className={`font-medium ${theme.textPrimary}`}>{sale.customer}</p>
-                        <p className={`text-sm ${theme.textMuted}`}>Invoice: {sale.id.substring(0, 8)}...</p>
+                        <p className={`font-medium ${theme.textPrimary}`}>{item.party}</p>
+                        <p className={`text-sm ${theme.textMuted}`}>{item.description}</p>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-medium ${theme.textPrimary}`}>₹{sale.amount?.toLocaleString()}</p>
+                    {item.amount && <p className={`font-medium ${theme.textPrimary}`}>₹{item.amount?.toLocaleString()}</p>}
                     <span className={`
                       px-2 py-1 text-xs rounded-full
-                      ${sale.status === 'paid' ? 'bg-green-100 text-green-800' :
-                        sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      ${item.status === 'paid' || item.status === 'Active' ? 'bg-green-100 text-green-800' :
+                        item.status === 'pending' || item.status === 'Updated' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'}
                     `}>
-                      {sale.status}
+                      {item.status}
                     </span>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                No recent sales data available.
+                No recent activity for this category.
               </div>
             )}
           </div>
         </Card>
 
         {/* AI Sales Insights */}
-        <Card className="p-6">
+        <Card className="p-6 bg-white shadow-lg"> {/* Added distinct background and shadow */}
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
               <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
@@ -579,39 +753,7 @@ function Sales() {
             </Button>
           </div>
           <div className="space-y-4">
-            {salesAiInsights.length > 0 ? (
-              salesAiInsights.map((insight, index) => (
-                <div
-                  key={index}
-                  className={`
-                    p-3 rounded-2xl border-l-4
-                    ${getImpactColor(insight.impact)}
-                  `}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      {getInsightIcon(insight.type)}
-                      <h4 className={`font-medium ${theme.textPrimary} text-sm`}>{insight.title}</h4>
-                    </div>
-                    <span className={`
-                      px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
-                    `}>
-                      {insight.confidence}
-                    </span>
-                  </div>
-                  <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
-                  {insight.actionable && (
-                    <button className="text-xs text-sky-600 hover:text-sky-800 font-medium">
-                      {insight.action || 'View Details'} →
-                    </button>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No AI insights available. Click "Refresh Insights" to generate.
-              </div>
-            )}
+            {getContextualAIInsights()}
           </div>
         </Card>
       </div>

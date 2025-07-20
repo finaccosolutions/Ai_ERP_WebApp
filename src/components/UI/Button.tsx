@@ -43,11 +43,11 @@ function Button({
     outline: `
       border-2 ${theme.borderColor} ${theme.textPrimary} 
       hover:border-[${theme.hoverAccent}] hover:text-[${theme.hoverAccent}] 
-      ${theme.isDark ? `hover:${theme.buttonOutlineHoverBg}` : `hover:${theme.buttonOutlineHoverBg}`}
+      ${theme.buttonOutlineHoverClass}
     `,
     ghost: `
       ${theme.textPrimary} 
-      ${theme.isDark ? `hover:${theme.buttonGhostHoverBg}` : `hover:${theme.buttonGhostHoverBg}`}
+      ${theme.buttonGhostHoverClass}
       hover:text-[${theme.hoverAccent}]
     `
   };
