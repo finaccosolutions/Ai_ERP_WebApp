@@ -1,3 +1,4 @@
+// src/pages/Sales/Sales.tsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -33,6 +34,10 @@ import {
   FileBadge, // For Credit Notes
   PackageOpen, // For Delivery Challans
   UserRoundCog, // For Customer Groups
+  TrendingUp, // For AI Insights
+  AlertTriangle, // For AI Insights
+  Lightbulb, // For AI Insights
+  Target, // For AI Insights
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -65,74 +70,172 @@ import CustomerWiseSalesSummaryPage from './CustomerWiseSalesSummaryPage';
 function Sales() {
   const location = useLocation();
   const { theme } = useTheme();
-  const { smartSearch, voiceCommand } = useAI();
+  const { smartSearch, voiceCommand, predictiveAnalysis } = useAI();
   const { currentCompany } = useCompany(); // Use currentCompany for data fetching
   const [searchTerm, setSearchTerm] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [salesMetrics, setSalesMetrics] = useState({
-    customers: '0',
-    quotations: '0',
-    salesOrders: '0',
-    salesInvoices: '0',
-    receipts: '0',
-    creditNotes: '0',
-    salesReturns: '0', // Changed to '0' as table does not exist
-    priceLists: '0',
-    customerOutstanding: '0',
-    customerAgingReport: '0',
-    salesAnalysis: '0',
-    salesRegister: '0',
-    customerWiseSalesSummary: '0',
-    deliveryChallans: '0',
-    customerGroups: '0', // New metric
+    customers: { count: '0' },
+    quotations: { count: '0', totalAmount: '0' },
+    salesOrders: { count: '0', totalAmount: '0' },
+    salesInvoices: { count: '0', totalAmount: '0' },
+    receipts: { count: '0', totalAmount: '0' },
+    creditNotes: { count: '0', totalAmount: '0' },
+    salesReturns: { count: '0', totalAmount: '0' },
+    priceLists: { count: '0' },
+    customerOutstanding: { count: '0', totalAmount: '0' },
+    customerAgingReport: { count: '0' },
+    salesAnalysis: { count: '0' },
+    salesRegister: { count: '0' },
+    customerWiseSalesSummary: { count: '0' },
+    deliveryChallans: { count: '0' },
+    customerGroups: { count: '0' },
   });
+  const [recentSalesData, setRecentSalesData] = useState<any[]>([]);
+  const [salesAiInsights, setSalesAiInsights] = useState<any[]>([]);
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [isLoadingSalesData, setIsLoadingSalesData] = useState(false); // New state for local loading
+
 
   useEffect(() => {
     if (currentCompany?.id) {
-      fetchSalesMetrics(currentCompany.id);
+      fetchSalesData(currentCompany.id);
     }
-  }, [currentCompany?.id]);
 
-  const fetchSalesMetrics = async (companyId: string) => {
+    // Add visibility change listener to re-fetch data when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentCompany?.id) {
+        console.log('Sales.tsx: Document became visible, re-fetching sales data.');
+        fetchSalesData(currentCompany.id);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentCompany?.id]); // Depend on currentCompany.id to re-attach listener if company changes
+
+  const fetchSalesData = async (companyId: string) => {
+    setIsLoadingSalesData(true); // Set local loading true
     try {
+      // Fetch Counts
       const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: quotationsCount } = await supabase.from('quotations').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: salesOrdersCount } = await supabase.from('sales_orders').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: salesInvoicesCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: receiptsCount } = await supabase.from('receipts').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: creditNotesCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'credit_note'); // Assuming credit notes are a type of sales invoice
-      // Removed sales_returns query as the table does not exist
-      // const { count: salesReturnsCount } = await supabase.from('sales_returns').select('count', { count: 'exact', head: true }).eq('company_id', companyId); 
       const { count: priceListsCount } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: deliveryChallansCount } = await supabase.from('sales_orders').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'partially_delivered'); // Assuming delivery challans are linked to sales orders
-      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // New metric
+      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
 
-      // For outstanding and aging, you'd typically aggregate data, here we'll use a placeholder count
-      const { count: customerOutstandingCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId).gt('outstanding_amount', 0);
-      const { count: salesAnalysisCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // Placeholder for analysis
-      const { count: salesRegisterCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // Placeholder for register
-      const { count: customerWiseSalesSummaryCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // Placeholder for summary
+      // Fetch Counts and Sums for transactional modules
+      const { count: quotationsCount, data: quotationsData } = await supabase.from('quotations').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: salesOrdersCount, data: salesOrdersData } = await supabase.from('sales_orders').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: salesInvoicesCount, data: salesInvoicesData } = await supabase.from('sales_invoices').select('total_amount, outstanding_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: receiptsCount, data: receiptsData } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      
+      // Credit Notes (assuming they are sales_invoices with status 'credit_note')
+      const { count: creditNotesCount, data: creditNotesData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
+      
+      // Sales Returns (if sales_returns table exists)
+      const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      
+      // Delivery Challans (no total amount column in schema)
+      const { count: deliveryChallansCount } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+
+      // Calculate total amounts
+      const totalQuotationsAmount = quotationsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+      const totalSalesOrdersAmount = salesOrdersData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+      const totalSalesInvoicesAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+      const totalReceiptsAmount = receiptsData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+      const totalCreditNotesAmount = creditNotesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+      const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+      const totalCustomerOutstandingAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.outstanding_amount || 0), 0) || 0;
+
 
       setSalesMetrics({
-        customers: customersCount?.toString() || '0',
-        quotations: quotationsCount?.toString() || '0',
-        salesOrders: salesOrdersCount?.toString() || '0',
-        salesInvoices: salesInvoicesCount?.toString() || '0',
-        receipts: receiptsCount?.toString() || '0',
-        creditNotes: creditNotesCount?.toString() || '0',
-        salesReturns: '0', // Explicitly set to '0' or 'N/A'
-        priceLists: priceListsCount?.toString() || '0',
-        customerOutstanding: customerOutstandingCount?.toString() || '0',
-        customerAgingReport: customerOutstandingCount?.toString() || '0', // Reusing outstanding count for aging report
-        salesAnalysis: salesAnalysisCount?.toString() || '0',
-        salesRegister: salesRegisterCount?.toString() || '0',
-        customerWiseSalesSummary: customerWiseSalesSummaryCount?.toString() || '0',
-        deliveryChallans: deliveryChallansCount?.toString() || '0',
-        customerGroups: customerGroupsCount?.toString() || '0', // New metric
+        customers: { count: customersCount?.toString() || '0' },
+        quotations: { count: quotationsCount?.toString() || '0', totalAmount: totalQuotationsAmount.toLocaleString() },
+        salesOrders: { count: salesOrdersCount?.toString() || '0', totalAmount: totalSalesOrdersAmount.toLocaleString() },
+        salesInvoices: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalSalesInvoicesAmount.toLocaleString() },
+        receipts: { count: receiptsCount?.toString() || '0', totalAmount: totalReceiptsAmount.toLocaleString() },
+        creditNotes: { count: creditNotesCount?.toString() || '0', totalAmount: totalCreditNotesAmount.toLocaleString() },
+        salesReturns: { count: salesReturnsCount?.toString() || '0', totalAmount: totalSalesReturnsAmount.toLocaleString() },
+        priceLists: { count: priceListsCount?.toString() || '0' },
+        customerOutstanding: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalCustomerOutstandingAmount.toLocaleString() }, // Reusing invoice count for outstanding
+        customerAgingReport: { count: salesInvoicesCount?.toString() || '0' }, // Reusing invoice count for aging report
+        salesAnalysis: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for analysis
+        salesRegister: { count: salesInvoicesCount?.toString() || '0' }, // Placeholder for register
+        customerWiseSalesSummary: { count: customersCount?.toString() || '0' }, // Placeholder for summary
+        deliveryChallans: { count: deliveryChallansCount?.toString() || '0' },
+        customerGroups: { count: customerGroupsCount?.toString() || '0' },
       });
+
+      // Fetch Recent Sales Data
+      const { data: recentInvoices, error: recentInvoicesError } = await supabase
+        .from('sales_invoices')
+        .select('id, customer_id, total_amount, invoice_date, status, customers(name)')
+        .eq('company_id', companyId)
+        .order('invoice_date', { ascending: false })
+        .limit(5); // Get top 5 recent invoices
+
+      if (recentInvoicesError) throw recentInvoicesError;
+      setRecentSalesData(recentInvoices.map(inv => ({
+        id: inv.id,
+        customer: inv.customers?.name || 'N/A',
+        amount: inv.total_amount,
+        date: inv.invoice_date,
+        status: inv.status,
+        confidence: 'high' // Placeholder for AI confidence
+      })));
+
+      // Generate initial AI Insights
+      await generateSalesAIInsights(companyId, recentInvoices);
+
     } catch (error) {
-      console.error('Error fetching sales metrics:', error);
+      console.error('Error fetching sales data:', error);
       // Optionally set all counts to 'N/A' or 'Error'
+    } finally {
+      setIsLoadingSalesData(false); // Set local loading false
+    }
+  };
+
+  const generateSalesAIInsights = async (companyId: string, salesData: any[] = recentSalesData) => {
+    setRefreshingInsights(true);
+    try {
+      const insights = await predictiveAnalysis({
+        module: 'sales',
+        companyId: companyId,
+        salesData: salesData,
+        currentMetrics: salesMetrics,
+        context: 'sales_overview_analysis'
+      });
+
+      if (insights && insights.predictions) {
+        setSalesAiInsights(insights.predictions);
+      } else {
+        setSalesAiInsights([
+          {
+            type: 'info',
+            title: 'No New Insights',
+            message: 'No specific AI insights generated at this moment. Try again later.',
+            confidence: 'medium',
+            impact: 'low',
+            actionable: false
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error generating sales AI insights:', error);
+      setSalesAiInsights([
+        {
+          type: 'error',
+          title: 'AI Service Error',
+          message: 'Could not fetch AI insights. Please try again.',
+          confidence: 'low',
+          impact: 'high',
+          actionable: false
+        }
+      ]);
+    } finally {
+      setRefreshingInsights(false);
     }
   };
 
@@ -156,73 +259,84 @@ function Sales() {
       title: 'Core Sales Operations',
       description: 'Manage your daily sales activities from quotations to invoices and payments.',
       modules: [
-        { name: 'Sales Quotations', description: 'Create and track sales quotes', icon: FileText, path: '/sales/quotations', count: salesMetrics.quotations },
-        { name: 'Sales Orders', description: 'Process customer orders', icon: ShoppingCart, path: '/sales/orders', count: salesMetrics.salesOrders },
-        { name: 'Delivery Challans', description: 'Manage goods delivery', icon: PackageOpen, path: '/sales/delivery-challans', count: salesMetrics.deliveryChallans },
-        { name: 'Sales Invoices', description: 'Generate and manage invoices', icon: FileText, path: '/sales/invoices', count: salesMetrics.salesInvoices },
-        { name: 'Receipts', description: 'Record customer payments', icon: CreditCard, path: '/sales/receipts', count: salesMetrics.receipts },
-        { name: 'Credit Notes', description: 'Issue credit for returns/adjustments', icon: FileBadge, path: '/sales/credit-notes', count: salesMetrics.creditNotes },
-        { name: 'Sales Returns', description: 'Process customer returns', icon: ArrowLeftRight, path: '/sales/returns', count: salesMetrics.salesReturns },
+        { name: 'Sales Invoices', description: 'Generate and manage invoices', icon: FileText, path: '/sales/invoices', count: salesMetrics.salesInvoices.count, totalAmount: salesMetrics.salesInvoices.totalAmount },
+        { name: 'Sales Returns', description: 'Process customer returns', icon: ArrowLeftRight, path: '/sales/returns', count: salesMetrics.salesReturns.count, totalAmount: salesMetrics.salesReturns.totalAmount },
+        { name: 'Credit Notes', description: 'Issue credit for returns/adjustments', icon: FileBadge, path: '/sales/credit-notes', count: salesMetrics.creditNotes.count, totalAmount: salesMetrics.creditNotes.totalAmount },
+        { name: 'Receipts', description: 'Record customer payments', icon: CreditCard, path: '/sales/receipts', count: salesMetrics.receipts.count, totalAmount: salesMetrics.receipts.totalAmount },
+        { name: 'Sales Quotations', description: 'Create and track sales quotes', icon: FileText, path: '/sales/quotations', count: salesMetrics.quotations.count, totalAmount: salesMetrics.quotations.totalAmount },
+        { name: 'Sales Orders', description: 'Process customer orders', icon: ShoppingCart, path: '/sales/orders', count: salesMetrics.salesOrders.count, totalAmount: salesMetrics.salesOrders.totalAmount },
+        { name: 'Delivery Challans', description: 'Manage goods delivery', icon: PackageOpen, path: '/sales/delivery-challans', count: salesMetrics.deliveryChallans.count, totalAmount: null },
       ]
     },
     {
       title: 'Customer & Pricing Management',
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
-        { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers },
-        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups }, // New module
-        { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists },
+        { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
+        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups.count, totalAmount: null }, // New module
+        { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists.count, totalAmount: null },
       ]
     },
     {
       title: 'Sales Analytics & Reporting',
       description: 'Gain insights into sales performance and financial outstanding.',
       modules: [
-        { name: 'Customer Outstanding', description: 'Track pending customer payments', icon: UserCheck, path: '/sales/outstanding', count: salesMetrics.customerOutstanding },
-        { name: 'Customer Aging Report', description: 'Analyze overdue receivables', icon: CalendarCheck, path: '/sales/aging-report', count: salesMetrics.customerAgingReport },
-        { name: 'Sales Analysis', description: 'Detailed sales performance insights', icon: PieChart, path: '/sales/analysis', count: salesMetrics.salesAnalysis },
-        { name: 'Sales Register', description: 'View all sales transactions', icon: BookOpenText, path: '/sales/register', count: salesMetrics.salesRegister },
-        { name: 'Customer-wise Sales Summary', description: 'Summarize sales by customer', icon: BarChart3, path: '/sales/customer-summary', count: salesMetrics.customerWiseSalesSummary },
+        { name: 'Customer Outstanding', description: 'Track pending customer payments', icon: UserCheck, path: '/sales/outstanding', count: salesMetrics.customerOutstanding.count, totalAmount: salesMetrics.customerOutstanding.totalAmount },
+        { name: 'Customer Aging Report', description: 'Analyze overdue receivables', icon: CalendarCheck, path: '/sales/aging-report', count: salesMetrics.customerAgingReport.count, totalAmount: null },
+        { name: 'Sales Analysis', description: 'Detailed sales performance insights', icon: PieChart, path: '/sales/analysis', count: salesMetrics.salesAnalysis.count, totalAmount: null },
+        { name: 'Sales Register', description: 'View all sales transactions', icon: BookOpenText, path: '/sales/register', count: salesMetrics.salesRegister.count, totalAmount: null },
+        { name: 'Customer-wise Sales Summary', description: 'Summarize sales by customer', icon: BarChart3, path: '/sales/customer-summary', count: salesMetrics.customerWiseSalesSummary.count, totalAmount: null },
       ]
     }
   ];
 
-  const recentSales = [
-    { id: 'INV-001', customer: 'ABC Corp', amount: 52500, date: '2024-01-15', status: 'Paid', confidence: 'high' },
-    { id: 'INV-002', customer: 'XYZ Ltd', amount: 38000, date: '2024-01-14', status: 'Pending', confidence: 'medium' },
-    { id: 'INV-003', customer: 'Demo Inc', amount: 75000, date: '2024-01-13', status: 'Overdue', confidence: 'high' },
-  ];
-
-  const aiInsights = [
-    {
-      type: 'prediction',
-      title: 'Revenue Forecast',
-      message: 'Expected 18% growth in Q2 based on current trends',
-      confidence: 'high',
-      action: 'View Details'
-    },
-    {
-      type: 'alert',
-      title: 'Payment Delay Risk',
-      message: '3 customers showing delayed payment patterns',
-      confidence: 'medium',
-      action: 'Review Customers'
-    },
-    {
-      type: 'suggestion',
-      title: 'Discount Opportunity',
-      message: 'ABC Corp eligible for early payment discount',
-      confidence: 'high',
-      action: 'Apply Discount'
+  const getInsightIcon = (type: string) => {
+    switch (type) {
+      case 'prediction':
+        return <TrendingUp size={16} className="text-blue-500" />;
+      case 'alert':
+        return <AlertTriangle size={16} className="text-red-500" />;
+      case 'suggestion':
+        return <Lightbulb size={16} className="text-yellow-500" />;
+      case 'trend':
+        return <Target size={16} className="text-green-500" />;
+      default:
+        return <Bot size={16} className="text-purple-500" />;
     }
-  ];
+  };
+
+  const getConfidenceColor = (confidence: string) => {
+    switch (confidence) {
+      case 'high':
+        return 'bg-green-100 text-green-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'high':
+        return 'border-l-red-500 bg-red-50';
+      case 'medium':
+        return 'border-l-yellow-500 bg-yellow-50';
+      case 'low':
+        return 'border-l-green-500 bg-green-50';
+      default:
+        return 'border-l-gray-500 bg-gray-50';
+    }
+  };
 
   const isMainSalesPage = location.pathname === '/sales';
 
   const handleVoiceSearch = async () => {
     setIsVoiceActive(true);
     try {
-      // Mock voice command
+      // Mock voice recognition
       setTimeout(async () => {
         const mockCommand = "Show me top 5 customers by revenue this quarter";
         const result = await voiceCommand(mockCommand);
@@ -268,6 +382,15 @@ function Sales() {
         <Route path="/customer-summary" element={<CustomerWiseSalesSummaryPage />} />
         <Route path="/reports" element={<div>Sales Reports Module</div>} />
       </Routes>
+    );
+  }
+
+  // Render a local loader if isLoadingSalesData is true and no data is yet available
+  if (isLoadingSalesData && recentSalesData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6AC8A3]"></div>
+      </div>
     );
   }
 
@@ -325,51 +448,37 @@ function Sales() {
         </div>
       </Card>
 
-      {/* AI Insights Banner */}
-      <Card className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-l-4 border-l-[#5DBF99]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Bot size={24} className="text-[#5DBF99]" />
-            <div>
-              <h3 className="font-semibold text-gray-900">AI Sales Insights</h3>
-              <p className="text-sm text-gray-600">3 new insights available based on recent activity</p>
-            </div>
-          </div>
-          <Button size="sm" variant="outline">View All Insights</Button>
-        </div>
-      </Card>
-
       {/* Categorized Sales Modules */}
       {salesCategories.map((category, catIndex) => (
-        <div key={catIndex} className="space-y-4">
+        <div key={catIndex} className="space-y-4 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
           <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {category.modules.map((module, moduleIndex) => {
               const Icon = module.icon;
               const colors = moduleColors[moduleIndex % moduleColors.length]; // Get colors for this module
               return (
-                <Link key={module.name} to={module.path} className="flex"> {/* Added flex to make cards equal height */}
-                  <Card hover className={`p-6 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}> {/* Apply cardBg */}
+                <Link key={module.name} to={module.path} className="flex">
+                  <Card hover className={`p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between ${colors.cardBg}`}>
                     <div>
-                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#6AC8A3] transition-colors`}> {/* Apply textColor */}
+                      <h3 className={`text-lg font-semibold ${colors.textColor} group-hover:text-[#6AC8A3] transition-colors`}>
                         {module.name}
                       </h3>
                       <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-4"> {/* Moved count and icon to bottom */}
-                      <p className={`text-2xl font-bold ${colors.textColor}`}>{module.count}</p> {/* Apply textColor */}
+                    <div className="flex items-center justify-between mt-3">
+                      <p className={`text-xl font-bold ${colors.textColor}`}>{module.count}</p>
+                      {module.totalAmount && (
+                        <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
+                      )}
                       <div className={`
-                        p-3 rounded-xl shadow-lg
+                        p-2 rounded-lg shadow-md
                         ${colors.iconBg} text-white
                         group-hover:scale-110 transition-transform duration-300
-                        relative z-10
                       `}>
-                        <Icon size={24} className="text-white" />
+                        <Icon size={20} className="text-white" />
                       </div>
                     </div>
-
-                    {/* Removed the specific hover effect div to use Card's default hover */}
                   </Card>
                 </Link>
               );
@@ -379,100 +488,111 @@ function Sales() {
       ))}
 
       {/* Recent Sales and AI Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
         {/* Recent Sales */}
-        <Card className="p-6 lg:col-span-2">
+        <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales</h3>
             <div className="flex items-center space-x-2">
-              <AIButton variant="analyze" size="sm" onSuggest={() => console.log('Analyze Sales')} />
               <Link to="/sales/invoices" className="text-sm text-blue-600 hover:text-blue-800">
                 View All
               </Link>
             </div>
           </div>
           <div className="space-y-3">
-            {recentSales.map((sale) => (
-              <div key={sale.id} className={`
-                flex items-center justify-between p-3 ${theme.inputBg} rounded-lg
-                border ${theme.borderColor} hover:border-[#6AC8A3] transition-all duration-300
-              `}>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3">
-                    <div>
-                      <p className={`font-medium ${theme.textPrimary}`}>{sale.id}</p>
-                      <p className={`text-sm ${theme.textMuted}`}>{sale.customer}</p>
-                    </div>
-                    <div className={`
-                      px-2 py-1 text-xs rounded-full
-                      ${sale.confidence === 'high' ? 'bg-green-100 text-green-800' :
-                        sale.confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'}
-                    `}> {/* Corrected closing backtick */}
-                      AI: {sale.confidence}
+            {recentSalesData.length > 0 ? (
+              recentSalesData.map((sale) => (
+                <div key={sale.id} className={`
+                  flex items-center justify-between p-3 ${theme.inputBg} rounded-lg
+                  border ${theme.borderColor} hover:border-[#6AC8A3] transition-all duration-300
+                `}>
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <p className={`font-medium ${theme.textPrimary}`}>{sale.customer}</p>
+                        <p className={`text-sm ${theme.textMuted}`}>Invoice: {sale.id.substring(0, 8)}...</p>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <p className={`font-medium ${theme.textPrimary}`}>₹{sale.amount?.toLocaleString()}</p>
+                    <span className={`
+                      px-2 py-1 text-xs rounded-full
+                      ${sale.status === 'paid' ? 'bg-green-100 text-green-800' :
+                        sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'}
+                    `}>
+                      {sale.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className={`font-medium ${theme.textPrimary}`}>₹{sale.amount.toLocaleString()}</p>
-                  <span className={`
-                    px-2 py-1 text-xs rounded-full
-                    ${sale.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                      sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'}
-                  `}>
-                    {sale.status}
-                  </span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No recent sales data available.
               </div>
-            ))}
+            )}
           </div>
         </Card>
 
-        {/* AI Insights */}
+        {/* AI Sales Insights */}
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Bot size={20} className="mr-2 text-[#5DBF99]" />
-            AI Insights
-          </h3>
-          <div className="space-y-4">
-            {aiInsights.map((insight, index) => (
-              <div key={index} className={`
-                p-3 rounded-lg border-l-4
-                ${insight.type === 'prediction' ? 'border-l-blue-500 bg-blue-50' :
-                  insight.type === 'alert' ? 'border-l-red-500 bg-red-50' :
-                  'border-l-green-500 bg-green-50'}
-              `}>
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className={`font-medium ${theme.textPrimary} text-sm`}>{insight.title}</h4>
-                  <span className={`
-                    px-2 py-1 text-xs rounded-full
-                    ${insight.confidence === 'high' ? 'bg-green-100 text-green-800' :
-                      'bg-yellow-100 text-yellow-800'}
-                  `}> {/* Corrected closing backtick */}
-                    {insight.confidence}
-                  </span>
-                </div>
-                <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
-                <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                  {insight.action} →
-                </button>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+              <Bot size={20} className="mr-2 text-[#6AC8A3]" />
+              AI Sales Insights
+              <div className="ml-2 w-2 h-2 bg-[#6AC8A3] rounded-full animate-pulse" />
+            </h3>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => currentCompany?.id && generateSalesAIInsights(currentCompany.id)}
+              disabled={refreshingInsights}
+              icon={<RefreshCw size={16} className={refreshingInsights ? 'animate-spin' : ''} />}
+            >
+              {refreshingInsights ? 'Refreshing...' : 'Refresh Insights'}
+            </Button>
           </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <AIButton
-              variant="predict"
-              onSuggest={() => console.log('Generate Predictions')}
-              className="w-full"
-            />
+          <div className="space-y-4">
+            {salesAiInsights.length > 0 ? (
+              salesAiInsights.map((insight, index) => (
+                <div
+                  key={index}
+                  className={`
+                    p-3 rounded-lg border-l-4
+                    ${getImpactColor(insight.impact)}
+                  `}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2">
+                      {getInsightIcon(insight.type)}
+                      <h4 className={`font-medium ${theme.textPrimary} text-sm`}>{insight.title}</h4>
+                    </div>
+                    <span className={`
+                      px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
+                    `}>
+                      {insight.confidence}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
+                  {insight.actionable && (
+                    <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                      {insight.action || 'View Details'} →
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No AI insights available. Click "Refresh Insights" to generate.
+              </div>
+            )}
           </div>
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <Card className="p-6">
+      <Card className="p-6 mt-8 pt-4 border-t border-gray-200"> {/* Added mt-8 pt-4 border-t for section separation */}
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link to="/sales/invoices/create">
@@ -480,7 +600,7 @@ function Sales() {
               Create Invoice
             </Button>
           </Link>
-          <Link to="/sales/customers/new"> {/* Updated link */}
+          <Link to="/sales/customers/new">
             <Button variant="outline" className="w-full justify-start" icon={<Users size={16} />}>
               Add Customer
             </Button>

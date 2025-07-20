@@ -15,8 +15,9 @@ interface MasterSelectFieldProps {
   className?: string;
   disabled?: boolean;
   allowCreation?: boolean; // New prop to allow creation
-  onNewValue?: (value: string) => void; // Callback for new value creation
+  onNewValueConfirmed?: (value: string) => void; // Callback for new value creation confirmed by F2/Enter
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void; // <--- ADD THIS PROP
 }
 
 export interface MasterSelectFieldRef {
@@ -39,8 +40,9 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   className = '',
   disabled = false,
   allowCreation = false, // Default to false
-  onNewValue,
+  onNewValueConfirmed, // Destructure new prop
   onKeyDown, // Destructure new prop
+  onBlur, // <--- DESTRUCTURE THE NEW PROP HERE
 }, ref) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -56,20 +58,13 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        // When focus is lost, check for new value if creation is allowed
-        if (allowCreation && onNewValue && searchTerm.trim() !== '') {
-          const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
-          if (!found) {
-            onNewValue(searchTerm.trim());
-          }
-        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [searchTerm, options, allowCreation, onNewValue]); // Added dependencies
+  }, []);
 
   const filteredOptions = options.filter(option =>
     // Ensure option is not null/undefined and option.name is safely accessed
@@ -103,15 +98,22 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
       onKeyDown(e); // Pass the event to the external handler first
     }
 
-    if (e.key === 'Enter') {
-      if (filteredOptions.length === 1) {
-        // If only one option is filtered, select it on Enter
-        handleOptionClick(filteredOptions[0]);
-      } else if (allowCreation && onNewValue && searchTerm.trim() !== '') {
-        const found = options.some(option => option && option.name && option.name.toLowerCase() === searchTerm.toLowerCase());
-        if (!found) {
-          onNewValue(searchTerm.trim());
-          setIsOpen(false); // Close dropdown after triggering new value
+    // Trigger new value confirmation on F2 or Enter if no matching option
+    if (allowCreation && onNewValueConfirmed) {
+      if (e.key === 'F2') {
+        e.preventDefault(); // Prevent default F2 behavior (e.g., browser dev tools)
+        if (searchTerm.trim() !== '') {
+          onNewValueConfirmed(searchTerm.trim());
+          setIsOpen(false); // Close dropdown immediately
+        }
+      } else if (e.key === 'Enter') {
+        if (filteredOptions.length === 0 && searchTerm.trim() !== '') {
+          e.preventDefault(); // Prevent form submission or other default behavior
+          onNewValueConfirmed(searchTerm.trim());
+          setIsOpen(false); // Close dropdown immediately
+        } else if (filteredOptions.length === 1) {
+          e.preventDefault(); // Prevent form submission
+          handleOptionClick(filteredOptions[0]);
         }
       }
     }
@@ -139,6 +141,10 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleInternalKeyDown} // Use the internal handler
+          onBlur={(e) => { // <--- PASS THE onBlur PROP HERE
+            setIsOpen(false); // Internal logic to close dropdown
+            if (onBlur) onBlur(e); // Call the external onBlur handler
+          }}
           placeholder={placeholder}
           required={required}
           disabled={disabled}

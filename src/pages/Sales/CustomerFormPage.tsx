@@ -108,14 +108,22 @@ function CustomerFormPage() {
   const [selectedShippingCountry, setSelectedShippingCountry] = useState<string>('');
   const [selectedPhoneCountryCode, setSelectedPhoneCountryCode] = useState<string>('+91'); // Default to India
 
-  // Master creation modal states
-  const [showCreateCustomerGroupModal, setShowCreateCustomerGroupModal] = useState(false); // This modal will be bypassed
+  // Master creation modal states (these will be bypassed for direct navigation)
+  const [showCreateCustomerGroupModal, setShowCreateCustomerGroupModal] = useState(false);
   const [showCreatePriceListModal, setShowCreatePriceListModal] = useState(false);
   const [newMasterValue, setNewMasterValue] = useState(''); // To hold the value typed by user for new master
 
-  // Confirmation modal for new group creation
-  const [showCreateGroupConfirm, setShowCreateGroupConfirm] = useState(false);
-  const [customerGroupNewValue, setCustomerGroupNewValue] = useState('');
+  // New state for confirmation modal for customer group creation
+  const [showCreateGroupConfirmModal, setShowCreateGroupConfirmModal] = useState(false);
+  const [pendingNewGroupName, setPendingNewGroupName] = useState('');
+
+  // State for the value currently typed in the customer group MasterSelectField
+  const [typedCustomerGroupName, setTypedCustomerGroupName] = useState('');
+
+  // Ref for Customer Group MasterSelectField
+  const customerGroupRef = useRef<MasterSelectFieldRef>(null);
+  // Ref for managing blur timeout to prevent conflict with onSelect
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dynamic tax labels
   const [taxRegMainLabel, setTaxRegMainLabel] = useState('Tax ID');
@@ -124,9 +132,6 @@ function CustomerFormPage() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState('basic-info');
-
-  // Ref for Customer Group MasterSelectField
-  const customerGroupRef = useRef<MasterSelectFieldRef>(null);
 
   // State for "Same as Billing Address" checkbox
   const [sameAsBilling, setSameAsBilling] = useState(false);
@@ -164,21 +169,34 @@ function CustomerFormPage() {
 
   // Effect to handle return from CustomerGroupsPage
   useEffect(() => {
-    if (location.state?.createdGroupId && location.state?.createdGroupName) {
-      const { createdGroupId, createdGroupName } = location.state;
-      // Update form data with the newly created group
-      setFormData(prev => ({ ...prev, customerGroupId: createdGroupId }));
-      // Refresh customer groups list to include the new one
-      fetchCustomerGroups().then(() => {
-        // Programmatically select the new group in MasterSelectField
-        customerGroupRef.current?.selectOption(createdGroupId);
-      });
-      showNotification(`Customer Group "${createdGroupName}" created and selected!`, 'success');
+    // Check for the specific flag indicating return from group creation
+    if (location.state?.fromCustomerGroupCreation) {
+      // Restore customer form data
+      if (location.state.customerFormData) {
+        setFormData(location.state.customerFormData);
+        // Also restore selected countries for addresses and phone
+        setSelectedBillingCountry(location.state.customerFormData.billingAddress?.country || '');
+        setSelectedShippingCountry(location.state.customerFormData.shippingAddress?.country || '');
+        const phoneCountryCode = getPhoneCountryCodes().find(c => location.state.customerFormData.phone?.startsWith(c.dialCode));
+        if (phoneCountryCode) setSelectedPhoneCountryCode(phoneCountryCode.dialCode);
+      }
+
+      // Pre-select newly created customer group
+      if (location.state.createdGroupId && location.state.createdGroupName) {
+        setFormData(prev => ({ ...prev, customerGroupId: location.state.createdGroupId }));
+        setTypedCustomerGroupName(location.state.createdGroupName); // Update typed name state
+        // Ensure the MasterSelectField updates its display value
+        // This might require a slight delay or a direct call to the ref if options aren't immediately available
+        fetchCustomerGroups().then(() => { // Re-fetch to ensure new group is in options
+          customerGroupRef.current?.selectOption(location.state.createdGroupId);
+        });
+        showNotification(`Customer Group "${location.state.createdGroupName}" created and selected!`, 'success');
+      }
 
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, navigate]);
+  }, [location.state, navigate, location.pathname]);
 
 
   // Effect to update tax labels based on billing country
@@ -255,7 +273,7 @@ function CustomerFormPage() {
           creditDays: data.credit_days || 30,
           priceListId: data.price_list_id || '',
           territory: data.territory || '',
-          paymentTerms: data.payment_terms || '',
+          paymentTerms: data.paymentTerms,
           customerGroupId: data.customer_group_id || '',
           notes: data.notes || '',
           isActive: data.is_active || true,
@@ -365,7 +383,7 @@ function CustomerFormPage() {
         credit_days: formData.creditDays,
         price_list_id: formData.priceListId || null,
         territory: formData.territory,
-        payment_terms: formData.paymentTerms,
+        paymentTerms: formData.paymentTerms,
         customer_group_id: formData.customerGroupId || null,
         notes: formData.notes,
         is_active: formData.isActive,
@@ -406,12 +424,10 @@ function CustomerFormPage() {
     { code: 'company', name: 'Company' },
   ];
 
+  // This function is now primarily for price list, as customer group uses direct navigation
   const handleNewMasterValue = (type: 'customerGroup' | 'priceList', value: string) => {
     setNewMasterValue(value);
-    if (type === 'customerGroup') {
-      setCustomerGroupNewValue(value); // Store the value for the confirmation modal
-      setShowCreateGroupConfirm(true); // Show confirmation modal
-    } else if (type === 'priceList') {
+    if (type === 'priceList') {
       showNotification(
         `Price list "${value}" not found. Do you want to create it?`,
         'info',
@@ -423,17 +439,36 @@ function CustomerFormPage() {
     }
   };
 
-  const handleConfirmCreateCustomerGroup = () => {
-    setShowCreateGroupConfirm(false); // Close confirmation modal
-    // Navigate to the full Customer Groups page, passing the new group name and return path
-    navigate('/sales/customer-groups', {
-      state: {
-        newGroupName: customerGroupNewValue,
-        fromCustomerForm: true,
-        returnPath: location.pathname // Pass the current path back
-      }
-    });
+  // New: Handle confirmation for new customer group creation
+   const handleNewCustomerGroupConfirmed = (newGroupName: string) => {
+    const existingGroup = customerGroups.find(group => group.name.toLowerCase() === newGroupName.toLowerCase());
+
+    if (existingGroup) {
+      // Group already exists, select it and notify
+      customerGroupRef.current?.selectOption(existingGroup.id);
+      showNotification(`Customer Group "${existingGroup.name}" already exists and has been selected.`, 'info');
+    } else {
+      // Group does not exist, ask for confirmation to create
+      setPendingNewGroupName(newGroupName);
+      setShowCreateGroupConfirmModal(true);
+    }
   };
+
+  const confirmCreateNewGroup = () => {
+    setShowCreateGroupConfirmModal(false); // Close the confirmation modal
+    if (pendingNewGroupName.trim()) {
+      navigate('/sales/customer-groups', {
+        state: {
+          fromCustomerForm: true,
+          newGroupName: pendingNewGroupName,
+          customerFormData: formData, // Pass the entire current form data
+          returnPath: location.pathname // Pass the current path for return
+        }
+      });
+    }
+    setPendingNewGroupName(''); // Clear pending name
+  };
+
 
   const handleNextTab = () => {
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
@@ -451,28 +486,41 @@ function CustomerFormPage() {
     }
   };
 
-  const handleCustomerGroupKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'F2' || event.key === 'Enter') {
-      event.preventDefault(); // Prevent default form submission or other actions
-
-      const currentSearchTerm = customerGroupRef.current?.getSearchTerm() || '';
-      const filteredOptions = customerGroupRef.current?.getFilteredOptions() || [];
-
-      const isNewItem = filteredOptions.length === 0 || !filteredOptions.some(opt => opt.name.toLowerCase() === currentSearchTerm.toLowerCase());
-
-      if (isNewItem) {
-        setCustomerGroupNewValue(currentSearchTerm);
-        setShowCreateGroupConfirm(true);
-      } else {
-        // If it's an existing item, ensure it's selected and close dropdown
-        const matchedOption = filteredOptions.find(opt => opt.name.toLowerCase() === currentSearchTerm.toLowerCase());
-        if (matchedOption) {
-          customerGroupRef.current?.selectOption(matchedOption.id);
-        }
-        customerGroupRef.current?.closeDropdown();
-      }
+  // Function to handle blur event on MasterSelectField for Customer Group
+  const handleCustomerGroupBlur = () => {
+    // Clear any existing timeout to prevent multiple triggers
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
     }
+
+    // Set a new timeout to allow onSelect to fire first if an option was clicked
+    blurTimeoutRef.current = setTimeout(() => {
+      const currentInputValue = customerGroupRef.current?.getSearchTerm();
+
+      // Only proceed if there's a value and it's not empty after trimming
+      if (currentInputValue && currentInputValue.trim() !== '') {
+        const exists = customerGroups.some(group => group.name.toLowerCase() === currentInputValue.toLowerCase());
+
+        // If the value does not exist in the current options, trigger confirmation
+        if (!exists) {
+          handleNewCustomerGroupConfirmed(currentInputValue.trim());
+        }
+      }
+    }, 150); // Small delay (e.g., 150ms) to differentiate blur from click-selection
   };
+
+  // Modified onSelect handler for MasterSelectField to clear blur timeout
+  const handleCustomerGroupSelect = (id: string, name: string) => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null; // Clear the timeout if an option is selected
+    }
+    handleInputChange('customerGroupId', id);
+    // Update the typed name state to reflect the selected option
+    // This is important because the MasterSelectField's value is now controlled by typedCustomerGroupName
+    setTypedCustomerGroupName(name);
+  };
+
 
   if (loading) {
     return (
@@ -577,15 +625,15 @@ function CustomerFormPage() {
                 <MasterSelectField
                   ref={customerGroupRef} // Attach ref here
                   label="Customer Group"
-                  value={customerGroups.find(g => g.id === formData.customerGroupId)?.name || ''}
-                  onValueChange={(val) => { /* This is for typing, actual selection is onSelect */ }}
-                  onSelect={(id) => handleInputChange('customerGroupId', id)}
+                  value={typedCustomerGroupName} // Use the new state for the input value
+                  onValueChange={setTypedCustomerGroupName} // Update the new state on type
+                  onSelect={handleCustomerGroupSelect} // Use the modified select handler
                   options={customerGroups}
                   placeholder="Select customer group"
                   readOnly={viewOnly}
                   allowCreation={true} // Enable creation
-                  onNewValue={(val) => handleNewMasterValue('customerGroup', val)} // Handle new value
-                  onKeyDown={handleCustomerGroupKeyDown} // Pass keydown handler
+                  onNewValueConfirmed={handleNewCustomerGroupConfirmed} // Use the new handler for direct navigation
+                  onBlur={handleCustomerGroupBlur} // Add the blur handler
                 />
                 <FormField
                   label="Website"
@@ -945,8 +993,7 @@ function CustomerFormPage() {
         )}
       </form>
 
-      {/* Modals for creating new masters */}
-      {/* This modal is now bypassed for the customer group creation flow from CustomerFormPage */}
+      {/* Modals for creating new masters (these are now bypassed for direct navigation for customer groups) */}
       {showCreateCustomerGroupModal && (
         <CreateCustomerGroupModal
           isOpen={showCreateCustomerGroupModal}
@@ -957,7 +1004,7 @@ function CustomerFormPage() {
             setShowCreateCustomerGroupModal(false);
             showNotification(`Customer Group "${newGroup.name}" created!`, 'success');
           }}
-          initialName={customerGroupNewValue} // Pass the typed value
+          initialName={pendingNewGroupName} // Pass the typed value
         />
       )}
 
@@ -977,11 +1024,14 @@ function CustomerFormPage() {
 
       {/* Confirmation Modal for Customer Group Creation */}
       <ConfirmationModal
-        isOpen={showCreateGroupConfirm}
-        onClose={() => setShowCreateGroupConfirm(false)}
-        onConfirm={handleConfirmCreateCustomerGroup}
+        isOpen={showCreateGroupConfirmModal}
+        onClose={() => {
+          setShowCreateGroupConfirmModal(false);
+          setPendingNewGroupName(''); // Clear pending name if cancelled
+        }}
+        onConfirm={confirmCreateNewGroup}
         title="Create New Customer Group?"
-        message={`The customer group "${customerGroupNewValue}" does not exist. Do you want to create it?`}
+        message={`The customer group "${pendingNewGroupName}" does not exist. Do you want to create it?`}
         confirmText="Yes, Create Group"
       />
     </div>

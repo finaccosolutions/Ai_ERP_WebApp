@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { Info, CheckCircle, AlertTriangle } from 'lucide-react'; // Keep these imports
-import { useTheme } from './ThemeContext'; // ADD THIS IMPORT
+// src/contexts/NotificationContext.tsx
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useEffect } from 'react'; // <--- ADD THIS IMPORT
+import { Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useTheme } from './ThemeContext';
 
 interface Notification {
   message: string;
@@ -16,21 +18,15 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Function to remove a specific notification by its ID
+  const removeNotification = useCallback((id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
 
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info') => {
     const newNotification: Notification = { message, type, id: Date.now() };
     setNotifications((prev) => [...prev, newNotification]);
-
-    // Clear previous timeout if exists
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
-
-    // Set a timeout to remove the notification after 5 seconds
-    notificationTimeoutRef.current = setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== newNotification.id));
-    }, 5000);
   }, []);
 
   return (
@@ -38,7 +34,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {children}
       <div className="fixed top-4 right-4 z-[9999] space-y-2">
         {notifications.map((notification) => (
-          <NotificationToast key={notification.id} notification={notification} />
+          <NotificationToast key={notification.id} notification={notification} removeNotification={removeNotification} />
         ))}
       </div>
     </NotificationContext.Provider>
@@ -47,11 +43,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
 interface NotificationToastProps {
   notification: Notification;
+  removeNotification: (id: number) => void; // Pass remove function
 }
 
-function NotificationToast({ notification }: NotificationToastProps) {
-  const { theme } = useTheme(); // This is where useTheme is called
+function NotificationToast({ notification, removeNotification }: NotificationToastProps) {
+  const { theme } = useTheme();
   const bgColor = notification.type === 'success' ? 'bg-green-500' : notification.type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+
+  // Manage individual toast's timeout
+  useEffect(() => { // This useEffect was causing the error
+    const timer = setTimeout(() => {
+      removeNotification(notification.id);
+    }, 5000); // Auto-hide after 5 seconds
+
+    return () => {
+      clearTimeout(timer); // Clear timeout on unmount
+    };
+  }, [notification.id, removeNotification]); // Re-run if notification ID or remove function changes
 
   return (
     <div

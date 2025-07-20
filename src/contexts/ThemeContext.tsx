@@ -1,3 +1,4 @@
+// src/contexts/ThemeContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface ThemeSettings {
@@ -22,17 +23,10 @@ interface ThemeSettings {
   isDark: boolean;
 }
 
-interface ThemeContextType {
-  theme: ThemeSettings;
-  updateTheme: (updates: Partial<ThemeSettings>) => void;
-  resetTheme: () => void;
-  toggleDarkMode: () => void;
-}
-
 const lightTheme: ThemeSettings = {
   // Main gradient: Your specified green colors with subtle transition
-  primaryGradient: 'from-[#5DBF99] via-[#6AC8A3] to-[#7AD4B0]',
-  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]',
+  primaryGradient: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Slightly darker start for better white text contrast
+  primaryGradientHover: 'from-[#41A171] via-[#4FB085] to-[#5DBF99]', // Corresponding hover
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-800 to-slate-900',
@@ -64,8 +58,8 @@ const lightTheme: ThemeSettings = {
 
 const darkTheme: ThemeSettings = {
   // Main gradient: Darker version with your colors
-  primaryGradient: 'from-[#5DBF99] via-[#6AC8A3] to-[#7AD4B0]',
-  primaryGradientHover: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]',
+  primaryGradient: 'from-[#4FB085] via-[#5DBF99] to-[#6AC8A3]', // Consistent with light for primary
+  primaryGradientHover: 'from-[#41A171] via-[#4FB085] to-[#5DBF99]', // Consistent with light for primary
   
   // Backgrounds
   sidebarBg: 'bg-gradient-to-b from-slate-900 to-black',

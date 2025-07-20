@@ -58,17 +58,16 @@ function CustomerGroupsPage() {
     if (currentCompany?.id) {
       fetchCustomerGroups();
     }
-  }, [currentCompany?.id, numGroupsToShow]);
 
-  // Effect to handle navigation state for pre-filling form
-  useEffect(() => {
-    if (location.state?.fromCustomerForm && location.state?.newGroupName) {
-      setShowCreateForm(true);
-      setFormData(prev => ({ ...prev, name: location.state.newGroupName }));
-      // Clear the state to prevent re-triggering on subsequent renders
-      navigate(location.pathname, { replace: true, state: {} });
+    // Check if navigated from CustomerFormPage
+    if (location.state?.fromCustomerForm) {
+      setShowCreateForm(true); // Immediately show the create form
+      if (location.state.newGroupName) {
+        setFormData(prev => ({ ...prev, name: location.state.newGroupName }));
+      }
+      // No need to clear location.state here, it's handled by CustomerFormPage on return
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [currentCompany?.id, location.state]);
 
 
   const fetchCustomerGroups = async () => {
@@ -148,18 +147,24 @@ function CustomerGroupsPage() {
 
       if (error) throw error;
 
-      showNotification('Customer group created successfully!', 'success');
+      // Only show notification here if NOT coming from CustomerFormPage
+      if (!location.state?.fromCustomerForm) {
+        showNotification('Customer group created successfully!', 'success');
+      }
       
-      // Check if navigated from CustomerFormPage
+      // Navigate back to CustomerFormPage, passing the new group info and original form data
       if (location.state?.fromCustomerForm && location.state?.returnPath) {
         navigate(location.state.returnPath, {
-          replace: true,
+          replace: true, // Replace current history entry
           state: {
             createdGroupId: data.id,
             createdGroupName: data.name,
+            customerFormData: location.state.customerFormData, // Pass original customer form data back
+            fromCustomerGroupCreation: true // Flag for CustomerFormPage to know it's a return from group creation
           },
         });
       } else {
+        // Default behavior if not part of the special flow
         setShowCreateForm(false);
         resetForm();
         fetchCustomerGroups();
@@ -274,18 +279,16 @@ function CustomerGroupsPage() {
           <p className={theme.textSecondary}>Organize your customers into manageable groups.</p>
         </div>
         <div className="flex space-x-2">
-          {/* Conditional rendering of buttons */}
-          {!showCreateForm && (
-            <>
-              <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
-                Back
-              </Button>
-              <AIButton variant="suggest" onSuggest={() => console.log('AI Customer Group Suggestions')} />
-              <Button icon={<Plus size={16} />} onClick={() => { setShowCreateForm(true); resetForm(); }}>
-                Create New Group
-              </Button>
-            </>
+          {/* Conditional rendering of "Back" button */}
+          {!location.state?.fromCustomerForm && (
+            <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+              Back
+            </Button>
           )}
+          <AIButton variant="suggest" onSuggest={() => console.log('AI Customer Group Suggestions')} />
+          <Button icon={<Plus size={16} />} onClick={() => { setShowCreateForm(true); resetForm(); }}>
+            Create New Group
+          </Button>
         </div>
       </div>
 
@@ -303,9 +306,7 @@ function CustomerGroupsPage() {
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
               {editingGroup ? 'Edit Customer Group' : 'Create New Customer Group'}
             </h3>
-            <Button variant="outline" onClick={() => setShowCreateForm(false)} icon={<ArrowLeft size={16} />}>
-              Back to List
-            </Button>
+            {/* "Back to List" button is now handled by the main "Back" button or Cancel */}
           </div>
 
           {/* Tab Navigation for Form */}
@@ -372,7 +373,19 @@ function CustomerGroupsPage() {
             )}
 
             <div className="flex justify-end space-x-2 mt-6">
-              <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+              <Button type="button" variant="outline" onClick={() => {
+                if (location.state?.fromCustomerForm && location.state?.returnPath) {
+                  navigate(location.state.returnPath, {
+                    replace: true,
+                    state: {
+                      customerFormData: location.state.customerFormData,
+                      fromCustomerGroupCreation: true, // Keep this flag for CustomerFormPage to restore data
+                    },
+                  });
+                } else {
+                  setShowCreateForm(false);
+                }
+              }}>
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>
@@ -475,4 +488,3 @@ function CustomerGroupsPage() {
 }
 
 export default CustomerGroupsPage;
-
