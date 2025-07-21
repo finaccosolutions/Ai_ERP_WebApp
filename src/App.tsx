@@ -12,10 +12,10 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Sales from './pages/Sales/Sales';
 import Purchase from './pages/Purchase/Purchase';
 import Accounting from './pages/Accounting/Accounting';
-import Inventory from './pages/Inventory/Inventory';
+import Inventory from './pages/Inventory/Inventory'; // Import Inventory
 import Manufacturing from './pages/Manufacturing/Manufacturing';
 import Reports from './pages/Reports/Reports';
-import Compliance from './pages/Compliance/Compliance';
+import Compliance from './pages/Compliance/Compliance'; 
 import HR from './pages/HR/HR';
 import CRM from './pages/CRM/CRM';
 import Admin from './pages/Admin/Admin'; // Admin module entry
@@ -71,11 +71,8 @@ function AppContent() {
     return <CompanySetup />;
   }
 
-  // If no company is selected, show company setup (or a dedicated selection page)
+  // If no company is selected, show company management to select one
   if (!currentCompany) {
-    // This case should ideally be handled by redirecting to CompanyManagement
-    // or a dedicated company selection page if the user has companies but none selected.
-    // For now, we'll redirect to CompanyManagement to allow selection.
     return <CompanyManagement />;
   }
 
@@ -95,6 +92,7 @@ function AppContent() {
           <Route path="/sales/*" element={<Sales />} />
           <Route path="/purchase/*" element={<Purchase />} />
           <Route path="/accounting/*" element={<Accounting />} />
+          {/* Inventory Module Routes */}
           <Route path="/inventory/*" element={<Inventory />} />
           <Route path="/manufacturing/*" element={<Manufacturing />} />
           <Route path="/reports/*" element={<Reports />} />

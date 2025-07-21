@@ -1013,13 +1013,13 @@ function SalesInvoicesPage() {
       )}
 
       <Card className="p-6">
-        {loading ? ( // Explicit loading check for the form
+        {loading ? ( // Explicit loading check for the form 
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
               <p className="ml-4 text-gray-500">Loading form data...</p>
             </div>
-          ) : (
-            // Render the actual form regardless of master data availability
+          ) : ( 
+            // Render the actual form regardless of master data availability 
             <>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Invoice Details</h3>

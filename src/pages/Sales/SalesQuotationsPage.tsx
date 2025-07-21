@@ -11,6 +11,9 @@ import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
+import SalesQuotationFilterModal from '../../components/Modals/SalesQuotationFilterModal'; // Import the new filter modal
 
 interface QuotationItem {
   id: string;
@@ -45,6 +48,7 @@ function SalesQuotationsPage() {
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list');
   const [quotationMode, setQuotationMode] = useState<'item_mode' | 'voucher_mode'>('item_mode');
@@ -83,31 +87,89 @@ function SalesQuotationsPage() {
   ]);
 
   const [salesQuotations, setSalesQuotations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [availableItems, setAvailableItems] = useState<ItemOption[]>([]); // State to store available items
+  const [totalQuotationsCount, setTotalQuotationsCount] = useState(0); // New state for total count
+  const [searchTerm, setSearchTerm] = useState(''); // New state for search term
+
+  // Confirmation modal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [quotationToDeleteId, setQuotationToDeleteId] = useState<string | null>(null);
+
+  // Filter state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    quotationNo: '',
+    customerName: '',
+    minAmount: '',
+    maxAmount: '',
+    status: 'all',
+    startDate: '',
+    endDate: '',
+  });
+  const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
 
   useEffect(() => {
     if (currentCompany?.id) {
       fetchSalesQuotations();
       fetchAvailableItems(currentCompany.id);
     }
-  }, [viewMode, currentCompany?.id]);
+  }, [viewMode, currentCompany?.id, filterCriteria, numResultsToShow]); // Added filterCriteria and numResultsToShow to dependencies
 
   const fetchSalesQuotations = async () => {
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('quotations')
-        .select('*')
-        .eq('company_id', currentCompany.id)
-        .order('quotation_date', { ascending: false });
+        .select(`
+          *,
+          customers ( name )
+        `, { count: 'exact' })
+        .eq('company_id', currentCompany.id);
+
+      // Apply search term
+      if (searchTerm) {
+        query = query.ilike('quotation_no', `%${searchTerm}%`);
+      }
+
+      // Apply filters
+      if (filterCriteria.quotationNo) {
+        query = query.ilike('quotation_no', `%${filterCriteria.quotationNo}%`);
+      }
+      if (filterCriteria.customerName) {
+        query = query.ilike('customers.name', `%${filterCriteria.customerName}%`);
+      }
+      if (filterCriteria.minAmount) {
+        query = query.gte('total_amount', parseFloat(filterCriteria.minAmount));
+      }
+      if (filterCriteria.maxAmount) {
+        query = query.lte('total_amount', parseFloat(filterCriteria.maxAmount));
+      }
+      if (filterCriteria.status !== 'all') {
+        query = query.eq('status', filterCriteria.status);
+      }
+      if (filterCriteria.startDate) {
+        query = query.gte('quotation_date', filterCriteria.startDate);
+      }
+      if (filterCriteria.endDate) {
+        query = query.lte('quotation_date', filterCriteria.endDate);
+      }
+
+      query = query.order('quotation_date', { ascending: false });
+
+      if (numResultsToShow !== 'all') {
+        query = query.limit(parseInt(numResultsToShow));
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      setSalesQuotations(data);
+      setSalesQuotations(data || []);
+      setTotalQuotationsCount(count || 0);
     } catch (err: any) {
       setError(`Error fetching quotations: ${err.message}`);
       console.error('Error fetching sales quotations:', err);
@@ -332,7 +394,7 @@ function SalesQuotationsPage() {
       id: quote.id,
       quotationNo: quote.quotation_no,
       customerId: quote.customer_id,
-      customerName: quote.customer_name || 'N/A',
+      customerName: quote.customers?.name || 'N/A', // Access customer name from joined data
       quotationDate: quote.quotation_date,
       validTill: quote.valid_till,
       referenceNo: quote.reference_no || '',
@@ -371,13 +433,23 @@ function SalesQuotationsPage() {
     setViewMode('create');
   };
 
-  const handleDeleteQuotation = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this quotation? This action cannot be undone.')) return;
+  const handleDeleteQuotation = (quotationId: string) => {
+    setQuotationToDeleteId(quotationId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteQuotation = async () => {
+    if (!quotationToDeleteId) return;
+
+    setShowDeleteConfirm(false);
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      const { error } = await supabase.from('quotations').delete().eq('id', id);
+      // Delete associated items first (if not cascaded by DB)
+      await supabase.from('quotation_items').delete().eq('quotation_id', quotationToDeleteId);
+
+      const { error } = await supabase.from('quotations').delete().eq('id', quotationToDeleteId);
       if (error) throw error;
       setSuccessMessage('Quotation deleted successfully!');
       fetchSalesQuotations();
@@ -386,6 +458,7 @@ function SalesQuotationsPage() {
       console.error('Delete quotation error:', err);
     } finally {
       setLoading(false);
+      setQuotationToDeleteId(null);
     }
   };
 
@@ -419,6 +492,29 @@ function SalesQuotationsPage() {
       }
     } catch (error) {
       console.error('Item AI suggestion error:', error);
+    }
+  };
+
+  const handleApplyFilters = (newFilters: typeof filterCriteria) => {
+    setFilterCriteria(newFilters);
+    setShowFilterModal(false);
+  };
+
+  const numResultsOptions = [
+    { id: '10', name: 'Show 10' },
+    { id: '25', name: 'Show 25' },
+    { id: '50', name: 'Show 50' },
+    { id: 'all', name: `Show All (${totalQuotationsCount})` },
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'sent': return 'bg-blue-100 text-blue-800';
+      case 'accepted': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'expired': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -688,6 +784,38 @@ function SalesQuotationsPage() {
       ) : (
         <Card className="p-6">
           <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quotations List</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+            <div className="relative flex-grow">
+              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search quotations by number..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchSalesQuotations()}
+                className={`
+                  w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
+                  ${theme.inputBg} ${theme.textPrimary}
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
+                `}
+              />
+            </div>
+            <Button onClick={() => setShowFilterModal(true)} icon={<Filter size={16} />}>
+              Filter
+            </Button>
+            <MasterSelectField
+              label="" // No label needed for this dropdown
+              value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
+              onValueChange={() => {}} // Not used for typing
+              onSelect={(id) => setNumResultsToShow(id)}
+              options={numResultsOptions}
+              placeholder="Show"
+              className="w-32"
+            />
+            <Button onClick={fetchSalesQuotations} disabled={loading} icon={<RefreshCw size={16} />}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48">
@@ -713,13 +841,17 @@ function SalesQuotationsPage() {
                   {salesQuotations.map((quote) => (
                     <tr key={quote.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{quote.quotation_no}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{quote.customer_name || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{quote.customers?.name || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{quote.quotation_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{quote.total_amount?.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{quote.status}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(quote.status)}`}>
+                          {quote.status.replace(/_/g, ' ')}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button variant="ghost" size="sm" onClick={() => handleEditQuotation(quote)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteQuotation(quote.id)} className="text-red-600 hover:text-red-800">Delete</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleEditQuotation(quote)} title="Edit">Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteQuotation(quote.id)} className="text-red-600 hover:text-red-800" title="Delete">Delete</Button>
                       </td>
                     </tr>
                   ))}
@@ -732,6 +864,23 @@ function SalesQuotationsPage() {
           </div>
         </Card>
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteQuotation}
+        title="Confirm Quotation Deletion"
+        message="Are you sure you want to delete this quotation? This action cannot be undone."
+        confirmText="Yes, Delete Quotation"
+      />
+
+      <SalesQuotationFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onApplyFilters={handleApplyFilters}
+        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+      />
     </div>
   );
 }
