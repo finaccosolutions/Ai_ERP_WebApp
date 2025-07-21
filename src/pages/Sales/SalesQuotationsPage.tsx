@@ -1,6 +1,6 @@
 // src/pages/Sales/SalesQuotationsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator } from 'lucide-react';
+import { Plus, FileText, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator, RefreshCw, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -526,6 +526,10 @@ function SalesQuotationsPage() {
           <p className={theme.textSecondary}>Create, manage, and track your sales quotations.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Quotation Suggestions')} />
           {viewMode === 'list' ? (
             <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>Create New Quotation</Button>
@@ -636,8 +640,8 @@ function SalesQuotationsPage() {
                 <div className="space-y-4">
                   {items.map((item, index) => (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                        <div className="md:col-span-2">
+                      <div className="grid grid-cols-invoice-item-row gap-4 items-center"> {/* Modified grid */}
+                        <div className="col-span-2"> {/* Item Name takes 2 columns */}
                           <MasterSelectField
                             label="Item Name"
                             value={item.itemName}
@@ -650,71 +654,58 @@ function SalesQuotationsPage() {
                             context="sales_quotation_item_selection"
                           />
                         </div>
-                        <div>
-                          <FormField
-                            label="HSN/SAC Code"
-                            value={item.hsnCode}
-                            onChange={(value) => updateItem(index, 'hsnCode', value)}
-                            placeholder="8471"
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Quantity"
-                            type="number"
-                            value={item.quantity.toString()}
-                            onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Rate"
-                            type="number"
-                            value={item.rate.toString()}
-                            onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Tax Rate (%)"
-                            type="number"
-                            value={item.taxRate.toString()}
-                            onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={<Trash2 size={16} />}
-                            onClick={() => removeItem(index)}
-                            disabled={items.length === 1}
-                            className="text-red-600 hover:text-red-800"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Amount</label>
-                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
-                            ₹{item.amount.toLocaleString()}
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax Amount</label>
-                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
+                        <FormField
+                          label="HSN/SAC"
+                          value={item.hsnCode}
+                          onChange={(value) => updateItem(index, 'hsnCode', value)}
+                          placeholder="8471"
+                        />
+                        <FormField
+                          label="Qty"
+                          type="number"
+                          value={item.quantity.toString()}
+                          onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
+                          required
+                        />
+                        <FormField
+                          label="Unit"
+                          value={item.unit}
+                          onChange={(value) => updateItem(index, 'unit', value)}
+                          placeholder="Nos"
+                        />
+                        <FormField
+                          label="Rate"
+                          type="number"
+                          value={item.rate.toString()}
+                          onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
+                          required
+                        />
+                        <FormField
+                          label="Tax %"
+                          type="number"
+                          value={item.taxRate.toString()}
+                          onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
+                        />
+                        <div className="flex flex-col"> {/* Tax Amount */}
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax Amt</label>
+                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm`}>
                             ₹{item.taxAmount.toLocaleString()}
                           </div>
                         </div>
-                        <div>
-                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Line Total</label>
-                          <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold`}>
+                        <div className="flex flex-col"> {/* Line Total */}
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Line Total</label>
+                          <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm`}>
                             ₹{item.lineTotal.toLocaleString()}
                           </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<Trash2 size={16} />}
+                          onClick={() => removeItem(index)}
+                          disabled={items.length === 1}
+                          className="text-red-600 hover:text-red-800"
+                        />
                       </div>
                     </div>
                   ))}
@@ -886,3 +877,4 @@ function SalesQuotationsPage() {
 }
 
 export default SalesQuotationsPage;
+

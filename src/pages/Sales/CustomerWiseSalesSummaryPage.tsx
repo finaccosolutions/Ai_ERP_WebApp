@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { BarChart3, Search, Users, Filter, Calendar } from 'lucide-react';
+import { BarChart3, Search, Users, Filter, Calendar, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function CustomerWiseSalesSummaryPage() {
   const { theme } = useTheme();
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -37,6 +40,10 @@ function CustomerWiseSalesSummaryPage() {
           <p className={theme.textSecondary}>Review sales performance broken down by individual customers.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="analyze" onSuggest={() => console.log('AI Customer Summary Analysis')} />
           <Button icon={<Users size={16} />} onClick={handleGenerateSummary}>Generate Summary</Button>
         </div>
@@ -96,3 +103,4 @@ function CustomerWiseSalesSummaryPage() {
 }
 
 export default CustomerWiseSalesSummaryPage;
+

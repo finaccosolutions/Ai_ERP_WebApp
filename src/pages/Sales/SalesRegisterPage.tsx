@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { BookOpenText, Search, FileText, Filter, Calendar, Users } from 'lucide-react';
+import { BookOpenText, Search, FileText, Filter, Calendar, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function SalesRegisterPage() {
   const { theme } = useTheme();
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -38,6 +41,10 @@ function SalesRegisterPage() {
           <p className={theme.textSecondary}>View a comprehensive register of all sales transactions.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="analyze" onSuggest={() => console.log('AI Register Analysis')} />
           <Button icon={<FileText size={16} />} onClick={handleGenerateRegister}>Export Register</Button>
         </div>
@@ -100,3 +107,4 @@ function SalesRegisterPage() {
 }
 
 export default SalesRegisterPage;
+

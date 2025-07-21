@@ -1,6 +1,6 @@
 // src/pages/Sales/SalesReturnsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeftRight, Search, Calendar, Users, Package, DollarSign, List, Save, Trash2, Calculator } from 'lucide-react';
+import { Plus, ArrowLeftRight, Search, Calendar, Users, Package, DollarSign, List, Save, Trash2, Calculator, RefreshCw, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -11,6 +11,7 @@ import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 // NOTE: The 'sales_returns' and 'sales_return_items' tables are NOT present in your current database schema.
 // You will need to create these tables in Supabase for this page's save/fetch functionality to work.
@@ -80,6 +81,7 @@ function SalesReturnsPage() {
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list');
   const [returnMode, setReturnMode] = useState<'item_mode' | 'voucher_mode'>('item_mode');
@@ -453,6 +455,10 @@ function SalesReturnsPage() {
           <p className={theme.textSecondary}>Process and manage returned goods from customers.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Return Suggestions')} />
           {viewMode === 'list' ? (
             <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>Record New Return</Button>
@@ -669,7 +675,7 @@ function SalesReturnsPage() {
                 <FormField
                   label="Notes"
                   value={salesReturn.notes}
-                  onChange={(value) => handleSalesReturnChange('notes', value)}
+                  onChange={(val) => handleSalesReturnChange('notes', val)}
                   placeholder="Any additional notes"
                 />
               </Card>
@@ -737,3 +743,4 @@ function SalesReturnsPage() {
 }
 
 export default SalesReturnsPage;
+

@@ -46,9 +46,6 @@ function FormField({
 }: FormFieldProps) {
   const { theme } = useTheme();
 
-  // ADD THIS CONSOLE.LOG
-  console.log(`FormField: Label="${label}", Value="${value}"`);
-
   // Determine padding based on icon and toggle visibility
   const paddingLeft = icon ? 'pl-10' : 'pl-3';
   const paddingRight = showToggleVisibility ? 'pr-10' : (onAISuggestion && !readOnly ? 'pr-10' : 'pr-3');

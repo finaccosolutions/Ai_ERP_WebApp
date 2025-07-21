@@ -197,6 +197,10 @@ function SalesInvoicesListPage() {
           <p className={theme.textSecondary}>Manage your sales invoices, track payments, and generate reports.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Invoice Suggestions')} />
           <Button
             icon={<Plus size={16} />}
@@ -311,3 +315,4 @@ function SalesInvoicesListPage() {
 }
 
 export default SalesInvoicesListPage;
+

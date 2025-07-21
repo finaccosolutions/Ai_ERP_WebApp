@@ -1,6 +1,6 @@
 // src/pages/Sales/CreditNotesPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, FileBadge, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator } from 'lucide-react';
+import { Plus, FileBadge, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator, RefreshCw, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -11,6 +11,7 @@ import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 // Assuming Credit Notes are recorded as Sales Invoices with status 'credit_note'
 // The 'items' array is kept for consistency with other voucher types, but might not be strictly necessary
@@ -35,9 +36,10 @@ function CreditNotesPage() {
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list');
-  // Credit Notes typically don't have an 'item_mode' toggle as they are adjustments
+  // Receipts typically don't have an 'item_mode' toggle
   const creditNoteMode = 'voucher_mode'; 
 
   const [creditNote, setCreditNote] = useState({
@@ -397,6 +399,10 @@ function CreditNotesPage() {
           <p className={theme.textSecondary}>Issue and manage credit notes for returns or adjustments.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Credit Note Suggestions')} />
           {viewMode === 'list' ? (
             <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>Create New Credit Note</Button>
@@ -549,7 +555,6 @@ function CreditNotesPage() {
                   </div>
                   <hr className={theme.borderColor} />
                   <div className="flex justify-between text-lg font-semibold">
-                    <span className={theme.textPrimary}>Total Amount:</span>
                     <span className="text-red-600">₹{creditNote.totalAmount.toLocaleString()}</span> {/* Credit notes are usually negative impact */}
                   </div>
                 </div>
@@ -638,3 +643,4 @@ function CreditNotesPage() {
 }
 
 export default CreditNotesPage;
+

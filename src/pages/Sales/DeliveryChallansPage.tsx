@@ -1,6 +1,6 @@
 // src/pages/Sales/DeliveryChallansPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Truck, Search, Calendar, Users, Package, List, Save, Send, Trash2, MapPin } from 'lucide-react';
+import { Plus, Truck, Search, Calendar, Users, Package, List, Save, Send, Trash2, MapPin, RefreshCw, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -11,6 +11,7 @@ import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 // NOTE: The 'delivery_challans' and 'delivery_challan_items' tables are NOT present in your current database schema.
 // You will need to create these tables in Supabase for this page's save/fetch functionality to work.
@@ -70,6 +71,7 @@ function DeliveryChallansPage() {
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list');
   const [challanMode, setChallanMode] = useState<'item_mode' | 'voucher_mode'>('item_mode'); // Delivery Challans typically always have items
@@ -395,6 +397,10 @@ function DeliveryChallansPage() {
           <p className={theme.textSecondary}>Generate and manage delivery challans for dispatched goods.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Challan Suggestions')} />
           {viewMode === 'list' ? (
             <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>Create New Challan</Button>
@@ -479,21 +485,25 @@ function DeliveryChallansPage() {
                   label="City"
                   value={challan.deliveryAddress.city}
                   onChange={(value) => handleChallanChange('deliveryAddress.city', value)}
+                  placeholder="City"
                 />
                 <FormField
                   label="State"
                   value={challan.deliveryAddress.state}
                   onChange={(value) => handleChallanChange('deliveryAddress.state', value)}
+                  placeholder="State"
                 />
                 <FormField
                   label="ZIP Code"
                   value={challan.deliveryAddress.zipCode}
                   onChange={(value) => handleChallanChange('deliveryAddress.zipCode', value)}
+                  placeholder="ZIP Code"
                 />
                 <FormField
                   label="Country"
                   value={challan.deliveryAddress.country}
                   onChange={(value) => handleChallanChange('deliveryAddress.country', value)}
+                  placeholder="Country"
                 />
               </div>
             </Card>
@@ -639,3 +649,4 @@ function DeliveryChallansPage() {
 }
 
 export default DeliveryChallansPage;
+

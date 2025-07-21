@@ -1,6 +1,6 @@
 // src/pages/Sales/ReceiptsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Receipt, Search, Calendar, Users, DollarSign, CreditCard, List, Save, Trash2 } from 'lucide-react';
+import { Plus, Receipt, Search, Calendar, Users, DollarSign, CreditCard, List, Save, Trash2, RefreshCw, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -11,12 +11,14 @@ import { useAI } from '../../contexts/AIContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function ReceiptsPage() {
   const { theme } = useTheme();
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [viewMode, setViewMode] = useState<'create' | 'list'>('list');
   // Receipts typically don't have an 'item_mode' toggle
@@ -225,6 +227,10 @@ function ReceiptsPage() {
           <p className={theme.textSecondary}>Record and manage customer payments and receipts.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Receipt Suggestions')} />
           {viewMode === 'list' ? (
             <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>Record New Receipt</Button>
@@ -401,3 +407,4 @@ function ReceiptsPage() {
 }
 
 export default ReceiptsPage;
+

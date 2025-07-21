@@ -136,10 +136,11 @@ export default {
         'theme-xl': '0 25px 50px -12px rgba(52, 211, 153, 0.25)',
       },
       gridTemplateColumns: {
-        // Custom grid for invoice item rows
-        'invoice-item-row': '2fr 1fr 0.7fr 0.7fr 1fr 1fr 1fr 0.2fr',
+        // Reverted to original for now, will be removed if not needed
+        'invoice-item-row': '2fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 0.2fr',
+        'ledger-entry-row': '1.5fr 0.7fr 1.5fr 0.2fr',
       }
     },
   },
   plugins: [],
-}; 
+};

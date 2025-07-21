@@ -226,7 +226,7 @@ function CustomerGroupsPage() {
         .eq('customer_group_id', groupToDeleteId);
 
       if (countError) {
-        showNotification(`Error checking assigned customers: ${countError.message}`, 'error');
+        showNotification(`Error checking assigned users: ${countError.message}`, 'error');
         setLoading(false);
         return;
       }
@@ -405,7 +405,7 @@ function CustomerGroupsPage() {
                 placeholder="Search customer groups by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyPress={(e) => e.key === 'Enter' && fetchCustomerGroups()}
                 className={`
                   w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
@@ -423,7 +423,7 @@ function CustomerGroupsPage() {
                 placeholder="Show"
                 className="w-32"
               />
-              <Button onClick={handleSearch} disabled={loading} icon={<RefreshCw size={16} />}>
+              <Button onClick={fetchCustomerGroups} disabled={loading} icon={<RefreshCw size={16} />}>
                 {loading ? 'Loading...' : 'Refresh'}
               </Button>
             </div>

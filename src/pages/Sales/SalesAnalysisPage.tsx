@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { PieChart, Search, BarChart3, Filter, Calendar, Package, Users } from 'lucide-react';
+import { PieChart, Search, BarChart3, Filter, Calendar, Package, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
 import DashboardChart from '../../components/Dashboard/DashboardChart'; // Reusing DashboardChart
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function SalesAnalysisPage() {
   const { theme } = useTheme();
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -57,6 +60,10 @@ function SalesAnalysisPage() {
           <p className={theme.textSecondary}>Gain detailed insights into your sales performance.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="analyze" onSuggest={() => console.log('AI Sales Analysis')} />
           <Button icon={<BarChart3 size={16} />} onClick={handleGenerateAnalysis}>Generate Analysis</Button>
         </div>
@@ -106,3 +113,4 @@ function SalesAnalysisPage() {
 }
 
 export default SalesAnalysisPage;
+

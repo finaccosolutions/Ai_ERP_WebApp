@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { CalendarCheck, Search, Clock, Filter, Users } from 'lucide-react';
+import { CalendarCheck, Search, Clock, Filter, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function CustomerAgingReportPage() {
   const { theme } = useTheme();
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const [filters, setFilters] = useState({
     asOfDate: new Date().toISOString().split('T')[0],
     customerGroup: '',
@@ -36,6 +39,10 @@ function CustomerAgingReportPage() {
           <p className={theme.textSecondary}>Analyze the age of your outstanding receivables.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="analyze" onSuggest={() => console.log('AI Aging Analysis')} />
           <Button icon={<Clock size={16} />} onClick={handleGenerateReport}>Generate Report</Button>
         </div>
@@ -96,3 +103,4 @@ function CustomerAgingReportPage() {
 }
 
 export default CustomerAgingReportPage;
+

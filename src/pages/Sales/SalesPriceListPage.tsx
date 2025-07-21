@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { Plus, Tag, Percent, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Tag, Percent, DollarSign, Calendar, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom'; // Add this line
 
 function SalesPriceListPage() {
   const { theme } = useTheme();
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [priceListData, setPriceListData] = useState({
     name: '',
@@ -64,6 +67,10 @@ function SalesPriceListPage() {
           <p className={theme.textSecondary}>Define and manage your product pricing and discount rules.</p>
         </div>
         <div className="flex space-x-2">
+          {/* Add this button */}
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Pricing Suggestions')} />
           <Button icon={<Plus size={16} />} onClick={() => setShowCreateForm(true)}>Add New Price List</Button>
         </div>
@@ -156,4 +163,5 @@ function SalesPriceListPage() {
   );
 }
 
-export default SalesPriceListPage; 
+export default SalesPriceListPage;
+
