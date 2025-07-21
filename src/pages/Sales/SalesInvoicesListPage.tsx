@@ -9,10 +9,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
-import SalesInvoiceFilterModal from '../../components/Modals/SalesInvoiceFilterModal'; // New import
-import CreateInvoice from './CreateInvoice'; // Import CreateInvoice
+import SalesInvoiceFilterModal from '../../components/Modals/SalesInvoiceFilterModal';
+// Removed import of CreateInvoice as it's now a separate route
 
 interface SalesInvoice {
   id: string;
@@ -26,6 +26,8 @@ interface SalesInvoice {
   outstanding_amount: number | null;
   created_at: string;
   customers: { name: string } | null; // Joined customer data
+  tax_details: any | null; // Added new field
+  other_ledger_entries: any | null; // Added new field
 }
 
 function SalesInvoicesListPage() {
@@ -33,7 +35,7 @@ function SalesInvoicesListPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const location = useLocation(); // Initialize useLocation
+  const location = useLocation();
 
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +44,7 @@ function SalesInvoicesListPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [invoiceToDeleteId, setInvoiceToDeleteId] = useState<string | null>(null);
 
-  // State for view mode: 'list' or 'create'
-  const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
+  // Removed viewMode state as it's no longer needed here
 
   // State for filter modal
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -55,25 +56,19 @@ function SalesInvoicesListPage() {
     status: 'all',
     startDate: '',
     endDate: '',
-    numResults: '10', // Default to 10 results
+    numResults: '10',
+    sortBy: 'invoice_date', // New filter option
+    sortOrder: 'desc',     // New filter option
+    referenceNo: '',       // New filter option
+    createdBy: '',         // New filter option
   });
 
   useEffect(() => {
-    // Check if navigated from a "Create Invoice" button
-    if (location.state?.mode === 'create') {
-      setViewMode('create');
-      // Clear the state so it doesn't persist on refresh
-      navigate(location.pathname, { replace: true, state: {} });
-    } else {
-      setViewMode('list');
-    }
-  }, [location.state, location.pathname, navigate]);
-
-  useEffect(() => {
-    if (currentCompany?.id && viewMode === 'list') {
+    // No need to check location.state.mode here, this page is always the list
+    if (currentCompany?.id) {
       fetchSalesInvoices();
     }
-  }, [currentCompany?.id, filterCriteria, viewMode]); // Refetch when filters or viewMode changes
+  }, [currentCompany?.id, filterCriteria]); // Removed viewMode from dependency array
 
   const fetchSalesInvoices = async () => {
     if (!currentCompany?.id) return;
@@ -83,10 +78,9 @@ function SalesInvoicesListPage() {
         .from('sales_invoices')
         .select(`
           id, invoice_no, invoice_date, due_date, status, total_amount, paid_amount, outstanding_amount, created_at,
-          customers ( name )
+          customers ( name ), tax_details, other_ledger_entries
         `, { count: 'exact' })
-        .eq('company_id', currentCompany.id)
-        .order('invoice_date', { ascending: false });
+        .eq('company_id', currentCompany.id);
 
       // Apply filters from filterCriteria state
       if (filterCriteria.invoiceNo) {
@@ -110,10 +104,18 @@ function SalesInvoicesListPage() {
       if (filterCriteria.maxAmount) {
         query = query.lte('total_amount', parseFloat(filterCriteria.maxAmount));
       }
+      if (filterCriteria.referenceNo) { // New filter
+        query = query.ilike('reference_no', `%${filterCriteria.referenceNo}%`);
+      }
+      // Note: createdBy filter would require joining with users table or storing user name in sales_invoices
 
       if (filterCriteria.numResults !== 'all') {
         query = query.limit(parseInt(filterCriteria.numResults));
       }
+
+      // Apply sorting
+      query = query.order(filterCriteria.sortBy, { ascending: filterCriteria.sortOrder === 'asc' });
+
 
       const { data, error, count } = await query;
 
@@ -185,23 +187,7 @@ function SalesInvoicesListPage() {
     }).format(amount);
   };
 
-  if (viewMode === 'create') {
-    return (
-      <>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Create Sales Invoice</h1>
-          <Button
-            variant="outline"
-            onClick={() => setViewMode('list')}
-            icon={<ArrowLeft size={16} />}
-          >
-            Back to Invoices List
-          </Button>
-        </div>
-        <CreateInvoice />
-      </>
-    );
-  }
+  // Removed the conditional rendering for viewMode === 'create'
 
   return (
     <div className="space-y-6">
@@ -214,7 +200,7 @@ function SalesInvoicesListPage() {
           <AIButton variant="suggest" onSuggest={() => console.log('AI Invoice Suggestions')} />
           <Button
             icon={<Plus size={16} />}
-            onClick={() => setViewMode('create')}
+            onClick={() => navigate('/sales/invoices/create')} // Navigate to the dedicated create page
           >
             Create New Invoice
           </Button>
@@ -225,7 +211,6 @@ function SalesInvoicesListPage() {
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Sales Invoices List</h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
           <div className="relative flex-grow">
-            {/* Removed direct search input */}
             <p className={`text-sm ${theme.textMuted}`}>
               Showing {invoices.length} of {totalInvoicesCount} invoices.
             </p>

@@ -57,7 +57,8 @@ import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
 import DeliveryChallansPage from './DeliveryChallansPage';
-import SalesInvoicesListPage from './SalesInvoicesListPage';
+import SalesInvoicesListPage from './SalesInvoicesListPage'; // Keep this for the list view
+import SalesInvoicesPage from './SalesInvoicesPage'; // Import the dedicated invoice form page
 import CreditNotesPage from './CreditNotesPage';
 import ReceiptsPage from './ReceiptsPage';
 import SalesReturnsPage from './SalesReturnsPage';
@@ -446,7 +447,10 @@ function Sales() {
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
         <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
-        <Route path="/invoices/*" element={<SalesInvoicesListPage />} />
+        <Route path="/invoices" element={<SalesInvoicesListPage />} /> {/* List page */}
+        <Route path="/invoices/create" element={<SalesInvoicesPage />} /> {/* Create page */}
+        <Route path="/invoices/edit/:id" element={<SalesInvoicesPage />} /> {/* Edit page */}
+        <Route path="/invoices/view/:id" element={<SalesInvoicesPage />} /> {/* View page */}
         <Route path="/credit-notes" element={<CreditNotesPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />
         <Route path="/returns" element={<SalesReturnsPage />} />
@@ -542,9 +546,9 @@ function Sales() {
         <div className="flex space-x-2">
           <AIButton variant="voice" onSuggest={handleVoiceSearch} />
           <AIButton variant="suggest" onSuggest={() => console.log('AI Sales Suggestions')} />
-          <Link to="/sales/invoices" state={{ mode: 'create' }}>
+          <Link to="/sales/invoices/create">
             {' '}
-            {/* ADDED state={{ mode: 'create' }} */}
+            {/* UPDATED: Link to the dedicated create route */}
             <Button icon={<Plus size={16} />}>Create Invoice</Button>
           </Link>
         </div>
@@ -838,9 +842,9 @@ function Sales() {
           Quick Actions
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/sales/invoices">
+          <Link to="/sales/invoices/create">
             {' '}
-            {/* Changed link to /sales/invoices */}
+            {/* Changed link to /sales/invoices/create */}
             <Button className="w-full justify-start" icon={<FileText size={16} />}>
               Create Invoice
             </Button>

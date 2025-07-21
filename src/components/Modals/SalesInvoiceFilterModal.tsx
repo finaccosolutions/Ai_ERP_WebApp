@@ -20,6 +20,10 @@ interface SalesInvoiceFilterModalProps {
     startDate: string;
     endDate: string;
     numResults: string;
+    sortBy: string;      // New filter option
+    sortOrder: string;   // New filter option
+    referenceNo: string; // New filter option
+    createdBy: string;   // New filter option
   };
   onApplyFilters: (filters: SalesInvoiceFilterModalProps['filters']) => void;
   onFilterChange: (key: keyof SalesInvoiceFilterModalProps['filters'], value: string) => void;
@@ -47,6 +51,10 @@ function SalesInvoiceFilterModal({
       startDate: '',
       endDate: '',
       numResults: '10',
+      sortBy: 'invoice_date', // Reset to default sort
+      sortOrder: 'desc',     // Reset to default sort
+      referenceNo: '',
+      createdBy: '',
     });
   };
 
@@ -70,7 +78,7 @@ function SalesInvoiceFilterModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <Card className={`w-full max-w-2xl ${theme.cardBg}`}>
+      <Card className={`w-full max-w-4xl ${theme.cardBg}`}> {/* Increased max-w to 4xl */}
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
@@ -94,14 +102,14 @@ function SalesInvoiceFilterModal({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"> {/* Added lg:grid-cols-3 */}
             <FormField
               label="Invoice Number"
               value={filters.invoiceNo}
               onChange={(val) => onFilterChange('invoiceNo', val)}
               placeholder="e.g., INV-001"
               icon={<FileText size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
             />
             <FormField
               label="Customer Name"
@@ -109,7 +117,7 @@ function SalesInvoiceFilterModal({
               onChange={(val) => onFilterChange('customerName', val)}
               placeholder="e.g., ABC Corp"
               icon={<Users size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
             />
             <FormField
               label="Min Amount"
@@ -118,7 +126,7 @@ function SalesInvoiceFilterModal({
               onChange={(val) => onFilterChange('minAmount', val)}
               placeholder="e.g., 1000"
               icon={<DollarSign size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
             />
             <FormField
               label="Max Amount"
@@ -127,7 +135,7 @@ function SalesInvoiceFilterModal({
               onChange={(val) => onFilterChange('maxAmount', val)}
               placeholder="e.g., 50000"
               icon={<DollarSign size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
             />
             <FormField
               label="Start Date"
@@ -135,7 +143,7 @@ function SalesInvoiceFilterModal({
               value={filters.startDate}
               onChange={(val) => onFilterChange('startDate', val)}
               icon={<Calendar size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
             />
             <FormField
               label="End Date"
@@ -143,7 +151,23 @@ function SalesInvoiceFilterModal({
               value={filters.endDate}
               onChange={(val) => onFilterChange('endDate', val)}
               icon={<Calendar size={18} />}
-              className="h-10" // Consistent height
+              // Removed className="h-10"
+            />
+            <FormField
+              label="Reference No."
+              value={filters.referenceNo}
+              onChange={(val) => onFilterChange('referenceNo', val)}
+              placeholder="e.g., PO123"
+              icon={<FileText size={18} />}
+              // Removed className="h-10"
+            />
+            <FormField
+              label="Created By"
+              value={filters.createdBy}
+              onChange={(val) => onFilterChange('createdBy', val)}
+              placeholder="e.g., John Doe"
+              icon={<Users size={18} />}
+              // Removed className="h-10"
             />
             <div className="space-y-2">
               <label className={`block text-sm font-medium ${theme.textPrimary}`}>
@@ -153,7 +177,7 @@ function SalesInvoiceFilterModal({
                 value={filters.status}
                 onChange={(e) => onFilterChange('status', e.target.value)}
                 className={`
-                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg h-10
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
                   focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
@@ -176,7 +200,7 @@ function SalesInvoiceFilterModal({
                 value={filters.numResults}
                 onChange={(e) => onFilterChange('numResults', e.target.value)}
                 className={`
-                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg h-10
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
                   focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                 `}
@@ -185,6 +209,43 @@ function SalesInvoiceFilterModal({
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="all">All</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                Sort By
+              </label>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => onFilterChange('sortBy', e.target.value)}
+                className={`
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                  ${theme.inputBg} ${theme.textPrimary}
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
+                `}
+              >
+                <option value="invoice_date">Invoice Date</option>
+                <option value="total_amount">Total Amount</option>
+                <option value="invoice_no">Invoice Number</option>
+                <option value="customers.name">Customer Name</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                Sort Order
+              </label>
+              <select
+                value={filters.sortOrder}
+                onChange={(e) => onFilterChange('sortOrder', e.target.value)}
+                className={`
+                  w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                  ${theme.inputBg} ${theme.textPrimary}
+                  focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
+                `}
+              >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
               </select>
             </div>
           </div>
@@ -206,4 +267,4 @@ function SalesInvoiceFilterModal({
   );
 }
 
-export default SalesInvoiceFilterModal; 
+export default SalesInvoiceFilterModal;
