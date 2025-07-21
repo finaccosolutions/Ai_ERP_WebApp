@@ -1,3 +1,4 @@
+// src/pages/Inventory/Inventory.tsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -60,13 +61,15 @@ function Inventory() {
     goodsReceipts: '0',
     goodsIssues: '0',
     batchesTracked: '0',
-    itemGroups: '0', // NEW: Metric for Item Groups
+    itemGroups: '0',
+    itemCategories: '0', // NEW: Metric for Item Categories
+    unitsOfMeasure: '0', // NEW: Metric for Units of Measure
   });
   const [recentInventoryActivity, setRecentInventoryActivity] = useState<any[]>([]);
   const [inventoryAiInsights, setInventoryAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [isLoadingInventoryData, setIsLoadingInventoryData] = useState(false);
-  const [activeInventoryTab, setActiveInventoryTab] = useState('Masters');
+  const [activeInventoryTab, setActiveInventoryTab] = useState('Transactions');
 
   useEffect(() => {
     if (currentCompany?.id) {
@@ -94,7 +97,14 @@ function Inventory() {
       const { count: totalItemsCount } = await supabase.from('items').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: totalWarehousesCount } = await supabase.from('warehouses').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: batchesTrackedCount } = await supabase.from('batch_master').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: itemGroupsCount } = await supabase.from('item_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // NEW: Fetch Item Groups count
+      const { count: itemGroupsCount } = await supabase.from('item_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: itemCategoriesCount } = await supabase.from('item_categories').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // NEW: Fetch Item Categories count
+      
+      // Fetch count for units of measure (both company-specific and global)
+      const { count: unitsOfMeasureCount } = await supabase
+        .from('units_of_measure')
+        .select('count', { count: 'exact', head: true })
+        .or(`company_id.eq.${companyId},is_system_defined.eq.true`); // NEW: Fetch both
       
       // Placeholder for low stock items (requires more complex query)
       const lowStockItemsCount = 0; // To be implemented
@@ -119,7 +129,9 @@ function Inventory() {
         goodsReceipts: goodsReceiptsCount?.toString() || '0',
         goodsIssues: goodsIssuesCount?.toString() || '0',
         batchesTracked: batchesTrackedCount?.toString() || '0',
-        itemGroups: itemGroupsCount?.toString() || '0', // NEW: Set Item Groups count
+        itemGroups: itemGroupsCount?.toString() || '0',
+        itemCategories: itemCategoriesCount?.toString() || '0', // NEW: Set Item Categories count
+        unitsOfMeasure: unitsOfMeasureCount?.toString() || '0', // NEW: Set Units of Measure count
       });
 
       // Fetch recent stock activities (e.g., last 5 stock entries)
@@ -231,17 +243,6 @@ function Inventory() {
 
   const inventoryCategories = [
     {
-      title: 'Masters',
-      description: 'Manage your core inventory data: items, categories, units, and warehouses.',
-      modules: [
-        { name: 'Item Master', description: 'Define and manage all products and services.', icon: FolderOpen, path: '/inventory/masters/items', count: inventoryMetrics.totalItems, totalAmount: null },
-        { name: 'Item Categories / Groups', description: 'Organize items into categories and groups.', icon: Layers, path: '/inventory/masters/categories-groups', count: 'N/A', totalAmount: null },
-        { name: 'Item Groups', description: 'Manage broader classifications for items.', icon: Tag, path: '/inventory/masters/item-groups', count: inventoryMetrics.itemGroups, totalAmount: null }, // NEW: Item Groups Module
-        { name: 'Units of Measure', description: 'Define units like pcs, kgs, liters.', icon: Ruler, path: '/inventory/masters/units', count: 'N/A', totalAmount: null },
-        { name: 'Warehouses / Locations', description: 'Manage storage locations and warehouses.', icon: MapPin, path: '/inventory/masters/warehouses', count: inventoryMetrics.totalWarehouses, totalAmount: null },
-      ]
-    },
-    {
       title: 'Transactions',
       description: 'Record all stock movements and adjustments.',
       modules: [
@@ -249,6 +250,17 @@ function Inventory() {
         { name: 'Stock Transfers', description: 'Move stock between different warehouses.', icon: ArrowLeftRight, path: '/inventory/transactions/stock-transfers', count: inventoryMetrics.stockTransfers, totalAmount: null },
         { name: 'Goods Receipts / Issues', description: 'Record incoming and outgoing goods.', icon: Truck, path: '/inventory/transactions/goods-receipts-issues', count: `${inventoryMetrics.goodsReceipts}/${inventoryMetrics.goodsIssues}`, totalAmount: null },
         { name: 'Batch / Expiry Management', description: 'Track items by batch numbers and expiry dates.', icon: CalendarCheck, path: '/inventory/transactions/batch-expiry', count: inventoryMetrics.batchesTracked, totalAmount: null },
+      ]
+    },
+    {
+      title: 'Masters',
+      description: 'Manage your core inventory data: items, categories, units, and warehouses.',
+      modules: [
+        { name: 'Item Master', description: 'Define and manage all products and services.', icon: FolderOpen, path: '/inventory/masters/items', count: inventoryMetrics.totalItems, totalAmount: null },
+        { name: 'Item Groups', description: 'Manage broader classifications for items.', icon: Tag, path: '/inventory/masters/item-groups', count: inventoryMetrics.itemGroups, totalAmount: null },
+        { name: 'Item Categories', description: 'Organize items into specific categories.', icon: Layers, path: '/inventory/masters/categories-groups', count: inventoryMetrics.itemCategories, totalAmount: null }, // RENAMED
+        { name: 'Units of Measure', description: 'Define units like pcs, kgs, liters.', icon: Ruler, path: '/inventory/masters/units', count: inventoryMetrics.unitsOfMeasure, totalAmount: null }, // UPDATED COUNT
+        { name: 'Warehouses / Locations', description: 'Manage storage locations and warehouses.', icon: MapPin, path: '/inventory/masters/warehouses', count: inventoryMetrics.totalWarehouses, totalAmount: null },
       ]
     },
     {
@@ -381,7 +393,7 @@ function Inventory() {
         <Route path="/masters/items/new" element={<ItemMasterPage />} />
         <Route path="/masters/items/edit/:id" element={<ItemMasterPage />} />
         <Route path="/masters/categories-groups" element={<ItemCategoriesGroupsPage />} />
-        <Route path="/masters/item-groups" element={<ItemGroupsPage />} /> {/* NEW: Route for ItemGroupsPage */}
+        <Route path="/masters/item-groups" element={<ItemGroupsPage />} />
         <Route path="/masters/units" element={<UnitsOfMeasurePage />} />
         <Route path="/masters/warehouses" element={<WarehousesPage />} />
 
@@ -710,3 +722,4 @@ function Inventory() {
 }
 
 export default Inventory;
+

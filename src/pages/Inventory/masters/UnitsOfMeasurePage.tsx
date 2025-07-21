@@ -21,6 +21,7 @@ interface UnitOfMeasure {
   is_base_unit: boolean;
   conversion_factor: number;
   base_unit_id: string | null;
+  is_system_defined: boolean; // NEW: Add this field
   created_at: string;
   // Joined data
   base_unit?: { name: string } | null;
@@ -49,6 +50,9 @@ function UnitsOfMeasurePage() {
     baseUnitId: '',
   });
 
+  // NEW: State for the search term of the Base Unit dropdown
+  const [baseUnitSearchTerm, setBaseUnitSearchTerm] = useState('');
+
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
@@ -75,7 +79,7 @@ function UnitsOfMeasurePage() {
           *,
           base_unit:units_of_measure ( name )
         `, { count: 'exact' })
-        .eq('company_id', currentCompany.id);
+        .or(`company_id.eq.${currentCompany.id},is_system_defined.eq.true`); // Fetch both company-specific and global units
 
       // Apply search term
       if (searchTerm) {
@@ -107,6 +111,11 @@ function UnitsOfMeasurePage() {
       if (error) throw error;
       setUnits(data || []);
       setTotalUnitsCount(count || 0);
+
+      // --- ADD THIS CONSOLE LOG ---
+      console.log('UnitsOfMeasurePage: Fetched units (including global):', data);
+      // --- END ADD ---
+
     } catch (err: any) {
       showNotification(`Error fetching units of measure: ${err.message}`, 'error');
       console.error('Error fetching units of measure:', err);
@@ -128,6 +137,8 @@ function UnitsOfMeasurePage() {
       conversionFactor: 1,
       baseUnitId: '',
     });
+    // NEW: Reset baseUnitSearchTerm
+    setBaseUnitSearchTerm('');
   };
 
   const validateForm = () => {
@@ -153,12 +164,13 @@ function UnitsOfMeasurePage() {
     setLoading(true);
     try {
       const unitToSave = {
-        company_id: currentCompany.id,
+        company_id: formData.isBaseUnit ? null : currentCompany.id, // company_id is NULL for system-defined base units
         name: formData.name,
         symbol: formData.symbol,
         is_base_unit: formData.isBaseUnit,
         conversion_factor: formData.isBaseUnit ? 1 : formData.conversionFactor,
         base_unit_id: formData.isBaseUnit ? null : formData.baseUnitId,
+        is_system_defined: formData.isBaseUnit ? true : false, // NEW: Mark base units as system-defined
       };
 
       if (formData.id) {
@@ -187,6 +199,10 @@ function UnitsOfMeasurePage() {
   };
 
   const handleEditUnit = (unit: UnitOfMeasure) => {
+    if (unit.is_system_defined) {
+      showNotification('System-defined units cannot be edited.', 'info');
+      return;
+    }
     setFormData({
       id: unit.id,
       name: unit.name,
@@ -195,10 +211,17 @@ function UnitsOfMeasurePage() {
       conversionFactor: unit.conversion_factor,
       baseUnitId: unit.base_unit_id || '',
     });
+    // NEW: Initialize baseUnitSearchTerm when editing
+    const baseUnit = availableBaseUnitsForDropdown.find(b => b.id === unit.base_unit_id);
+    setBaseUnitSearchTerm(baseUnit?.name || '');
     setViewMode('edit');
   };
 
-  const handleDeleteUnit = (unitId: string) => {
+  const handleDeleteUnit = (unitId: string, isSystemDefined: boolean) => {
+    if (isSystemDefined) {
+      showNotification('System-defined units cannot be deleted.', 'info');
+      return;
+    }
     setUnitToDeleteId(unitId);
     setShowDeleteConfirm(true);
   };
@@ -266,6 +289,13 @@ function UnitsOfMeasurePage() {
     { id: 'all', name: `Show All (${totalUnitsCount})` },
   ];
 
+  // Filter available base units for the dropdown
+  const availableBaseUnitsForDropdown = units.filter(unit => unit.is_base_unit);
+
+  // --- ADD THIS CONSOLE LOG ---
+  console.log('UnitsOfMeasurePage: Options for Base Unit dropdown:', availableBaseUnitsForDropdown);
+  // --- END ADD ---
+
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
       <div className="space-y-6">
@@ -316,10 +346,13 @@ function UnitsOfMeasurePage() {
                   />
                   <MasterSelectField
                     label="Base Unit"
-                    value={units.find(unit => unit.id === formData.baseUnitId)?.name || ''}
-                    onValueChange={(val) => {}}
-                    onSelect={(id) => handleInputChange('baseUnitId', id)}
-                    options={units.filter(unit => unit.is_base_unit && unit.id !== formData.id)} // Only show base units
+                    value={baseUnitSearchTerm} // NEW: Use baseUnitSearchTerm for display
+                    onValueChange={setBaseUnitSearchTerm} // NEW: Update baseUnitSearchTerm on type
+                    onSelect={(id, name) => { // NEW: Update baseUnitId and baseUnitSearchTerm on select
+                      handleInputChange('baseUnitId', id);
+                      setBaseUnitSearchTerm(name);
+                    }}
+                    options={availableBaseUnitsForDropdown} // Use filtered list
                     placeholder="Select Base Unit"
                     required
                   />
@@ -411,6 +444,7 @@ function UnitsOfMeasurePage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Base Unit</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conversion Factor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th> {/* NEW: Type column */}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -421,11 +455,14 @@ function UnitsOfMeasurePage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{unit.symbol || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{unit.is_base_unit ? 'Self' : unit.base_unit?.name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{unit.conversion_factor}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {unit.is_system_defined ? 'System' : 'Company'}
+                    </td> {/* NEW: Display Type */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="ghost" size="sm" onClick={() => handleEditUnit(unit)} title="Edit">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditUnit(unit)} title="Edit" disabled={unit.is_system_defined}>
                         <Edit size={16} />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUnit(unit.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUnit(unit.id, unit.is_system_defined)} className="text-red-600 hover:text-red-800" title="Delete" disabled={unit.is_system_defined}>
                         <Trash2 size={16} />
                       </Button>
                     </td>

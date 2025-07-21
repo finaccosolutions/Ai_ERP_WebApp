@@ -97,6 +97,9 @@ function ItemMasterPage() {
   const [availableUnits, setAvailableUnits] = useState<{ id: string; name: string }[]>([]);
   const [availableItemGroups, setAvailableItemGroups] = useState<{ id: string; name: string }[]>([]); // NEW: State for Item Groups
 
+  // NEW: State for the search term of the Unit of Measure dropdown
+  const [unitSearchTerm, setUnitSearchTerm] = useState('');
+
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
     itemName: '',
@@ -144,12 +147,17 @@ function ItemMasterPage() {
       if (categoriesError) throw categoriesError;
       setAvailableCategories(categoriesData);
 
+      // Fetch both company-specific and global units
       const { data: unitsData, error: unitsError } = await supabase
         .from('units_of_measure')
         .select('id, name')
-        .eq('company_id', companyId);
+        .or(`company_id.eq.${companyId},is_system_defined.eq.true`); // NEW: Fetch both
       if (unitsError) throw unitsError;
       setAvailableUnits(unitsData);
+
+      // --- ADD THIS CONSOLE LOG ---
+      console.log('ItemMasterPage: Available Units for Item Master dropdown:', unitsData);
+      // --- END ADD ---
 
       // NEW: Fetch Item Groups
       const { data: itemGroupsData, error: itemGroupsError } = await supabase
@@ -265,6 +273,9 @@ function ItemMasterPage() {
           isActive: data.is_active,
           itemGroupId: data.item_group_id || '', // NEW: Set itemGroupId
         });
+        // NEW: Initialize unitSearchTerm when editing
+        const unit = availableUnits.find(u => u.id === data.unit_id);
+        setUnitSearchTerm(unit?.name || '');
       }
     } catch (err: any) {
       showNotification(`Error loading item: ${err.message}`, 'error');
@@ -345,6 +356,8 @@ function ItemMasterPage() {
       itemGroupId: '', // NEW: Reset itemGroupId
     });
     setImageFile(null);
+    // NEW: Reset unitSearchTerm
+    setUnitSearchTerm('');
   };
 
   const validateForm = () => {
@@ -449,7 +462,7 @@ function ItemMasterPage() {
         image_url: uploadedImageUrl,
         is_active: formData.isActive,
         custom_attributes: {}, // Removed from UI, default to empty object
-        item_group_id: formData.itemGroupId || null, // NEW: Save item_group_id
+        item_group_id: formData.itemGroupId || '', // NEW: Save item_group_id
       };
 
       console.log("Item data to save:", itemToSave); // Debugging log
@@ -665,9 +678,12 @@ function ItemMasterPage() {
               />
               <MasterSelectField
                 label="Unit of Measure"
-                value={availableUnits.find(unit => unit.id === formData.unitId)?.name || ''}
-                onValueChange={(val) => {}} // No direct typing for this field
-                onSelect={(id) => handleInputChange('unitId', id)}
+                value={unitSearchTerm} // NEW: Use unitSearchTerm for display
+                onValueChange={setUnitSearchTerm} // NEW: Update unitSearchTerm on type
+                onSelect={(id, name) => { // NEW: Update unitId and unitSearchTerm on select
+                  handleInputChange('unitId', id);
+                  setUnitSearchTerm(name);
+                }}
                 options={availableUnits}
                 placeholder="Select Unit"
                 required
@@ -881,3 +897,4 @@ function ItemMasterPage() {
 }
 
 export default ItemMasterPage;
+

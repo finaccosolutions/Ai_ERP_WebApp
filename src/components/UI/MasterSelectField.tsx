@@ -189,9 +189,15 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
               className={`
                 w-full text-left px-4 py-2 text-sm
                 ${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10
+                flex items-center justify-between
               `}
             >
-              {option.name}
+              <span>{option.name}</span>
+              {option.is_system_defined && ( // NEW: Display "System" tag for system-defined units
+                <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                  System
+                </span>
+              )}
             </button>
           ))}
         </div>

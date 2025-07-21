@@ -97,7 +97,8 @@ function Sales() {
   const [salesAiInsights, setSalesAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [isLoadingSalesData, setIsLoadingSalesData] = useState(false);
-  const [activeSalesTab, setActiveSalesTab] = useState('Core Sales Operations');
+  // MODIFIED: Change initial active tab name
+  const [activeSalesTab, setActiveSalesTab] = useState('Transactions');
 
   // State for Filter and Export
   // const [showFilterModal, setShowFilterModal] = useState(false); // REMOVED THIS LINE
@@ -161,13 +162,15 @@ function Sales() {
       const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
       const { count: deliveryChallansCount } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
 
-      const totalQuotationsAmount = quotationsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-      const totalSalesOrdersAmount = salesOrdersData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-      const totalSalesInvoicesAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-      const totalReceiptsAmount = receiptsData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
-      const totalCreditNotesAmount = creditNotesData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-      const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-      const totalCustomerOutstandingAmount = salesInvoicesData?.reduce((sum, item) => sum + (item.outstanding_amount || 0), 0) || 0;
+      // Calculate total amounts for metrics
+      const totalQuotationsAmount = quotationsData?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0;
+      const totalSalesOrdersAmount = salesOrdersData?.reduce((sum, so) => sum + (so.total_amount || 0), 0) || 0;
+      const totalReceiptsAmount = receiptsData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+      const totalCreditNotesAmount = creditNotesData?.reduce((sum, cn) => sum + (cn.total_amount || 0), 0) || 0;
+      const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, sr) => sum + (sr.total_amount || 0), 0) || 0;
+      const totalSalesInvoicesAmount = salesInvoicesData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
+      const totalCustomerOutstandingAmount = salesInvoicesData?.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0) || 0;
+
 
       setSalesMetrics({
         customers: { count: customersCount?.toString() || '0' },
@@ -210,21 +213,22 @@ function Sales() {
     setRefreshingInsights(true);
     try {
       let insights;
-      if (activeSalesTab === 'Core Sales Operations') {
+      // MODIFIED: Update conditions to use new tab names
+      if (activeSalesTab === 'Transactions') {
         insights = {
           predictions: [
             { type: 'prediction', title: 'Invoice Conversion Rate', message: 'Expected 5% increase in invoice-to-receipt conversion next month.', confidence: 'high', impact: 'medium', actionable: true, action: 'Optimize Payment Reminders' },
             { type: 'alert', title: 'Pending Deliveries', message: '3 sales orders are confirmed but pending delivery for over 7 days.', confidence: 'high', impact: 'high', actionable: true, action: 'View Pending Deliveries' },
           ]
         };
-      } else if (activeSalesTab === 'Customer & Pricing Management') {
+      } else if (activeSalesTab === 'Masters') {
         insights = {
           predictions: [
             { type: 'suggestion', title: 'Customer Grouping Opportunity', message: 'AI suggests creating a "Loyal Customers" group based on repeat purchases.', confidence: 'medium', impact: 'low', actionable: true, action: 'Create New Customer Group' },
             { type: 'prediction', title: 'Price List Effectiveness', message: 'Price List "Summer Sale" has increased average order value by 12% compared to last quarter.', confidence: 'high', impact: 'medium', actionable: true, action: 'Analyze Price List Performance' },
           ]
         };
-      } else if (activeSalesTab === 'Sales Analytics & Reporting') {
+      } else if (activeSalesTab === 'Reports') {
         insights = {
           predictions: [
             { type: 'alert', title: 'Aging Receivables Risk', message: '5 customers have invoices overdue by more than 90 days, totaling ₹50,000.', confidence: 'high', impact: 'high', actionable: true, action: 'View Aging Report' },
@@ -289,7 +293,8 @@ function Sales() {
 
   const salesCategories = [
     {
-      title: 'Core Sales Operations',
+      // MODIFIED: Change title
+      title: 'Transactions',
       description: 'Manage your daily sales activities from quotations to invoices and payments.',
       modules: [
         { name: 'Sales Invoices', description: 'Generate and manage invoices', icon: FileText, path: '/sales/invoices', count: salesMetrics.salesInvoices.count, totalAmount: salesMetrics.salesInvoices.totalAmount },
@@ -302,7 +307,8 @@ function Sales() {
       ]
     },
     {
-      title: 'Customer & Pricing Management',
+      // MODIFIED: Change title
+      title: 'Masters',
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
         { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
@@ -311,7 +317,8 @@ function Sales() {
       ]
     },
     {
-      title: 'Sales Analytics & Reporting',
+      // MODIFIED: Change title
+      title: 'Reports',
       description: 'Gain insights into sales performance and financial outstanding.',
       modules: [
         { name: 'Customer Outstanding', description: 'Track pending customer payments', icon: UserCheck, path: '/sales/outstanding', count: salesMetrics.customerOutstanding.count, totalAmount: salesMetrics.customerOutstanding.totalAmount },
@@ -473,12 +480,13 @@ function Sales() {
   }
 
   const getActiveTabBorderColor = (tabTitle: string) => {
+    // MODIFIED: Update cases to use new tab names
     switch (tabTitle) {
-      case 'Core Sales Operations':
+      case 'Transactions':
         return 'border-sky-500';
-      case 'Customer & Pricing Management':
+      case 'Masters':
         return 'border-purple-500';
-      case 'Sales Analytics & Reporting':
+      case 'Reports':
         return 'border-emerald-500';
       default:
         return theme.borderColor;
@@ -879,3 +887,4 @@ function Sales() {
 }
 
 export default Sales;
+
