@@ -91,7 +91,7 @@ function FormField({
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[${theme.hoverAccent}]
             placeholder:${theme.textMuted}
-            ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
+            ${error ? 'border-red-500 ring-2 ring-2 ring-red-200' : ''}
             ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
           `}
         />

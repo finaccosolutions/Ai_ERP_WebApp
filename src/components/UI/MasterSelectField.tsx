@@ -157,12 +157,12 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           required={required}
           disabled={disabled}
           className={`
-            w-full pl-10 pr-3 py-3 border ${theme.inputBorder}
+            w-full pl-10 pr-3 py-2.5 border ${theme.inputBorder}
             ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[${theme.hoverAccent}]
             placeholder:${theme.textMuted}
-            ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
+            ${error ? 'border-red-500 ring-2 ring-2 ring-red-200' : ''}
           `}
         />
         <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />

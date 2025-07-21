@@ -1,3 +1,4 @@
+// src/pages/Sales/Sales.tsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -42,14 +43,13 @@ import {
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
-// Removed: import CreateInvoice from './CreateInvoice';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
-import FormField from '../../components/UI/FormField'; // Assuming FormField is used in FilterModal
+import FormField from '../../components/UI/FormField';
 
-// Import new submodule pages
+// Import all sales module pages
 import CustomersListPage from './CustomersListPage';
 import CustomerFormPage from './CustomerFormPage';
 import CustomerGroupsPage from './CustomerGroupsPage';
@@ -57,7 +57,7 @@ import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
 import DeliveryChallansPage from './DeliveryChallansPage';
-import SalesInvoicesListPage from './SalesInvoicesListPage'; // Changed to ListPage
+import SalesInvoicesListPage from './SalesInvoicesListPage';
 import CreditNotesPage from './CreditNotesPage';
 import ReceiptsPage from './ReceiptsPage';
 import SalesReturnsPage from './SalesReturnsPage';
@@ -67,41 +67,6 @@ import SalesAnalysisPage from './SalesAnalysisPage';
 import SalesRegisterPage from './SalesRegisterPage';
 import CustomerWiseSalesSummaryPage from './CustomerWiseSalesSummaryPage';
 
-// Filter Modal Component (simplified for this example)
-const FilterModal = ({ isOpen, onClose, filters, onApplyFilters, onFilterChange }: any) => {
-  const { theme } = useTheme();
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="p-6 w-full max-w-md space-y-4">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Filter Sales Data</h3>
-        <FormField
-          label="Start Date"
-          type="date"
-          value={filters.startDate}
-          onChange={(val: string) => onFilterChange('startDate', val)}
-        />
-        <FormField
-          label="End Date"
-          type="date"
-          value={filters.endDate}
-          onChange={(val: string) => onFilterChange('endDate', val)}
-          />
-        <FormField
-          label="Customer Name"
-          value={filters.customerName}
-          onChange={(val: string) => onFilterChange('customerName', val)}
-          placeholder="e.g., ABC Corp"
-          />
-        <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onApplyFilters}>Apply Filters</Button>
-        </div>
-      </Card>
-    </div>
-  );
-};
 
 function Sales() {
   const location = useLocation();
@@ -134,7 +99,7 @@ function Sales() {
   const [activeSalesTab, setActiveSalesTab] = useState('Core Sales Operations');
 
   // State for Filter and Export
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  // const [showFilterModal, setShowFilterModal] = useState(false); // REMOVED THIS LINE
   const [filterCriteria, setFilterCriteria] = useState({
     startDate: '',
     endDate: '',
@@ -437,11 +402,15 @@ function Sales() {
           <div className="flex justify-between items-start mb-2">
             <div className="flex items-center space-x-2">
               {getInsightIcon(insight.type)}
-              <h4 className={`font-medium ${theme.textPrimary} text-sm`}>{insight.title}</h4>
+              <h4 className={`font-medium ${theme.textPrimary} text-sm`}>
+                {insight.title}
+              </h4>
             </div>
-            <span className={`
-              px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
-            `}>
+            <span
+              className={`
+                px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
+              `}
+            >
               {insight.confidence}
             </span>
           </div>
@@ -477,8 +446,7 @@ function Sales() {
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
         <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
-        <Route path="/invoices" element={<SalesInvoicesListPage />} /> {/* Changed to ListPage */}
-        {/* Removed: <Route path="/invoices/create" element={<CreateInvoice />} /> */}
+        <Route path="/invoices/*" element={<SalesInvoicesListPage />} />
         <Route path="/credit-notes" element={<CreditNotesPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />
         <Route path="/returns" element={<SalesReturnsPage />} />
@@ -513,6 +481,8 @@ function Sales() {
     }
   };
 
+  // Removed handleFilterChange and handleApplyFilters as they are now handled by the modal
+  /*
   const handleFilterChange = (key: string, value: string) => {
     setFilterCriteria((prev) => ({ ...prev, [key]: value }));
   };
@@ -521,6 +491,7 @@ function Sales() {
     setShowFilterModal(false);
     fetchSalesData(currentCompany?.id || ''); // Re-fetch data with new filters
   };
+  */
 
   const handleExport = (format: string) => {
     console.log(`Exporting data in ${format} format...`);
@@ -559,13 +530,21 @@ function Sales() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-transparent bg-clip-text drop-shadow-lg`}>Sales Management</h1>
-          <p className={theme.textSecondary}>AI-powered sales operations and customer management</p>
+          <h1
+            className={`text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-transparent bg-clip-text drop-shadow-lg`}
+          >
+            Sales Management
+          </h1>
+          <p className={theme.textSecondary}>
+            AI-powered sales operations and customer management
+          </p>
         </div>
         <div className="flex space-x-2">
           <AIButton variant="voice" onSuggest={handleVoiceSearch} />
           <AIButton variant="suggest" onSuggest={() => console.log('AI Sales Suggestions')} />
-          <Link to="/sales/invoices" state={{ mode: 'create' }}> {/* ADDED state={{ mode: 'create' }} */}
+          <Link to="/sales/invoices" state={{ mode: 'create' }}>
+            {' '}
+            {/* ADDED state={{ mode: 'create' }} */}
             <Button icon={<Plus size={16} />}>Create Invoice</Button>
           </Link>
         </div>
@@ -575,7 +554,10 @@ function Sales() {
       <Card className="p-4">
         <div className="flex items-center space-x-4">
           <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
             <input
               type="text"
               placeholder="AI Search: 'Show overdue invoices', 'Top customers this month'..."
@@ -593,9 +575,10 @@ function Sales() {
               onClick={handleVoiceSearch}
               className={`
                 absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors
-                ${isVoiceActive
-                  ? 'text-red-500 animate-pulse'
-                  : `text-gray-400 hover:text-[${theme.hoverAccent}]`
+                ${
+                  isVoiceActive
+                    ? 'text-red-500 animate-pulse'
+                    : `text-gray-400 hover:text-[${theme.hoverAccent}]`
                 }
               `}
             >
@@ -603,13 +586,19 @@ function Sales() {
             </button>
           </div>
           <Button onClick={handleSmartSearch}>Search</Button>
-          <Button onClick={() => setShowFilterModal(true)} icon={<ListFilter size={16} />}>Filter</Button>
+          {/* Removed direct filter button, now handled by SalesInvoicesListPage */}
+          {/* <Button onClick={() => setShowFilterModal(true)} icon={<ListFilter size={16} />}>Filter</Button> */}
           <div className="relative">
-            <Button onClick={() => setShowExportDropdown(!showExportDropdown)} icon={<Download size={16} />}>
+            <Button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              icon={<Download size={16} />}
+            >
               Export
             </Button>
             {showExportDropdown && (
-              <div className={`absolute right-0 mt-2 w-40 ${theme.cardBg} border ${theme.borderColor} rounded-lg shadow-lg z-10`}>
+              <div
+                className={`absolute right-0 mt-2 w-40 ${theme.cardBg} border ${theme.borderColor} rounded-lg shadow-lg z-10`}
+              >
                 <button
                   onClick={() => handleExport('csv')}
                   className={`block w-full text-left px-4 py-2 text-sm ${theme.textPrimary} hover:bg-gray-100`}
@@ -634,7 +623,8 @@ function Sales() {
         </div>
       </Card>
 
-      {/* Filter Modal */}
+      {/* Filter Modal - REMOVED FROM HERE, NOW HANDLED BY SalesInvoicesListPage */}
+      {/*
       <FilterModal
         isOpen={showFilterModal}
         onClose={() => setShowFilterModal(false)}
@@ -642,6 +632,7 @@ function Sales() {
         onFilterChange={handleFilterChange}
         onApplyFilters={handleApplyFilters}
       />
+      */}
 
       {/* Tab Navigation - Redesigned for visual distinction */}
       <div className="flex flex-wrap justify-center md:justify-start gap-2">
@@ -651,9 +642,10 @@ function Sales() {
             onClick={() => setActiveSalesTab(category.title)}
             className={`
               flex-1 px-6 py-3 text-sm font-semibold transition-all duration-300 ease-in-out
-              ${activeSalesTab === category.title
-                ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700 rounded-t-lg rounded-b-none`
-                : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200 rounded-lg`
+              ${
+                activeSalesTab === category.title
+                  ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700 rounded-t-lg rounded-b-none`
+                  : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200 rounded-lg`
               }
             `}
           >
@@ -668,13 +660,17 @@ function Sales() {
           key={category.title}
           className={`${activeSalesTab === category.title ? 'block' : 'hidden'}`}
         >
-          <Card className={`
+          <Card
+            className={`
             p-6 space-y-4 rounded-t-none rounded-b-lg
             border-t-4 ${getActiveTabBorderColor(category.title)}
             bg-white shadow-lg
-          `}>
+          `}
+          >
             {/* Category Header (inside the content div) */}
-            <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>{category.title}</h2>
+            <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>
+              {category.title}
+            </h2>
             <p className={theme.textSecondary}>{category.description}</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -683,31 +679,46 @@ function Sales() {
                 const colors = moduleColors[moduleIndex % moduleColors.length];
                 return (
                   <Link key={module.name} to={module.path} className="flex">
-                    <Card hover className={`
+                    <Card
+                      hover
+                      className={`
                       p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
                       ${colors.cardBg}
                       transform transition-all duration-300 ease-in-out
                       hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                    `}>
+                    `}
+                    >
                       {/* Background overlay for hover effect */}
                       <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"></div>
-                      
-                      <div className="relative z-10"> {/* Ensure content is above overlay */}
-                        <h3 className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}>
+
+                      <div className="relative z-10">
+                        {' '}
+                        {/* Ensure content is above overlay */}
+                        <h3
+                          className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                        >
                           {module.name}
                         </h3>
-                        <p className={`text-sm ${theme.textMuted}`}>{module.description}</p>
+                        <p className={`text-sm ${theme.textMuted}`}>
+                          {module.description}
+                        </p>
                       </div>
                       <div className="flex items-center justify-between mt-3 relative z-10">
-                        <p className={`text-xl font-bold ${colors.textColor}`}>{module.count}</p>
+                        <p className={`text-xl font-bold ${colors.textColor}`}>
+                          {module.count}
+                        </p>
                         {module.totalAmount && (
-                          <p className={`text-md font-semibold ${colors.textColor}`}>₹{module.totalAmount}</p>
+                          <p className={`text-md font-semibold ${colors.textColor}`}>
+                            ₹{module.totalAmount}
+                          </p>
                         )}
-                        <div className={`
+                        <div
+                          className={`
                           p-3 rounded-2xl shadow-md
                           ${colors.iconBg} text-white
                           group-hover:scale-125 transition-transform duration-300
-                        `}>
+                        `}
+                        >
                           <Icon size={24} className="text-white" />
                         </div>
                       </div>
@@ -725,9 +736,14 @@ function Sales() {
         {/* Recent Sales */}
         <Card className="p-6 bg-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Sales Activity</h3>
+            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
+              Recent Sales Activity
+            </h3>
             <div className="flex items-center space-x-2">
-              <Link to="/sales/invoices" className="text-sm text-sky-600 hover:text-sky-800">
+              <Link
+                to="/sales/invoices"
+                className="text-sm text-sky-600 hover:text-sky-800"
+              >
                 View All
               </Link>
             </div>
@@ -735,26 +751,43 @@ function Sales() {
           <div className="space-y-3">
             {recentSalesData.length > 0 ? (
               recentSalesData.map((item) => (
-                <div key={item.id} className={`
+                <div
+                  key={item.id}
+                  className={`
                   flex items-center justify-between p-3 ${theme.inputBg} rounded-2xl
                   border ${theme.borderColor} hover:border-[${theme.hoverAccent}] transition-all duration-300
-                `}>
+                `}
+                >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
                       <div>
-                        <p className={`font-medium ${theme.textPrimary}`}>{item.party}</p>
-                        <p className={`text-sm ${theme.textMuted}`}>{item.description}</p>
+                        <p className={`font-medium ${theme.textPrimary}`}>
+                          {item.party}
+                        </p>
+                        <p className={`text-sm ${theme.textMuted}`}>
+                          {item.description}
+                        </p>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    {item.amount && <p className={`font-medium ${theme.textPrimary}`}>₹{item.amount?.toLocaleString()}</p>}
-                    <span className={`
+                    {item.amount && (
+                      <p className={`font-medium ${theme.textPrimary}`}>
+                        ₹{item.amount?.toLocaleString()}
+                      </p>
+                    )}
+                    <span
+                      className={`
                       px-2 py-1 text-xs rounded-full
-                      ${item.status === 'paid' || item.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        item.status === 'pending' || item.status === 'Updated' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'}
-                    `}>
+                      ${
+                        item.status === 'paid' || item.status === 'Active'
+                          ? 'bg-green-100 text-green-800'
+                          : item.status === 'pending' || item.status === 'Updated'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }
+                    `}
+                    >
                       {item.status}
                     </span>
                   </div>
@@ -771,7 +804,9 @@ function Sales() {
         {/* AI Sales Insights */}
         <Card className="p-6 bg-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+            <h3
+              className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}
+            >
               <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
               AI Sales Insights
               <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
@@ -779,37 +814,58 @@ function Sales() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => currentCompany?.id && generateSalesAIInsights(currentCompany.id)}
+              onClick={() =>
+                currentCompany?.id && generateSalesAIInsights(currentCompany.id)
+              }
               disabled={refreshingInsights}
-              icon={<RefreshCw size={16} className={refreshingInsights ? 'animate-spin' : ''} />}
+              icon={
+                <RefreshCw
+                  size={16}
+                  className={refreshingInsights ? 'animate-spin' : ''}
+                />
+              }
             >
               {refreshingInsights ? 'Refreshing...' : 'Refresh Insights'}
             </Button>
           </div>
-          <div className="space-y-4">
-            {getContextualAIInsights()}
-          </div>
+          <div className="space-y-4">{getContextualAIInsights()}</div>
         </Card>
       </div>
 
       {/* Quick Actions (Always Visible) */}
       <Card className="p-6 mt-8 pt-4 border-t border-gray-200">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
+        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+          Quick Actions
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/sales/invoices"> {/* Changed link to /sales/invoices */}
+          <Link to="/sales/invoices">
+            {' '}
+            {/* Changed link to /sales/invoices */}
             <Button className="w-full justify-start" icon={<FileText size={16} />}>
               Create Invoice
             </Button>
           </Link>
           <Link to="/sales/customers/new">
-            <Button variant="outline" className="w-full justify-start" icon={<Users size={16} />}>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              icon={<Users size={16} />}
+            >
               Add Customer
             </Button>
           </Link>
-          <Button variant="outline" className="w-full justify-start" icon={<BarChart3 size={16} />}>
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            icon={<BarChart3 size={16} />}
+          >
             Sales Report
           </Button>
-          <Button variant="outline" className="w-full justify-start" icon={<Upload size={16} />}>
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            icon={<Upload size={16} />}
+          >
             Import Data
           </Button>
         </div>
