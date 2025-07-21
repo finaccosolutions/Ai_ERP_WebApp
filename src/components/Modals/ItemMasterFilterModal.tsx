@@ -5,8 +5,11 @@ import Card from '../UI/Card';
 import Button from '../UI/Button';
 import FormField from '../UI/FormField';
 import AIButton from '../UI/AIButton';
+import MasterSelectField from '../UI/MasterSelectField'; // NEW: Import MasterSelectField
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
+import { supabase } from '../../lib/supabase'; // NEW: Import supabase
+import { useCompany } from '../../contexts/CompanyContext'; // NEW: Import useCompany
 
 interface ItemMasterFilterModalProps {
   isOpen: boolean;
@@ -16,6 +19,7 @@ interface ItemMasterFilterModalProps {
     itemCode: string;
     itemType: string;
     categoryId: string;
+    itemGroupId: string; // NEW: Added itemGroupId to filters
     minSalesPrice: string;
     maxSalesPrice: string;
     isActive: string;
@@ -33,6 +37,39 @@ function ItemMasterFilterModal({
 }: ItemMasterFilterModalProps) {
   const { theme } = useTheme();
   const { suggestWithAI } = useAI();
+  const { currentCompany } = useCompany(); // NEW: Use currentCompany
+
+  const [availableCategories, setAvailableCategories] = React.useState<{ id: string; name: string }[]>([]); // NEW: State for categories
+  const [availableItemGroups, setAvailableItemGroups] = React.useState<{ id: string; name: string }[]>([]); // NEW: State for item groups
+
+  // NEW: Fetch categories and item groups on mount
+  React.useEffect(() => {
+    if (currentCompany?.id) {
+      fetchMasterData(currentCompany.id);
+    }
+  }, [currentCompany?.id]);
+
+  const fetchMasterData = async (companyId: string) => {
+    try {
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('item_categories')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .order('name', { ascending: true });
+      if (categoriesError) throw categoriesError;
+      setAvailableCategories(categoriesData || []);
+
+      const { data: itemGroupsData, error: itemGroupsError } = await supabase
+        .from('item_groups')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .order('name', { ascending: true });
+      if (itemGroupsError) throw itemGroupsError;
+      setAvailableItemGroups(itemGroupsData || []);
+    } catch (err) {
+      console.error('Error fetching master data for filter:', err);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -42,6 +79,7 @@ function ItemMasterFilterModal({
       itemCode: '',
       itemType: 'all',
       categoryId: '',
+      itemGroupId: '', // NEW: Clear itemGroupId
       minSalesPrice: '',
       maxSalesPrice: '',
       isActive: 'all',
@@ -50,7 +88,7 @@ function ItemMasterFilterModal({
 
   const handleAISuggestFilter = async () => {
     try {
-      const aiPrompt = `Suggest relevant filters for item master data based on common inventory needs. Consider item name, code, type, category, price range, and active status. Provide suggestions in a structured format.`;
+      const aiPrompt = `Suggest relevant filters for item master data based on common inventory needs. Consider item name, code, type, category, item group, price range, and active status. Provide suggestions in a structured format.`;
       const aiResponse = await suggestWithAI({ query: aiPrompt, context: 'item_master_filters' });
 
       if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0) {
@@ -126,12 +164,21 @@ function ItemMasterFilterModal({
                 <option value="service">Service Item</option>
               </select>
             </div>
-            <FormField
-              label="Category ID"
-              value={filters.categoryId}
-              onChange={(val) => onFilterChange('categoryId', val)}
-              placeholder="e.g., Electronics"
-              icon={<Users size={18} />} // Using Users as a generic icon for category
+            <MasterSelectField // NEW: MasterSelectField for Category
+              label="Category"
+              value={availableCategories.find(cat => cat.id === filters.categoryId)?.name || ''}
+              onValueChange={(val) => onFilterChange('categoryId', val)}
+              onSelect={(id) => onFilterChange('categoryId', id)}
+              options={availableCategories}
+              placeholder="Select Category"
+            />
+            <MasterSelectField // NEW: MasterSelectField for Item Group
+              label="Item Group"
+              value={availableItemGroups.find(group => group.id === filters.itemGroupId)?.name || ''}
+              onValueChange={(val) => onFilterChange('itemGroupId', val)}
+              onSelect={(id) => onFilterChange('itemGroupId', id)}
+              options={availableItemGroups}
+              placeholder="Select Item Group"
             />
             <FormField
               label="Min Sales Price"

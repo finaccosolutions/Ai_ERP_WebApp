@@ -1,4 +1,3 @@
-// src/pages/Inventory/Inventory.tsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -17,6 +16,8 @@ import {
   Clock, // For Batch Expiry Report
   DollarSign, // For Stock Valuation Report
   TrendingUp, // For Fast-moving/Slow-moving Items Report
+  Tag, // For Item Groups (new icon)
+  Lightbulb, // For AI Insights
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -32,6 +33,7 @@ import ItemMasterPage from './masters/ItemMasterPage';
 import ItemCategoriesGroupsPage from './masters/ItemCategoriesGroupsPage';
 import UnitsOfMeasurePage from './masters/UnitsOfMeasurePage';
 import WarehousesPage from './masters/WarehousesPage';
+import ItemGroupsPage from './masters/ItemGroupsPage'; // NEW: Import ItemGroupsPage
 
 import StockJournalPage from './transactions/StockJournalPage';
 import StockTransfersPage from './transactions/StockTransfersPage';
@@ -58,6 +60,7 @@ function Inventory() {
     goodsReceipts: '0',
     goodsIssues: '0',
     batchesTracked: '0',
+    itemGroups: '0', // NEW: Metric for Item Groups
   });
   const [recentInventoryActivity, setRecentInventoryActivity] = useState<any[]>([]);
   const [inventoryAiInsights, setInventoryAiInsights] = useState<any[]>([]);
@@ -91,6 +94,7 @@ function Inventory() {
       const { count: totalItemsCount } = await supabase.from('items').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: totalWarehousesCount } = await supabase.from('warehouses').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
       const { count: batchesTrackedCount } = await supabase.from('batch_master').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: itemGroupsCount } = await supabase.from('item_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // NEW: Fetch Item Groups count
       
       // Placeholder for low stock items (requires more complex query)
       const lowStockItemsCount = 0; // To be implemented
@@ -115,6 +119,7 @@ function Inventory() {
         goodsReceipts: goodsReceiptsCount?.toString() || '0',
         goodsIssues: goodsIssuesCount?.toString() || '0',
         batchesTracked: batchesTrackedCount?.toString() || '0',
+        itemGroups: itemGroupsCount?.toString() || '0', // NEW: Set Item Groups count
       });
 
       // Fetch recent stock activities (e.g., last 5 stock entries)
@@ -231,6 +236,7 @@ function Inventory() {
       modules: [
         { name: 'Item Master', description: 'Define and manage all products and services.', icon: FolderOpen, path: '/inventory/masters/items', count: inventoryMetrics.totalItems, totalAmount: null },
         { name: 'Item Categories / Groups', description: 'Organize items into categories and groups.', icon: Layers, path: '/inventory/masters/categories-groups', count: 'N/A', totalAmount: null },
+        { name: 'Item Groups', description: 'Manage broader classifications for items.', icon: Tag, path: '/inventory/masters/item-groups', count: inventoryMetrics.itemGroups, totalAmount: null }, // NEW: Item Groups Module
         { name: 'Units of Measure', description: 'Define units like pcs, kgs, liters.', icon: Ruler, path: '/inventory/masters/units', count: 'N/A', totalAmount: null },
         { name: 'Warehouses / Locations', description: 'Manage storage locations and warehouses.', icon: MapPin, path: '/inventory/masters/warehouses', count: inventoryMetrics.totalWarehouses, totalAmount: null },
       ]
@@ -249,12 +255,12 @@ function Inventory() {
       title: 'Reports',
       description: 'Generate insights and reports for inventory analysis.',
       modules: [
-        { name: 'Stock Summary Report', description: 'Item-wise closing stock, opening, inwards, outwards.', icon: PieChart, path: '/inventory/reports/stock-summary', count: 'N/A', totalAmount: null },
-        { name: 'Warehouse-wise Stock Report', description: 'Stock levels per warehouse.', icon: LayoutGrid, path: '/inventory/reports/warehouse-stock', count: 'N/A', totalAmount: null },
-        { name: 'Reorder Report', description: 'Items below reorder level.', icon: ListOrdered, path: '/inventory/reports/reorder', count: inventoryMetrics.lowStockItems, totalAmount: null },
-        { name: 'Batch Expiry Report', description: 'Track expiring batches.', icon: Clock, path: '/inventory/reports/batch-expiry', count: 'N/A', totalAmount: null },
-        { name: 'Stock Valuation Report', description: 'Financial value of current stock.', icon: DollarSign, path: '/inventory/reports/stock-valuation', count: 'N/A', totalAmount: inventoryMetrics.totalStockValue },
-        { name: 'Fast-moving / Slow-moving Items', description: 'Identify sales velocity of items.', icon: TrendingUp, path: '/inventory/reports/movement', count: 'N/A', totalAmount: null },
+        { name: 'Stock Summary Report', description: 'Item-wise closing stock, opening, inwards, outwards.', icon: PieChart, action: 'stock_summary' },
+        { name: 'Warehouse-wise Stock Report', description: 'Stock levels per warehouse.', icon: LayoutGrid, action: 'warehouse_stock' },
+        { name: 'Reorder Report', description: 'Items below reorder level.', icon: ListOrdered, action: 'reorder_report' },
+        { name: 'Batch Expiry Report', description: 'Track expiring batches.', icon: Clock, action: 'batch_expiry' },
+        { name: 'Stock Valuation Report', description: 'Financial value of current stock.', icon: DollarSign, action: 'stock_valuation' },
+        { name: 'Fast-moving / Slow-moving Items Report', description: 'Identify sales velocity of items.', icon: TrendingUp, action: 'movement_report' },
       ]
     }
   ];
@@ -375,6 +381,7 @@ function Inventory() {
         <Route path="/masters/items/new" element={<ItemMasterPage />} />
         <Route path="/masters/items/edit/:id" element={<ItemMasterPage />} />
         <Route path="/masters/categories-groups" element={<ItemCategoriesGroupsPage />} />
+        <Route path="/masters/item-groups" element={<ItemGroupsPage />} /> {/* NEW: Route for ItemGroupsPage */}
         <Route path="/masters/units" element={<UnitsOfMeasurePage />} />
         <Route path="/masters/warehouses" element={<WarehousesPage />} />
 

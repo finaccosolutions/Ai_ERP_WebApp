@@ -98,6 +98,12 @@ export const ALL_PERMISSIONS = {
       update: 'Edit Item Categories/Groups',
       delete: 'Delete Item Categories/Groups',
     },
+    item_groups: { // NEW: Item Group Permissions
+      create: 'Create Item Groups',
+      read: 'View Item Groups',
+      update: 'Edit Item Groups',
+      delete: 'Delete Item Groups',
+    },
     units_of_measure: {
       create: 'Create Units of Measure',
       read: 'View Units of Measure',

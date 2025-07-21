@@ -1,3 +1,4 @@
+// src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -20,6 +21,7 @@ export interface Database {
       companies: {
         Row: {
           id: string;
+          company_id: string;
           name: string;
           country: string;
           currency: string;
@@ -44,6 +46,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          company_id?: string;
           name: string;
           country?: string;
           currency?: string;
@@ -68,6 +71,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          company_id?: string;
           name?: string;
           country?: string;
           currency?: string;
@@ -519,6 +523,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           custom_attributes: any | null; // Added custom_attributes
+          item_group_id: string | null; // NEW: Added item_group_id
         };
         Insert: {
           id?: string;
@@ -551,6 +556,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           custom_attributes?: any | null; // Added custom_attributes
+          item_group_id?: string | null; // NEW: Added item_group_id
         };
         Update: {
           id?: string;
@@ -583,6 +589,33 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           custom_attributes?: any | null; // Added custom_attributes
+          item_group_id?: string | null; // NEW: Added item_group_id
+        };
+      };
+      item_groups: { // NEW: Added item_groups table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          name: string;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          name: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          name?: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };
