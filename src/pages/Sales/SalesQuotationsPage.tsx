@@ -552,7 +552,6 @@ function SalesQuotationsPage() {
                             required
                             aiHelper={true}
                             context="sales_quotation_item_selection"
-                            onAISuggestion={(val) => handleItemAISuggestion(index, val)}
                           />
                         </div>
                         <div>

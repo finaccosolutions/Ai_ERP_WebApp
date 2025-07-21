@@ -329,7 +329,6 @@ function ReceiptsPage() {
                   required
                   aiHelper={true}
                   context="receipt_customer_selection"
-                  onAISuggestion={handleCustomerAISuggestion}
                 />
                 <FormField
                   label="Notes"

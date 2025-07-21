@@ -134,8 +134,12 @@ export default {
         'theme': '0 10px 25px -3px rgba(52, 211, 153, 0.1), 0 4px 6px -2px rgba(52, 211, 153, 0.05)',
         'theme-lg': '0 20px 25px -5px rgba(52, 211, 153, 0.1), 0 10px 10px -5px rgba(52, 211, 153, 0.04)',
         'theme-xl': '0 25px 50px -12px rgba(52, 211, 153, 0.25)',
+      },
+      gridTemplateColumns: {
+        // Custom grid for invoice item rows
+        'invoice-item-row': '2fr 1fr 0.7fr 0.7fr 1fr 1fr 1fr 0.2fr',
       }
     },
   },
   plugins: [],
-};
+}; 

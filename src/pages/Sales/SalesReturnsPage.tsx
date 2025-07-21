@@ -564,7 +564,7 @@ function SalesReturnsPage() {
                 <div className="space-y-4">
                   {items.map((item, index) => (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="md:col-span-2">
                           <MasterSelectField
                             label="Item Name"
@@ -576,7 +576,6 @@ function SalesReturnsPage() {
                             required
                             aiHelper={true}
                             context="sales_return_item_selection"
-                            onAISuggestion={(val) => handleItemAISuggestion(index, val)}
                           />
                         </div>
                         <div>
@@ -603,14 +602,6 @@ function SalesReturnsPage() {
                             value={item.rate.toString()}
                             onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
                             required
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            label="Tax Rate (%)"
-                            type="number"
-                            value={item.taxRate.toString()}
-                            onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
                           />
                         </div>
                         <div className="flex items-end">
@@ -737,7 +728,7 @@ function SalesReturnsPage() {
             )}
           </div>
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <AIButton variant="analyze" onSuggest={() => console.log('AI Return Analysis')} className="w-full" />
+            <AIButton variant="predict" onSuggest={() => console.log('AI Return Analysis')} className="w-full" />
           </div>
         </Card>
       )}

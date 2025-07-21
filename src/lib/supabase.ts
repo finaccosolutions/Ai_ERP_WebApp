@@ -28,7 +28,14 @@ export interface Database {
           timezone: string;
           logo: string | null;
           tax_config: any;
-          address: any;
+          address: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          }; // Explicitly define address structure
           contact_info: any;
           settings: any;
           is_active: boolean;
@@ -45,7 +52,14 @@ export interface Database {
           timezone?: string;
           logo?: string | null;
           tax_config?: any;
-          address?: any;
+          address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          };
           contact_info?: any;
           settings?: any;
           is_active?: boolean;
@@ -62,7 +76,14 @@ export interface Database {
           timezone?: string;
           logo?: string | null;
           tax_config?: any;
-          address?: any;
+          address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          };
           contact_info?: any;
           settings?: any;
           is_active?: boolean;
@@ -170,6 +191,300 @@ export interface Database {
           role_id?: string | null;
           is_active?: boolean;
           joined_at?: string;
+        };
+      };
+      sales_invoices: {
+        Row: {
+          id: string;
+          company_id: string;
+          invoice_no: string;
+          customer_id: string | null;
+          order_id: string | null;
+          invoice_date: string;
+          due_date: string | null;
+          status: string;
+          reference_no: string | null;
+          terms_and_conditions: string | null;
+          notes: string | null;
+          subtotal: number | null;
+          total_tax: number | null;
+          total_amount: number | null;
+          paid_amount: number | null;
+          outstanding_amount: number | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          // New fields for tax and other ledger entries
+          tax_details: any | null; // JSONB to store dynamic tax rows
+          other_ledger_entries: any | null; // JSONB to store other ledger entries
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          invoice_no: string;
+          customer_id?: string | null;
+          order_id?: string | null;
+          invoice_date?: string;
+          due_date?: string | null;
+          status?: string;
+          reference_no?: string | null;
+          terms_and_conditions?: string | null;
+          notes?: string | null;
+          subtotal?: number | null;
+          total_tax?: number | null;
+          total_amount?: number | null;
+          paid_amount?: number | null;
+          outstanding_amount?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          tax_details?: any | null;
+          other_ledger_entries?: any | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          invoice_no?: string;
+          customer_id?: string | null;
+          order_id?: string | null;
+          invoice_date?: string;
+          due_date?: string | null;
+          status?: string;
+          reference_no?: string | null;
+          terms_and_conditions?: string | null;
+          notes?: string | null;
+          subtotal?: number | null;
+          total_tax?: number | null;
+          total_amount?: number | null;
+          paid_amount?: number | null;
+          outstanding_amount?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          tax_details?: any | null;
+          other_ledger_entries?: any | null;
+        };
+      };
+      sales_invoice_items: {
+        Row: {
+          id: string;
+          invoice_id: string | null;
+          item_code: string;
+          item_name: string;
+          description: string | null;
+          quantity: number;
+          unit: string;
+          rate: number;
+          amount: number;
+          tax_rate: number | null;
+          tax_amount: number | null;
+          line_total: number;
+          created_at: string;
+          hsn_code: string | null; // Added hsn_code
+        };
+        Insert: {
+          id?: string;
+          invoice_id?: string | null;
+          item_code: string;
+          item_name: string;
+          description?: string | null;
+          quantity?: number;
+          unit?: string;
+          rate?: number;
+          amount?: number;
+          tax_rate?: number | null;
+          tax_amount?: number | null;
+          line_total?: number;
+          created_at?: string;
+          hsn_code?: string | null; // Added hsn_code
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string | null;
+          item_code?: string;
+          item_name?: string;
+          description?: string | null;
+          quantity?: number;
+          unit?: string;
+          rate?: number;
+          amount?: number;
+          tax_rate?: number | null;
+          tax_amount?: number | null;
+          line_total?: number;
+          created_at?: string;
+          hsn_code?: string | null; // Added hsn_code
+        };
+      };
+      customers: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          customer_code: string;
+          name: string;
+          customer_type: string | null;
+          email: string | null;
+          phone: string | null;
+          mobile: string | null;
+          website: string | null;
+          tax_id: string | null;
+          pan: string | null;
+          gstin: string | null;
+          billing_address: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null; // Explicitly define address structure
+          shipping_address: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null; // Explicitly define address structure
+          credit_limit: number | null;
+          credit_days: number | null;
+          price_list_id: string | null;
+          territory: string | null;
+          payment_terms: string | null;
+          is_active: boolean | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          customer_group_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          customer_code: string;
+          name: string;
+          customer_type?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          mobile?: string | null;
+          website?: string | null;
+          tax_id?: string | null;
+          pan?: string | null;
+          gstin?: string | null;
+          billing_address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null;
+          shipping_address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null;
+          credit_limit?: number | null;
+          credit_days?: number | null;
+          price_list_id?: string | null;
+          territory?: string | null;
+          payment_terms?: string | null;
+          is_active?: boolean | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          customer_group_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          customer_code?: string;
+          name?: string;
+          customer_type?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          mobile?: string | null;
+          website?: string | null;
+          tax_id?: string | null;
+          pan?: string | null;
+          gstin?: string | null;
+          billing_address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null;
+          shipping_address?: {
+            street1?: string;
+            street2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            zipCode?: string;
+          } | null;
+          credit_limit?: number | null;
+          credit_days?: number | null;
+          price_list_id?: string | null;
+          territory?: string | null;
+          payment_terms?: string | null;
+          is_active?: boolean | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          customer_group_id?: string | null;
+        };
+      };
+      chart_of_accounts: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          account_code: string;
+          account_name: string;
+          account_type: string;
+          account_group: string;
+          parent_account_id: string | null;
+          is_group: boolean | null;
+          is_active: boolean | null;
+          opening_balance: number | null;
+          balance_type: string | null;
+          tax_rate: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          account_code: string;
+          account_name: string;
+          account_type: string;
+          account_group: string;
+          parent_account_id?: string | null;
+          is_group?: boolean | null;
+          is_active?: boolean | null;
+          opening_balance?: number | null;
+          balance_type?: string | null;
+          tax_rate?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          account_code?: string;
+          account_name?: string;
+          account_type?: string;
+          account_group?: string;
+          parent_account_id?: string | null;
+          is_group?: boolean | null;
+          is_active?: boolean | null;
+          opening_balance?: number | null;
+          balance_type?: string | null;
+          tax_rate?: number | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

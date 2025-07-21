@@ -156,4 +156,4 @@ function SalesPriceListPage() {
   );
 }
 
-export default SalesPriceListPage;
+export default SalesPriceListPage; 

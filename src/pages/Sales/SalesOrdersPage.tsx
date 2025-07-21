@@ -561,7 +561,6 @@ function SalesOrdersPage() {
                             required
                             aiHelper={true}
                             context="sales_order_item_selection"
-                            onAISuggestion={(val) => handleItemAISuggestion(index, val)}
                           />
                         </div>
                         <div>

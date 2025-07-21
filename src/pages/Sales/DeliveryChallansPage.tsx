@@ -523,7 +523,6 @@ function DeliveryChallansPage() {
                           required
                           aiHelper={true}
                           context="delivery_challan_item_selection"
-                          onAISuggestion={(val) => handleItemAISuggestion(index, val)}
                         />
                       </div>
                       <div>

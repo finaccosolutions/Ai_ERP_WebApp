@@ -1,4 +1,3 @@
-// src/pages/Sales/Sales.tsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -43,7 +42,7 @@ import {
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
-import CreateInvoice from './CreateInvoice';
+// Removed: import CreateInvoice from './CreateInvoice';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
 import { supabase } from '../../lib/supabase';
@@ -58,7 +57,7 @@ import SalesPriceListPage from './SalesPriceListPage';
 import SalesQuotationsPage from './SalesQuotationsPage';
 import SalesOrdersPage from './SalesOrdersPage';
 import DeliveryChallansPage from './DeliveryChallansPage';
-import SalesInvoicesPage from './SalesInvoicesPage';
+import SalesInvoicesListPage from './SalesInvoicesListPage'; // Changed to ListPage
 import CreditNotesPage from './CreditNotesPage';
 import ReceiptsPage from './ReceiptsPage';
 import SalesReturnsPage from './SalesReturnsPage';
@@ -88,13 +87,13 @@ const FilterModal = ({ isOpen, onClose, filters, onApplyFilters, onFilterChange 
           type="date"
           value={filters.endDate}
           onChange={(val: string) => onFilterChange('endDate', val)}
-        />
+          />
         <FormField
           label="Customer Name"
           value={filters.customerName}
           onChange={(val: string) => onFilterChange('customerName', val)}
           placeholder="e.g., ABC Corp"
-        />
+          />
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={onApplyFilters}>Apply Filters</Button>
@@ -478,8 +477,8 @@ function Sales() {
         <Route path="/quotations" element={<SalesQuotationsPage />} />
         <Route path="/orders" element={<SalesOrdersPage />} />
         <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
-        <Route path="/invoices" element={<SalesInvoicesPage />} />
-        <Route path="/invoices/create" element={<CreateInvoice />} />
+        <Route path="/invoices" element={<SalesInvoicesListPage />} /> {/* Changed to ListPage */}
+        {/* Removed: <Route path="/invoices/create" element={<CreateInvoice />} /> */}
         <Route path="/credit-notes" element={<CreditNotesPage />} />
         <Route path="/receipts" element={<ReceiptsPage />} />
         <Route path="/returns" element={<SalesReturnsPage />} />
@@ -566,7 +565,7 @@ function Sales() {
         <div className="flex space-x-2">
           <AIButton variant="voice" onSuggest={handleVoiceSearch} />
           <AIButton variant="suggest" onSuggest={() => console.log('AI Sales Suggestions')} />
-          <Link to="/sales/invoices/create">
+          <Link to="/sales/invoices" state={{ mode: 'create' }}> {/* ADDED state={{ mode: 'create' }} */}
             <Button icon={<Plus size={16} />}>Create Invoice</Button>
           </Link>
         </div>
@@ -797,7 +796,7 @@ function Sales() {
       <Card className="p-6 mt-8 pt-4 border-t border-gray-200">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/sales/invoices/create">
+          <Link to="/sales/invoices"> {/* Changed link to /sales/invoices */}
             <Button className="w-full justify-start" icon={<FileText size={16} />}>
               Create Invoice
             </Button>

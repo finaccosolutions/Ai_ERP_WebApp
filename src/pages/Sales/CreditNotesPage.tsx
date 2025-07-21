@@ -423,7 +423,7 @@ function CreditNotesPage() {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
-              {creditNote.id ? 'Edit Credit Note' : 'Create New Credit Note'}
+              {creditNote.id ? 'Edit Credit Note' : 'Record New Credit Note'}
             </h3>
             {/* Credit Notes are typically always in voucher mode */}
             <span className={`px-3 py-1 text-sm font-medium ${theme.textPrimary} bg-gray-100 rounded-lg`}>
@@ -480,14 +480,13 @@ function CreditNotesPage() {
                   required
                   aiHelper={true}
                   context="customer_selection"
-                  onAISuggestion={handleCustomerAISuggestion}
                 />
                 {/* Add more customer fields if needed */}
               </div>
             </Card>
 
             {/* Credit Note Items (Optional, based on creditNoteMode) */}
-            {creditNoteMode === 'item_mode' && ( // This block will not render
+            {creditNoteMode === 'item_mode' && ( // This block will not run
               <Card className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Credit Note Items</h4>
