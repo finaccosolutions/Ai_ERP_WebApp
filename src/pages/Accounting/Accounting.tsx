@@ -56,21 +56,21 @@ function Accounting() {
 
   const [activeTab, setActiveTab] = useState('masters'); // Default active tab
   const [accountingMetrics, setAccountingMetrics] = useState({
-    ledgers: '0',
-    groups: '0',
-    payments: '0',
-    receipts: '0',
-    contra: '0',
-    journal: '0',
-    salesVouchers: '0',
-    salesReturns: '0',
-    purchaseVouchers: '0',
-    purchaseReturns: '0',
-    creditNotes: '0',
-    debitNotes: '0',
-    assets: '0',
-    costCenters: '0',
-    costCategories: '0',
+    ledgers: { count: '0' },
+    groups: { count: '0' },
+    payments: { count: '0', totalAmount: '0' },
+    receipts: { count: '0', totalAmount: '0' },
+    contra: { count: '0' },
+    journal: { count: '0' },
+    salesVouchers: { count: '0', totalAmount: '0' },
+    salesReturns: { count: '0', totalAmount: '0' }, // Assuming sales_returns has total_amount
+    purchaseVouchers: { count: '0', totalAmount: '0' },
+    purchaseReturns: { count: '0', totalAmount: '0' }, // Assuming purchase_returns has total_amount
+    creditNotes: { count: '0', totalAmount: '0' },
+    debitNotes: { count: '0', totalAmount: '0' }, // Assuming debit_notes has total_amount
+    assets: { count: '0', totalValue: '0' },
+    costCenters: { count: '0' },
+    costCategories: { count: '0' },
   });
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
@@ -87,20 +87,40 @@ function Accounting() {
       const { count: ledgersCount } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
       const { count: groupsCount } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', true);
 
-      // Fetch counts for Vouchers
-      const { count: paymentsCount } = await supabase.from('payment_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('payment_type', 'pay');
-      const { count: receiptsCount } = await supabase.from('payment_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('payment_type', 'receive');
+      // Fetch counts for Customers and Vendors
+      const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: vendorsCount } = await supabase.from('vendors').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+
+
+      // Fetch counts and amounts for Vouchers
+      const { count: paymentsCount, data: paymentsData } = await supabase.from('payments').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      const totalPaymentsAmount = paymentsData?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      const { count: receiptsCount, data: receiptsData } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      const totalReceiptsAmount = receiptsData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+      
       const { count: journalCount } = await supabase.from('journal_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'journal');
-      // For sales/purchase vouchers, credit/debit notes, we might need to query sales_invoices, purchase_invoices, etc.
-      // For simplicity, using placeholder counts for now or querying the main tables if status allows.
-      const { count: salesVouchersCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId).neq('status', 'credit_note');
-      const { count: purchaseVouchersCount } = await supabase.from('purchase_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: creditNotesCount } = await supabase.from('sales_invoices').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'credit_note');
+      
+      const { count: salesVouchersCount, data: salesVouchersData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).neq('status', 'credit_note');
+      const totalSalesVouchersAmount = salesVouchersData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
+
+      const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, sr) => sum + (sr.total_amount || 0), 0) || 0;
+
+      const { count: purchaseVouchersCount, data: purchaseVouchersData } = await supabase.from('purchase_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const totalPurchaseVouchersAmount = purchaseVouchersData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
+
+      const { count: creditNotesCount, data: creditNotesData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
+      const totalCreditNotesAmount = creditNotesData?.reduce((sum, cn) => sum + (cn.total_amount || 0), 0) || 0;
+      
       // Debit notes table is not in schema, so placeholder
       const debitNotesCount = 0; // Placeholder
+      const totalDebitNotesAmount = 0; // Placeholder
 
       // Fixed Assets
-      const { count: assetsCount } = await supabase.from('fixed_assets').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: assetsCount, data: assetsData } = await supabase.from('fixed_assets').select('purchase_amount', { count: 'exact' }).eq('company_id', companyId);
+      const totalAssetsValue = assetsData?.reduce((sum, asset) => sum + (asset.purchase_amount || 0), 0) || 0;
 
       // Cost Centers
       const { count: costCentersCount } = await supabase.from('cost_centers').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
@@ -108,21 +128,21 @@ function Accounting() {
 
 
       setAccountingMetrics({
-        ledgers: ledgersCount?.toString() || '0',
-        groups: groupsCount?.toString() || '0',
-        payments: paymentsCount?.toString() || '0',
-        receipts: receiptsCount?.toString() || '0',
-        contra: '0', // Placeholder
-        journal: journalCount?.toString() || '0',
-        salesVouchers: salesVouchersCount?.toString() || '0',
-        salesReturns: '0', // Placeholder
-        purchaseVouchers: purchaseVouchersCount?.toString() || '0',
-        purchaseReturns: '0', // Placeholder
-        creditNotes: creditNotesCount?.toString() || '0',
-        debitNotes: debitNotesCount?.toString() || '0',
-        assets: assetsCount?.toString() || '0',
-        costCenters: costCentersCount?.toString() || '0',
-        costCategories: costCategoriesCount?.toString() || '0',
+        ledgers: { count: (ledgersCount + customersCount + vendorsCount)?.toString() || '0' }, // Combined count
+        groups: { count: (groupsCount + customerGroupsCount)?.toString() || '0' }, // Combined count
+        payments: { count: paymentsCount?.toString() || '0', totalAmount: totalPaymentsAmount.toLocaleString() },
+        receipts: { count: receiptsCount?.toString() || '0', totalAmount: totalReceiptsAmount.toLocaleString() },
+        contra: { count: '0' }, // Placeholder
+        journal: { count: journalCount?.toString() || '0' },
+        salesVouchers: { count: salesVouchersCount?.toString() || '0', totalAmount: totalSalesVouchersAmount.toLocaleString() },
+        salesReturns: { count: salesReturnsCount?.toString() || '0', totalAmount: totalSalesReturnsAmount.toLocaleString() },
+        purchaseVouchers: { count: purchaseVouchersCount?.toString() || '0', totalAmount: totalPurchaseVouchersAmount.toLocaleString() },
+        purchaseReturns: { count: '0', totalAmount: '0' }, // Placeholder
+        creditNotes: { count: creditNotesCount?.toString() || '0', totalAmount: totalCreditNotesAmount.toLocaleString() },
+        debitNotes: { count: debitNotesCount?.toString() || '0', totalAmount: totalDebitNotesAmount.toLocaleString() },
+        assets: { count: assetsCount?.toString() || '0', totalValue: totalAssetsValue.toLocaleString() },
+        costCenters: { count: costCentersCount?.toString() || '0' },
+        costCategories: { count: costCategoriesCount?.toString() || '0' },
       });
     } catch (error) {
       console.error('Error fetching accounting metrics:', error);
@@ -133,32 +153,32 @@ function Accounting() {
 
   const accountingTabs = [
     { id: 'masters', name: 'Masters', icon: BookOpen, modules: [
-      { name: 'Ledgers', icon: BookOpen, count: accountingMetrics.ledgers, description: 'Manage all ledger accounts', path: 'masters/ledgers' },
-      { name: 'Groups', icon: Users, count: accountingMetrics.groups, description: 'Categorize ledger accounts', path: 'masters/groups' },
+      { name: 'Ledgers', icon: BookOpen, count: accountingMetrics.ledgers.count, description: 'Manage all ledger accounts, including customers and vendors.', path: 'masters/ledgers' },
+      { name: 'Groups', icon: Users, count: accountingMetrics.groups.count, description: 'Categorize ledger accounts and customer groups.', path: 'masters/groups' },
     ]},
     { id: 'vouchers', name: 'Vouchers', icon: FileText, modules: [
-      { name: 'Payments', icon: CreditCard, count: accountingMetrics.payments, description: 'Record all outgoing payments', path: 'vouchers/payments' },
-      { name: 'Receipts', icon: Receipt, count: accountingMetrics.receipts, description: 'Record all incoming payments', path: 'vouchers/receipts' },
-      { name: 'Contra', icon: ArrowLeftRight, count: accountingMetrics.contra, description: 'Transfer funds between cash & bank', path: 'vouchers/contra' },
-      { name: 'Journal', icon: ClipboardList, count: accountingMetrics.journal, description: 'Record non-cash transactions', path: 'vouchers/journal' },
-      { name: 'Sales', icon: ShoppingCart, count: accountingMetrics.salesVouchers, description: 'Record sales invoices', path: '/sales/invoices' }, // Linked to existing Sales Invoices page
-      { name: 'Sales Return', icon: ArrowDownLeft, count: accountingMetrics.salesReturns, description: 'Process customer returns', path: '/sales/returns' }, // Linked to existing Sales Returns page
-      { name: 'Purchase', icon: Package, count: accountingMetrics.purchaseVouchers, description: 'Record purchase bills', path: '/purchase/invoices' }, // Linked to existing Purchase Invoices page (assuming path)
-      { name: 'Purchase Return', icon: ArrowUpRight, count: accountingMetrics.purchaseReturns, description: 'Process vendor returns', path: '/purchase/returns' }, // Linked to existing Purchase Returns page (assuming path)
-      { name: 'Credit Note', icon: FileBadge, count: accountingMetrics.creditNotes, description: 'Issue credit to customers', path: '/sales/credit-notes' }, // Linked to existing Sales Credit Notes page
-      { name: 'Debit Note', icon: FileMinus, count: accountingMetrics.debitNotes, description: 'Issue debit to vendors', path: 'vouchers/debit-note' },
+      { name: 'Payments', icon: CreditCard, count: accountingMetrics.payments.count, totalAmount: accountingMetrics.payments.totalAmount, description: 'Record all outgoing payments', path: 'vouchers/payments' },
+      { name: 'Receipts', icon: Receipt, count: accountingMetrics.receipts.count, totalAmount: accountingMetrics.receipts.totalAmount, description: 'Record all incoming payments', path: 'vouchers/receipts' },
+      { name: 'Contra', icon: ArrowLeftRight, count: accountingMetrics.contra.count, description: 'Transfer funds between cash & bank', path: 'vouchers/contra' },
+      { name: 'Journal', icon: ClipboardList, count: accountingMetrics.journal.count, description: 'Record non-cash transactions', path: 'vouchers/journal' },
+      { name: 'Sales', icon: ShoppingCart, count: accountingMetrics.salesVouchers.count, totalAmount: accountingMetrics.salesVouchers.totalAmount, description: 'Record sales invoices', path: '/sales/invoices' }, // Linked to existing Sales Invoices page
+      { name: 'Sales Return', icon: ArrowDownLeft, count: accountingMetrics.salesReturns.count, totalAmount: accountingMetrics.salesReturns.totalAmount, description: 'Process customer returns', path: '/sales/returns' }, // Linked to existing Sales Returns page
+      { name: 'Purchase', icon: Package, count: accountingMetrics.purchaseVouchers.count, totalAmount: accountingMetrics.purchaseVouchers.totalAmount, description: 'Record purchase bills', path: '/purchase/invoices' }, // Linked to existing Purchase Invoices page (assuming path)
+      { name: 'Purchase Return', icon: ArrowUpRight, count: accountingMetrics.purchaseReturns.count, totalAmount: accountingMetrics.purchaseReturns.totalAmount, description: 'Process vendor returns', path: '/purchase/returns' }, // Linked to existing Purchase Returns page (assuming path)
+      { name: 'Credit Note', icon: FileBadge, count: accountingMetrics.creditNotes.count, totalAmount: accountingMetrics.creditNotes.totalAmount, description: 'Issue credit to customers', path: '/sales/credit-notes' }, // Linked to existing Sales Credit Notes page
+      { name: 'Debit Note', icon: FileMinus, count: accountingMetrics.debitNotes.count, totalAmount: accountingMetrics.debitNotes.totalAmount, description: 'Issue debit to vendors', path: 'vouchers/debit-note' },
     ]},
     { id: 'reconciliation', name: 'Reconciliation', icon: Scale, modules: [
       { name: 'Bank Reconciliation', icon: Banknote, count: '0', description: 'Match bank statements with ledger', path: 'reconciliation/bank' },
       { name: 'Ledger Reconciliation', icon: Scale, count: '0', description: 'Match ledger balances', path: 'reconciliation/ledger' },
     ]},
     { id: 'fixed-assets', name: 'Fixed Assets', icon: Building, modules: [
-      { name: 'Asset Register', icon: Building, count: accountingMetrics.assets, description: 'Manage all company assets', path: 'fixed-assets/register' },
+      { name: 'Asset Register', icon: Building, count: accountingMetrics.assets.count, totalAmount: accountingMetrics.assets.totalValue, description: 'Manage all company assets', path: 'fixed-assets/register' },
       { name: 'Depreciation', icon: Percent, count: '0', description: 'Process asset depreciation', path: 'fixed-assets/depreciation' },
     ]},
     { id: 'cost-centers', name: 'Cost Centers', icon: LayoutGrid, modules: [
-      { name: 'Cost Centers', icon: LayoutGrid, count: accountingMetrics.costCenters, description: 'Track expenses by cost center', path: 'cost-centers/centers' },
-      { name: 'Cost Categories', icon: FolderOpen, count: accountingMetrics.costCategories, description: 'Categorize cost centers', path: 'cost-centers/categories' },
+      { name: 'Cost Centers', icon: LayoutGrid, count: accountingMetrics.costCenters.count, description: 'Track expenses by cost center', path: 'cost-centers/centers' },
+      { name: 'Cost Categories', icon: FolderOpen, count: accountingMetrics.costCategories.count, description: 'Categorize cost centers', path: 'cost-centers/categories' },
     ]},
     { id: 'reports', name: 'Reports', icon: BarChart3, modules: [
       { name: 'Ledger-wise Report', icon: BookOpen, count: '0', description: 'Detailed ledger transactions', path: 'reports/ledger-wise' },
@@ -207,7 +227,7 @@ function Accounting() {
         <Route path="vouchers/payments" element={<PaymentsPage />} />
         <Route path="vouchers/receipts" element={<ReceiptsPage />} />
         <Route path="vouchers/contra" element={<ContraPage />} />
-        <Route path="vouchers/journal" element={<JournalPage />} />
+        <Route path="vouchers/journal" element={<div>Journal Page</div>} />
         {/* Sales/Purchase related vouchers now link to their respective modules */}
         {/* <Route path="vouchers/sales" element={<SalesVoucherPage />} /> */}
         {/* <Route path="vouchers/sales-return" element={<SalesReturnVoucherPage />} /> */}
@@ -337,6 +357,11 @@ function Accounting() {
                         <p className={`text-xl font-bold ${colors.textColor}`}>
                           {loadingMetrics ? '...' : module.count}
                         </p>
+                        {module.totalAmount && (
+                          <p className={`text-md font-semibold ${colors.textColor}`}>
+                            ₹{module.totalAmount}
+                          </p>
+                        )}
                         <div
                           className={`
                           p-3 rounded-2xl shadow-md

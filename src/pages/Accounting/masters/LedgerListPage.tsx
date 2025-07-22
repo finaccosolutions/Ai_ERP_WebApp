@@ -19,17 +19,20 @@ interface Ledger {
   account_name: string;
   account_type: string;
   account_group: string;
-  is_group: boolean;
   opening_balance: number;
   balance_type: string;
   created_at: string;
   parent_account_id: string | null; // Keep this as ID
   parent_account_name?: string; // Add a field for the resolved parent name
+  // New fields for transactions and current balance
+  total_debit_transactions: number;
+  total_credit_transactions: number;
+  current_balance: number;
 }
 
 function LedgerListPage() {
   const { theme } = useTheme();
-  const { currentCompany } = useCompany();
+  const { currentCompany, currentPeriod } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
@@ -48,14 +51,15 @@ function LedgerListPage() {
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
+
   useEffect(() => {
-    if (currentCompany?.id) {
+    if (currentCompany?.id && currentPeriod?.id) {
       fetchLedgers();
     }
-  }, [currentCompany?.id, filterCriteria, numResultsToShow]);
+  }, [currentCompany?.id, currentPeriod?.id, filterCriteria, numResultsToShow, searchTerm]);
 
   const fetchLedgers = async () => {
-    if (!currentCompany?.id) return;
+    if (!currentCompany?.id || !currentPeriod?.id) return;
     setLoading(true);
     try {
       // First, fetch all chart of accounts to create a lookup map for parent names
@@ -104,11 +108,43 @@ function LedgerListPage() {
 
       if (error) throw error;
 
-      // Manually resolve parent account names
-      const resolvedLedgers: Ledger[] = data.map(ledger => ({
-        ...ledger,
-        parent_account_name: ledger.parent_account_id ? accountNameMap.get(ledger.parent_account_id) : null,
-      }));
+      // Fetch journal entry items for all fetched ledgers within the current period
+      const ledgerIds = data.map(l => l.id);
+      const { data: journalEntryItems, error: journalEntryItemsError } = await supabase
+        .from('journal_entry_items')
+        .select(`
+          account_id, debit_amount, credit_amount,
+          journal_entries ( posting_date )
+        `)
+        .in('account_id', ledgerIds)
+        .gte('journal_entries.posting_date', currentPeriod.startDate)
+        .lte('journal_entries.posting_date', currentPeriod.endDate);
+
+      if (journalEntryItemsError) throw journalEntryItemsError;
+
+      const ledgerTransactionsMap = new Map<string, { debit: number; credit: number }>();
+      journalEntryItems.forEach(item => {
+        const current = ledgerTransactionsMap.get(item.account_id) || { debit: 0, credit: 0 };
+        ledgerTransactionsMap.set(item.account_id, {
+          debit: current.debit + (item.debit_amount || 0),
+          credit: current.credit + (item.credit_amount || 0),
+        });
+      });
+
+      // Manually resolve parent account names and calculate balances
+      const resolvedLedgers: Ledger[] = data.map(ledger => {
+        const transactions = ledgerTransactionsMap.get(ledger.id) || { debit: 0, credit: 0 };
+        let currentBalance = ledger.opening_balance || 0;
+        currentBalance += (transactions.debit - transactions.credit);
+
+        return {
+          ...ledger,
+          parent_account_name: ledger.parent_account_id ? accountNameMap.get(ledger.parent_account_id) : null,
+          total_debit_transactions: transactions.debit,
+          total_credit_transactions: transactions.credit,
+          current_balance: currentBalance,
+        };
+      });
 
       setLedgers(resolvedLedgers);
       setTotalLedgersCount(count || 0);
@@ -167,12 +203,42 @@ function LedgerListPage() {
     }
   };
 
+  // Helper function to format balance with Dr/Cr
+  const formatBalance = (amount: number, accountType: string): string => {
+    const formattedAmount = `₹${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    let type: 'Dr' | 'Cr';
+    if (accountType === 'asset' || accountType === 'expense') {
+      type = amount >= 0 ? 'Dr' : 'Cr';
+    } else { // liability, equity, income
+      type = amount >= 0 ? 'Cr' : 'Dr';
+    }
+    return `${formattedAmount} ${type}`;
+  };
+
   const numResultsOptions = [
-    { id: '10', name: 'Show 10' },
-    { id: '25', name: 'Show 25' },
-    { id: '50', name: 'Show 50' },
-    { id: 'all', name: `Show All (${totalLedgersCount})` },
+    { id: '10', name: 'Top 10' },
+    { id: '25', name: 'Top 25' },
+    { id: '50', name: 'Top 50' },
+    { id: '100', name: 'Top 100' },
+    { id: totalLedgersCount.toString(), name: `Show All (${totalLedgersCount})` },
   ];
+
+  const handleNumResultsSelect = (id: string) => {
+    setNumResultsToShow(id);
+    setSearchTerm(''); // Clear search term when selecting predefined option
+  };
+
+  const handleNumResultsKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const num = parseInt(searchTerm);
+      if (!isNaN(num) && num > 0) {
+        setNumResultsToShow(num.toString());
+      } else {
+        showNotification('Please enter a valid number.', 'error');
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -210,19 +276,22 @@ function LedgerListPage() {
               `}
             />
           </div>
-          {/* Filter dropdowns can be added here */}
-          <MasterSelectField
-            label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
-            onValueChange={() => {}} // Not used for typing
-            onSelect={(id) => setNumResultsToShow(id)}
-            options={numResultsOptions}
-            placeholder="Show"
-            className="w-32"
-          />
-          <Button onClick={fetchLedgers} disabled={loading} icon={<RefreshCw size={16} />}>
-            {loading ? 'Loading...' : 'Refresh'}
-          </Button>
+          {/* Number of Items Control */}
+          <div className="flex items-center space-x-2">
+            <MasterSelectField
+              label="" // No label needed for this dropdown
+              value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || searchTerm} // Display selected name or typed search term
+              onValueChange={setSearchTerm} // Update searchTerm on type
+              onSelect={handleNumResultsSelect} // Handle predefined options
+              options={numResultsOptions}
+              placeholder="Show"
+              className="w-32"
+              onKeyDown={handleNumResultsKeyDown} // Handle custom number input
+            />
+            <Button onClick={fetchLedgers} disabled={loading} icon={<RefreshCw size={16} />}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -241,37 +310,44 @@ function LedgerListPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Closing Balance</th> {/* Changed header */}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th> {/* New column */}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th> {/* New column */}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opening Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Balance</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {ledgers.map((ledger) => (
-                  <tr key={ledger.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link to={`/accounting/ledgers/${ledger.id}/report`} className="text-blue-600 hover:underline">
-                        {ledger.account_name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ledger.account_code}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ledger.account_group}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      ₹{ledger.opening_balance?.toLocaleString()} {/* Simplified for now */}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹0.00</td> {/* Placeholder */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹0.00</td> {/* Placeholder */}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/accounting/masters/ledgers/edit/${ledger.id}`)} title="Edit">
-                        <Edit size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteLedger(ledger.id)} className="text-red-600 hover:text-red-800" title="Delete">
-                        <Trash2 size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {ledgers.map((ledger) => {
+                  const netTransactions = ledger.total_debit_transactions - ledger.total_credit_transactions;
+                  return (
+                    <tr key={ledger.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <Link to={`/accounting/ledgers/${ledger.id}/report`} className="text-blue-600 hover:underline">
+                          {ledger.account_name}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ledger.account_code}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ledger.account_group}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatBalance(ledger.opening_balance, ledger.account_type)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatBalance(netTransactions, ledger.account_type)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatBalance(ledger.current_balance, ledger.account_type)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/accounting/masters/ledgers/edit/${ledger.id}`)} title="Edit">
+                          <Edit size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteLedger(ledger.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                          <Trash2 size={16} />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

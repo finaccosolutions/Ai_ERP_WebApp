@@ -57,6 +57,7 @@ function AccountGroupsPage() {
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchGroups();
@@ -291,12 +292,42 @@ function AccountGroupsPage() {
     // In a real app, you might have a filter modal here
   };
 
+  // Helper function to format balance with Dr/Cr (placeholder for groups)
+  const formatBalance = (amount: number, accountType: string): string => {
+    const formattedAmount = `₹${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    let type: 'Dr' | 'Cr';
+    if (accountType === 'asset' || accountType === 'expense') {
+      type = amount >= 0 ? 'Dr' : 'Cr';
+    } else { // liability, equity, income
+      type = amount >= 0 ? 'Cr' : 'Dr';
+    }
+    return `${formattedAmount} ${type}`;
+  };
+
   const numResultsOptions = [
-    { id: '10', name: 'Show 10' },
-    { id: '25', name: 'Show 25' },
-    { id: '50', name: 'Show 50' },
-    { id: 'all', name: `Show All (${totalGroupsCount})` },
+    { id: '10', name: 'Top 10' },
+    { id: '25', name: 'Top 25' },
+    { id: '50', name: 'Top 50' },
+    { id: '100', name: 'Top 100' },
+    { id: totalGroupsCount.toString(), name: `Show All (${totalGroupsCount})` },
   ];
+
+  const handleNumResultsSelect = (id: string) => {
+    setNumResultsToShow(id);
+    setSearchTerm(''); // Clear search term when selecting predefined option
+  };
+
+  const handleNumResultsKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const num = parseInt(searchTerm);
+      if (!isNaN(num) && num > 0) {
+        setNumResultsToShow(num.toString());
+      } else {
+        showNotification('Please enter a valid number.', 'error');
+      }
+    }
+  };
 
   // Filter available parent groups for the dropdown (cannot be its own child)
   const availableParentGroups = groups.filter(group => group.id !== formData.id);
@@ -417,19 +448,22 @@ function AccountGroupsPage() {
               `}
             />
           </div>
-          {/* Filter dropdowns can be added here */}
-          <MasterSelectField
-            label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
-            onValueChange={() => {}} // Not used for typing
-            onSelect={(id) => setNumResultsToShow(id)}
-            options={numResultsOptions}
-            placeholder="Show"
-            className="w-32"
-          />
-          <Button onClick={fetchGroups} disabled={loading} icon={<RefreshCw size={16} />}>
-            {loading ? 'Loading...' : 'Refresh'}
-          </Button>
+          {/* Number of Items Control */}
+          <div className="flex items-center space-x-2">
+            <MasterSelectField
+              label="" // No label needed for this dropdown
+              value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || searchTerm} // Display selected name or typed search term
+              onValueChange={setSearchTerm} // Update searchTerm on type
+              onSelect={handleNumResultsSelect} // Handle predefined options
+              options={numResultsOptions}
+              placeholder="Show"
+              className="w-32"
+              onKeyDown={handleNumResultsKeyDown} // Handle custom number input
+            />
+            <Button onClick={fetchGroups} disabled={loading} icon={<RefreshCw size={16} />}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -449,7 +483,9 @@ function AccountGroupsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Group</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opening Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Balance</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -464,7 +500,9 @@ function AccountGroupsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.account_code}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.account_type}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.parent_account_name || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{group.is_active ? 'Yes' : 'No'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹0.00</td> {/* Placeholder */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹0.00</td> {/* Placeholder */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹0.00</td> {/* Placeholder */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button variant="ghost" size="sm" onClick={() => handleEditGroup(group)} title="Edit">
                         <Edit size={16} />
@@ -493,4 +531,4 @@ function AccountGroupsPage() {
   );
 }
 
-export default AccountGroupsPage; 
+export default AccountGroupsPage;
