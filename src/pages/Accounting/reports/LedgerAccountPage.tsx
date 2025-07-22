@@ -1,7 +1,7 @@
 // src/pages/Accounting/reports/LedgerAccountPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Calendar, FileText, DollarSign, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, FileText, DollarSign, RefreshCw, Maximize, Minimize } from 'lucide-react';
 import Card from '../../../components/UI/Card';
 import Button from '../../../components/UI/Button';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -34,8 +34,7 @@ function LedgerAccountPage() {
   const [totalCredit, setTotalCredit] = useState(0);
   const [closingBalance, setClosingBalance] = useState(0);
 
-  const [showHeaderPanel, setShowHeaderPanel] = useState(true); // State for header visibility
-  const [showFooterPanel, setShowFooterPanel] = useState(true); // State for footer visibility
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false); // State for header expansion
 
   useEffect(() => {
     if (ledgerId && currentCompany?.id && currentPeriod?.id) {
@@ -144,17 +143,19 @@ function LedgerAccountPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem-24px)]"> {/* Adjust height for header/footer */}
+    <div className="flex flex-col h-[calc(100vh-5.5rem)]"> {/* Adjusted height to account for TopNavbar (4rem) and Layout's p-6 (1.5rem) */}
       {/* Header Section */}
-      <Card className={`p-4 mb-2 flex-shrink-0 transition-all duration-300 ${showHeaderPanel ? 'block' : 'hidden'}`}>
+      <Card className={`p-4 flex-shrink-0 relative transition-all duration-300 ${isDetailsExpanded ? 'h-auto' : 'h-28 overflow-hidden'}`}>
         <div className="flex justify-between items-start">
           <div>
             <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>
-              {ledgerDetails.account_name}
+              {isDetailsExpanded ? ledgerDetails.account_name : `Ledger Account Report (${currentPeriod?.name})`}
             </h1>
-            <p className={theme.textSecondary}>
-              Ledger Account Report ({currentPeriod?.name})
-            </p>
+            {!isDetailsExpanded && (
+              <p className={theme.textSecondary}>
+                {ledgerDetails.account_name}
+              </p>
+            )}
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" onClick={() => navigate(-1)} icon={<ArrowLeft size={16} />}>
@@ -163,51 +164,59 @@ function LedgerAccountPage() {
             <Button icon={<RefreshCw size={16} />} onClick={fetchLedgerAccountData}>
               Refresh
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowHeaderPanel(!showHeaderPanel)}
-              icon={showHeaderPanel ? <EyeOff size={16} /> : <Eye size={16} />}
-              title={showHeaderPanel ? "Hide Details" : "Show Details"}
-            />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm mt-4">
-          <div>
-            <p className={theme.textMuted}>Account Code:</p>
-            <p className={theme.textPrimary}>{ledgerDetails.account_code}</p>
+        {isDetailsExpanded && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm mt-4">
+            <div>
+              <p className={theme.textMuted}><b>Account Code:</b></p>
+              <p className={theme.textPrimary}>{ledgerDetails.account_code}</p>
+            </div>
+            <div>
+              <p className={theme.textMuted}><b>Account Group:</b></p>
+              <p className={theme.textPrimary}>{ledgerDetails.account_group}</p>
+            </div>
+            <div>
+              <p className={theme.textMuted}><b>Account Type:</b></p>
+              <p className={theme.textPrimary}>{ledgerDetails.account_type}</p>
+            </div>
+            <div>
+              <p className={theme.textMuted}><b>Opening Balance:</b></p>
+              <p className={theme.textPrimary}>₹{ledgerDetails.opening_balance?.toLocaleString()} ({ledgerDetails.balance_type})</p>
+            </div>
+            <div>
+              <p className={theme.textMuted}><b>Period:</b></p>
+              <p className={theme.textPrimary}>{currentPeriod?.startDate} to {currentPeriod?.endDate}</p>
+            </div>
           </div>
-          <div>
-            <p className={theme.textMuted}>Account Group:</p>
-            <p className={theme.textPrimary}>{ledgerDetails.account_group}</p>
-          </div>
-          <div>
-            <p className={theme.textMuted}>Account Type:</p>
-            <p className={theme.textPrimary}>{ledgerDetails.account_type}</p>
-          </div>
-          <div>
-            <p className={theme.textMuted}>Opening Balance:</p>
-            <p className={theme.textPrimary}>₹{ledgerDetails.opening_balance?.toLocaleString()} ({ledgerDetails.balance_type})</p>
-          </div>
-          <div>
-            <p className={theme.textMuted}>Period:</p>
-            <p className={theme.textPrimary}>{currentPeriod?.startDate} to {currentPeriod?.endDate}</p>
-          </div>
-        </div>
+        )}
+        {/* Expand/Reduce Icon */}
+        <button
+          onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
+          className={`
+            absolute bottom-2 right-2 p-2 rounded-full transition-all duration-300
+            ${theme.isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}
+            hover:bg-[${theme.hoverAccent}] hover:text-white
+          `}
+          title={isDetailsExpanded ? "Collapse Details" : "Expand Details"}
+        >
+          {isDetailsExpanded ? <Minimize size={16} /> : <Maximize size={16} />}
+        </button>
       </Card>
 
-      {/* Scrollable Content Area */}
+      {/* Scrollable Transaction Section */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600 hover:scrollbar-thumb-slate-500">
-        <Card className="p-6">
-          <div className="overflow-x-auto">
+        <Card className="p-6 h-full flex flex-col">
+          <div className="overflow-x-auto flex-1">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Date</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-auto">Particulars</th> {/* Increased width */}
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Voucher No.</th> {/* Reduced width */}
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Debit</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Credit</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Balance</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">Date</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-auto">Particulars</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Voucher No.</th>
+                  <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-28">Debit</th>
+                  <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-28">Credit</th>
+                  <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-28">Balance</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -219,7 +228,7 @@ function LedgerAccountPage() {
                   transactions.map((transaction, index) => (
                     <tr key={transaction.id}>
                       <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{transaction.posting_date}</td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{transaction.particulars}</td> {/* Allow text wrapping */}
+                      <td className="px-3 py-2 text-sm text-gray-500">{transaction.particulars}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{transaction.entry_no}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">₹{transaction.debit_amount?.toLocaleString()}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">₹{transaction.credit_amount?.toLocaleString()}</td>
@@ -237,29 +246,21 @@ function LedgerAccountPage() {
         </Card>
       </div>
 
-      {/* Footer Section */}
-      <Card className={`p-4 mt-2 flex-shrink-0 transition-all duration-300 ${showFooterPanel ? 'block' : 'hidden'}`}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-base font-semibold">
-          <div>
+      {/* Footer Section (Total Amounts Panel) */}
+      <Card className={`p-2 flex-shrink-0 w-full`}>
+        <div className="flex justify-around items-center text-base font-semibold">
+          <div className="text-center">
             <p className={theme.textMuted}>Total Debit:</p>
             <p className="text-emerald-600">₹{totalDebit.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="text-center">
             <p className={theme.textMuted}>Total Credit:</p>
             <p className="text-red-600">₹{totalCredit.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="text-center">
             <p className={theme.textMuted}>Closing Balance:</p>
             <p className="text-blue-600">₹{closingBalance.toLocaleString()}</p>
           </div>
-        </div>
-        <div className="flex justify-end mt-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFooterPanel(!showFooterPanel)}
-            icon={showFooterPanel ? <EyeOff size={16} /> : <Eye size={16} />}
-            title={showFooterPanel ? "Hide Totals" : "Show Totals"}
-          />
         </div>
       </Card>
     </div>

@@ -61,7 +61,7 @@ function AccountGroupsPage() {
     if (currentCompany?.id) {
       fetchGroups();
     }
-  }, [currentCompany?.id, filterCriteria, numResultsToShow]);
+  }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm]); // Added searchTerm to dependencies for real-time search
 
   const fetchGroups = async () => {
     if (!currentCompany?.id) return;
@@ -493,4 +493,4 @@ function AccountGroupsPage() {
   );
 }
 
-export default AccountGroupsPage;
+export default AccountGroupsPage; 
