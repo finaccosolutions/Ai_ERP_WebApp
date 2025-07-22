@@ -11,7 +11,7 @@ import Login from './pages/Auth/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Sales from './pages/Sales/Sales';
 import Purchase from './pages/Purchase/Purchase';
-import Accounting from './pages/Accounting/Accounting';
+import Accounting from './pages/Accounting/Accounting'; // Import Accounting
 import Inventory from './pages/Inventory/Inventory'; // Import Inventory
 import Manufacturing from './pages/Manufacturing/Manufacturing';
 import Reports from './pages/Reports/Reports';
@@ -91,7 +91,7 @@ function AppContent() {
           <Route path="/company/settings" element={<CompanySettings />} />
           <Route path="/sales/*" element={<Sales />} />
           <Route path="/purchase/*" element={<Purchase />} />
-          <Route path="/accounting/*" element={<Accounting />} />
+          <Route path="/accounting/*" element={<Accounting />} /> {/* Add Accounting Route */}
           {/* Inventory Module Routes */}
           <Route path="/inventory/*" element={<Inventory />} />
           <Route path="/manufacturing/*" element={<Manufacturing />} />
