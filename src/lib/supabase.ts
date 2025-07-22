@@ -522,7 +522,7 @@ export interface Database {
           is_active: boolean | null;
           created_at: string;
           updated_at: string;
-          custom_attributes: any | null; // Added custom_attributes
+          // custom_attributes: any | null; // Removed custom_attributes
           item_group_id: string | null; // NEW: Added item_group_id
         };
         Insert: {
@@ -555,7 +555,7 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
-          custom_attributes?: any | null; // Added custom_attributes
+          // custom_attributes?: any | null; // Removed custom_attributes
           item_group_id?: string | null; // NEW: Added item_group_id
         };
         Update: {
@@ -588,7 +588,7 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
-          custom_attributes?: any | null; // Added custom_attributes
+          // custom_attributes?: any | null; // Removed custom_attributes
           item_group_id?: string | null; // NEW: Added item_group_id
         };
       };

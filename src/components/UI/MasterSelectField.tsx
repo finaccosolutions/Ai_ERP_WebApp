@@ -15,9 +15,10 @@ interface MasterSelectFieldProps {
   className?: string;
   disabled?: boolean;
   allowCreation?: boolean; // New prop to allow creation
-  onNewValueConfirmed?: (value: string) => void; // Callback for new value creation confirmed by F2/Enter
+  onNewValueConfirmed?: (value: string, fieldIndex?: number) => void; // Callback for new value creation confirmed by F2/Enter
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  fieldIndex?: number; // Optional index for identifying which item/ledger row this field belongs to
 }
 
 export interface MasterSelectFieldRef {
@@ -43,6 +44,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   onNewValueConfirmed,
   onKeyDown,
   onBlur,
+  fieldIndex, // Receive fieldIndex
 }, ref) => {
   const { theme } = useTheme();
 
@@ -104,17 +106,20 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
       if (e.key === 'F2') {
         e.preventDefault();
         if (searchTerm.trim() !== '') {
-          onNewValueConfirmed(searchTerm.trim());
+          // F2 always prompts for creation if text is present
+          onNewValueConfirmed(searchTerm.trim(), fieldIndex); // Pass fieldIndex
           setIsOpen(false);
         }
       } else if (e.key === 'Enter') {
-        if (filteredOptions.length === 0 && searchTerm.trim() !== '') {
+        // Enter prompts for creation only if no exact match is found
+        const exactMatch = options.find(option => option.name.toLowerCase() === searchTerm.trim().toLowerCase());
+        if (!exactMatch && searchTerm.trim() !== '') {
           e.preventDefault();
-          onNewValueConfirmed(searchTerm.trim());
+          onNewValueConfirmed(searchTerm.trim(), fieldIndex); // Pass fieldIndex
           setIsOpen(false);
-        } else if (filteredOptions.length === 1) {
+        } else if (exactMatch) {
           e.preventDefault();
-          handleOptionClick(filteredOptions[0]);
+          handleOptionClick(exactMatch); // Select the exact match
         }
       }
     }
@@ -129,6 +134,14 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
     setSearchTerm(option.name); // This will display the full name in the input
     onSelect(option.id, option.name, option);
     setIsOpen(false);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Set a timeout to allow click events on options to fire first
+    blurTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+      if (onBlur) onBlur(e);
+    }, 150); // Small delay (e.g., 150ms) to differentiate blur from click-selection
   };
 
   return (
@@ -147,12 +160,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleInternalKeyDown}
-          onBlur={(e) => {
-            blurTimeoutRef.current = setTimeout(() => {
-              setIsOpen(false);
-              if (onBlur) onBlur(e);
-            }, 150);
-          }}
+          onBlur={handleBlur} // Use the new handleBlur
           placeholder={placeholder}
           required={required}
           disabled={disabled}
@@ -185,6 +193,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
             <button
               key={option.id}
               type="button"
+              onMouseDown={(e) => e.preventDefault()} // Prevent blur on mousedown
               onClick={() => handleOptionClick(option)}
               className={`
                 w-full text-left px-4 py-2 text-sm
@@ -209,4 +218,4 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   );
 });
 
-export default MasterSelectField; 
+export default MasterSelectField;

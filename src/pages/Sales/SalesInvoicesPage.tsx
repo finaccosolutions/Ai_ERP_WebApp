@@ -1,5 +1,5 @@
 // src/pages/Sales/SalesInvoicesPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import { Plus, FileText, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator, ArrowLeft, AlertTriangle, Percent } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -14,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useNotification } from '../../contexts/NotificationContext';
 import { COUNTRIES, getCountryByCode, getStateByCode } from '../../constants/geoData';
+import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
 
 // Interface for Invoice Items
 interface InvoiceItem {
@@ -26,9 +27,7 @@ interface InvoiceItem {
   unit: string; // Display unit next to Qty
   rate: number;
   discountValue: number; // Single field for discount
-  discountType: 'percentage' | 'amount'; // Type of discount
-  discountPercentage: number; // Calculated
-  discountAmount: number; // Calculated
+  discountType: 'percentage' | 'amount'; // Type of discount (used for calculation, not stored directly)
   amount: number; // Amount after discount, before tax
   taxRate: number;
   taxAmount: number;
@@ -107,7 +106,7 @@ function SalesInvoicesPage() {
     customerName: '',
     customerGSTIN: '',
     invoiceDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
+    dueDate: '', // Made optional
     placeOfSupply: '', // Full state name
     referenceNo: '',
     termsAndConditions: '',
@@ -132,8 +131,6 @@ function SalesInvoicesPage() {
       rate: 0,
       discountValue: 0, // Initial value for the single discount field
       discountType: 'percentage', // Default discount type
-      discountPercentage: 0,
-      discountAmount: 0,
       amount: 0,
       taxRate: 18,
       taxAmount: 0,
@@ -165,6 +162,10 @@ function SalesInvoicesPage() {
   const isEditMode = !!id;
   const isViewMode = location.pathname.includes('/view/');
 
+  // State for confirmation modal for master creation
+  const [showMasterConfirmModal, setShowMasterConfirmModal] = useState(false);
+  const [pendingMasterCreation, setPendingMasterCreation] = useState<{ type: 'customer' | 'item' | 'account'; value: string; fieldIndex?: number; } | null>(null);
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchMasterData(currentCompany.id);
@@ -177,7 +178,10 @@ function SalesInvoicesPage() {
   }, [currentCompany?.id, id, isEditMode]);
 
   useEffect(() => {
-    if (location.state?.fromMasterCreation) {
+    // Handle return from master creation pages
+    if (location.state?.fromInvoiceCreation) {
+      const { createdId, createdName, masterType, fieldIndex } = location.state;
+      // Restore form state from session storage
       const savedFormState = sessionStorage.getItem('invoiceFormState');
       if (savedFormState) {
         const { invoice: savedInvoice, items: savedItems, additionalLedgerEntries: savedAdditionalLedgerEntries } = JSON.parse(savedFormState);
@@ -187,33 +191,40 @@ function SalesInvoicesPage() {
         sessionStorage.removeItem('invoiceFormState');
       }
 
-      const { createdId, createdName, masterType } = location.state;
       if (createdId && createdName && masterType) {
         if (masterType === 'customer') {
-          handleCustomerSelect(createdId, createdName, customers.find(c => c.id === createdId) || { id: createdId, name: createdName, billing_address: null, gstin: '' });
-        } else if (masterType === 'item') {
+          // Find the newly created customer in the updated list
+          const newCustomer = customers.find(c => c.id === createdId);
+          if (newCustomer) {
+            handleCustomerSelect(newCustomer.id, newCustomer.name, newCustomer);
+            showNotification(`Customer "${newCustomer.name}" created and selected!`, 'success');
+          }
+        } else if (masterType === 'item' && fieldIndex !== undefined) {
           const newItemOption = stockItems.find(item => item.id === createdId);
           if (newItemOption) {
-            updateItem(items.length - 1, 'itemId', createdId);
-            updateItem(items.length - 1, 'itemName', createdName);
-            updateItem(items.length - 1, 'itemCode', newItemOption.item_code);
-            updateItem(items.length - 1, 'description', newItemOption.description);
-            updateItem(items.length - 1, 'quantity', 1);
-            updateItem(items.length - 1, 'unit', newItemOption.units_of_measure?.name || 'Nos');
-            updateItem(items.length - 1, 'rate', newItemOption.standard_rate);
-            updateItem(items.length - 1, 'taxRate', newItemOption.tax_rate);
+            updateItem(fieldIndex, 'itemId', createdId);
+            updateItem(fieldIndex, 'itemName', createdName);
+            updateItem(fieldIndex, 'itemCode', newItemOption.item_code);
+            updateItem(fieldIndex, 'description', newItemOption.description);
+            updateItem(fieldIndex, 'quantity', 1);
+            updateItem(fieldIndex, 'unit', newItemOption.units_of_measure?.name || 'Nos');
+            updateItem(fieldIndex, 'rate', newItemOption.standard_rate);
+            updateItem(fieldIndex, 'taxRate', newItemOption.tax_rate);
+            showNotification(`Item "${newItemOption.item_name}" created and selected!`, 'success');
           }
-        } else if (masterType === 'account') {
+        } else if (masterType === 'account' && fieldIndex !== undefined) {
           const newAccountOption = chartOfAccounts.find(acc => acc.id === createdId);
           if (newAccountOption) {
-            updateAdditionalLedgerEntry(additionalLedgerEntries.length - 1, 'accountId', createdId);
-            updateAdditionalLedgerEntry(additionalLedgerEntries.length - 1, 'accountName', createdName);
+            updateAdditionalLedgerEntry(fieldIndex, 'accountId', createdId);
+            updateAdditionalLedgerEntry(fieldIndex, 'accountName', createdName);
+            showNotification(`Account "${newAccountOption.account_name}" created and selected!`, 'success');
           }
         }
       }
+      // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state]);
+  }, [location.state, customers, stockItems, chartOfAccounts]); // Add dependencies for master data
 
   useEffect(() => {
     calculateInvoiceTotals(items);
@@ -315,11 +326,10 @@ function SalesInvoicesPage() {
         invoiceDate: invoiceData.invoice_date,
         dueDate: invoiceData.due_date || '',
         placeOfSupply: invoiceData.customers?.billing_address?.state ? getStateByCode(invoiceData.customers.billing_address.country || '', invoiceData.customers.billing_address.state)?.name || '' : '',
-        orderId: invoiceData.order_id,
-        status: invoiceData.status,
         referenceNo: invoiceData.reference_no || '',
         termsAndConditions: invoiceData.terms_and_conditions || '',
         notes: invoiceData.notes || '',
+        status: invoiceData.status,
         subtotal: invoiceData.subtotal,
         totalTax: invoiceData.total_tax,
         totalAmount: invoiceData.total_amount,
@@ -346,10 +356,8 @@ function SalesInvoicesPage() {
           quantity: item.quantity,
           unit: item.unit,
           rate: item.rate,
-          discountValue: item.discount_amount || 0, // Assuming discount_amount is stored
-          discountType: 'amount', // Default to amount type when loading
-          discountPercentage: 0, // Will be calculated
-          discountAmount: item.discount_amount || 0,
+          discountValue: item.discount_amount || 0, // Populate discountValue from discount_amount
+          discountType: 'amount', // Assume 'amount' type when loading from DB
           amount: item.amount,
           taxRate: item.tax_rate || 0,
           taxAmount: item.tax_amount || 0,
@@ -359,7 +367,7 @@ function SalesInvoicesPage() {
         setItems([
           {
             id: 'item-1', itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-            discountValue: 0, discountType: 'percentage', discountPercentage: 0, discountAmount: 0, amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
+            discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
           }
         ]);
       }
@@ -390,7 +398,7 @@ function SalesInvoicesPage() {
     setItems([
       {
         id: 'item-1', itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-        discountValue: 0, discountType: 'percentage', discountPercentage: 0, discountAmount: 0, amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
+        discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
       }
     ]);
     setAdditionalLedgerEntries([
@@ -405,26 +413,17 @@ function SalesInvoicesPage() {
   const calculateItemTotals = (item: InvoiceItem) => {
     const grossAmount = item.quantity * item.rate;
     let amountAfterDiscount = grossAmount;
-    let discountPercentage = item.discountPercentage;
-    let discountAmount = item.discountAmount;
+    let discountAmount = 0;
 
-    if (item.discountType === 'percentage') {
-      discountPercentage = item.discountValue;
-      discountAmount = (grossAmount * discountPercentage) / 100;
-      amountAfterDiscount = grossAmount - discountAmount;
-    } else { // discountType === 'amount'
-      discountAmount = item.discountValue;
-      discountPercentage = (discountAmount / grossAmount) * 100;
-      amountAfterDiscount = grossAmount - discountAmount;
-    }
-
+    // Assuming discountValue is always a percentage for now
+    discountAmount = (grossAmount * item.discountValue) / 100;
+    amountAfterDiscount = grossAmount - discountAmount;
+    
     const taxAmount = (amountAfterDiscount * item.taxRate) / 100;
     const lineTotal = amountAfterDiscount + taxAmount;
     
     return {
       ...item,
-      discountPercentage: isNaN(discountPercentage) ? 0 : discountPercentage,
-      discountAmount: isNaN(discountAmount) ? 0 : discountAmount,
       amount: isNaN(amountAfterDiscount) ? 0 : amountAfterDiscount,
       taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
       lineTotal: isNaN(lineTotal) ? 0 : lineTotal,
@@ -448,7 +447,7 @@ function SalesInvoicesPage() {
   const addItem = () => {
     setItems(prev => [...prev, {
       id: `item-${Date.now()}`, itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-      discountValue: 0, discountType: 'percentage', discountPercentage: 0, discountAmount: 0, amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
+      discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
     }]);
   };
 
@@ -509,16 +508,13 @@ function SalesInvoicesPage() {
     }
 
     setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
-
     try {
       const invoiceToSave = {
         company_id: currentCompany.id,
         invoice_no: invoice.invoiceNo,
         customer_id: invoice.customerId,
         invoice_date: invoice.invoiceDate,
-        due_date: invoice.dueDate,
+        due_date: invoice.dueDate || null, // Due date is now optional
         status: status,
         reference_no: invoice.referenceNo,
         terms_and_conditions: invoice.termsAndConditions,
@@ -565,6 +561,7 @@ function SalesInvoicesPage() {
           tax_rate: item.taxRate,
           tax_amount: item.taxAmount,
           line_total: item.lineTotal,
+          discount_amount: item.discountType === 'amount' ? item.discountValue : (item.quantity * item.rate * item.discountValue / 100), // Save calculated discount amount
         }));
         const { error: itemsError } = await supabase.from('sales_invoice_items').insert(itemsToSave);
         if (itemsError) throw itemsError;
@@ -733,14 +730,15 @@ function SalesInvoicesPage() {
     return country ? country.states.map(s => ({ id: s.code, name: s.name })) : [];
   };
 
-  const handleNewMasterCreation = (newValue: string, masterType: 'customer' | 'item' | 'account') => {
+  const handleNewMasterCreation = (newValue: string, masterType: 'customer' | 'item' | 'account', fieldIndex?: number) => {
+    // Store current form state in session storage before navigating
     sessionStorage.setItem('invoiceFormState', JSON.stringify({ invoice, items, additionalLedgerEntries }));
 
     let navigatePath = '';
     switch (masterType) {
       case 'customer': navigatePath = '/sales/customers/new'; break;
       case 'item': navigatePath = '/inventory/masters/items/new'; break;
-      case 'account': navigatePath = '/accounting/chart-of-accounts/new'; break;
+      case 'account': navigatePath = '/accounting/masters/ledgers/new'; break;
       default: showNotification('Unknown master type for creation.', 'error'); return;
     }
 
@@ -748,9 +746,24 @@ function SalesInvoicesPage() {
       state: {
         initialName: newValue,
         returnPath: location.pathname,
-        fromInvoiceCreation: true
+        fromInvoiceCreation: true,
+        masterType: masterType,
+        fieldIndex: fieldIndex // Pass index for item/account
       }
     });
+  };
+
+  const handleConfirmMasterCreation = () => {
+    if (pendingMasterCreation) {
+      handleNewMasterCreation(pendingMasterCreation.value, pendingMasterCreation.type, pendingMasterCreation.fieldIndex);
+      setShowMasterConfirmModal(false);
+      setPendingMasterCreation(null);
+    }
+  };
+
+  const handleMasterSelectFieldNewValue = (newValue: string, masterType: 'customer' | 'item' | 'account', fieldIndex?: number) => {
+    setPendingMasterCreation({ type: masterType, value: newValue, fieldIndex: fieldIndex });
+    setShowMasterConfirmModal(true);
   };
 
   return (
@@ -823,7 +836,7 @@ function SalesInvoicesPage() {
                         type="date"
                         value={invoice.dueDate}
                         onChange={(value) => handleInvoiceChange('dueDate', value)}
-                        required
+                        // Removed required attribute
                         readOnly={isViewMode}
                       />
                       <FormField
@@ -852,7 +865,7 @@ function SalesInvoicesPage() {
                         context="sales_invoice_customer_selection"
                         readOnly={isViewMode}
                         allowCreation={true}
-                        onNewValueConfirmed={(val) => handleNewMasterCreation(val, 'customer')}
+                        onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'customer')}
                       />
                       <FormField
                         label="Customer GSTIN"
@@ -873,8 +886,8 @@ function SalesInvoicesPage() {
                       />
                       <FormField
                         label="Sales Order ID (Optional)"
-                        value={invoice.orderId}
-                        onChange={(val) => handleInvoiceChange('orderId', val)}
+                        value={invoice.referenceNo} // Using referenceNo for sales order ID
+                        onChange={(val) => handleInvoiceChange('referenceNo', val)}
                         placeholder="Link to a sales order"
                         readOnly={isViewMode}
                       />
@@ -896,8 +909,8 @@ function SalesInvoicesPage() {
                     <div className="space-y-4">
                       {items.map((item, index) => (
                         <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                          <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-2 items-center"> {/* Adjusted gap */}
-                            <div className="md:col-span-2">
+                          <div className="grid grid-cols-invoice-item-row-v2 gap-x-0 items-center"> {/* Adjusted grid */}
+                            <div className="col-span-3"> {/* Item Name */}
                               <MasterSelectField
                                 label="Item Name"
                                 value={item.itemName}
@@ -908,10 +921,11 @@ function SalesInvoicesPage() {
                                 required
                                 readOnly={isViewMode}
                                 allowCreation={true}
-                                onNewValueConfirmed={(val) => handleNewMasterCreation(val, 'item')}
+                                onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'item', index)}
+                                fieldIndex={index}
                               />
                             </div>
-                            <div className="flex items-center gap-2"> {/* Group Qty and Unit */}
+                            <div className="col-span-1"> {/* Qty */}
                               <FormField
                                 label="Qty"
                                 type="number"
@@ -919,11 +933,16 @@ function SalesInvoicesPage() {
                                 onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
                                 required
                                 readOnly={isViewMode}
-                                className="flex-1"
                               />
-                              <span className="text-sm text-gray-500 flex-shrink-0 pt-7">{item.unit}</span> {/* Unit display */}
                             </div>
-                            <div>
+                            <div className="col-span-1"> {/* Unit (display only) */}
+                              {/* Removed label, displaying unit directly */}
+                              <p className={`text-sm font-medium ${theme.textPrimary} mb-2`}>Unit</p>
+                              <div className={`px-3 py-2.5 border ${theme.inputBorder} ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary} text-sm`}>
+                                {item.unit}
+                              </div>
+                            </div>
+                            <div className="col-span-1"> {/* Rate */}
                               <FormField
                                 label="Rate"
                                 type="number"
@@ -933,39 +952,37 @@ function SalesInvoicesPage() {
                                 readOnly={isViewMode}
                               />
                             </div>
-                            <div className="flex items-end gap-2"> {/* Group Discount Value and Type */}
+                            <div className="col-span-1"> {/* Discount */}
                               <FormField
-                                label="Discount"
+                                label="Discount (%)"
                                 type="number"
                                 value={item.discountValue.toString()}
                                 onChange={(value) => updateItem(index, 'discountValue', parseFloat(value) || 0)}
                                 readOnly={isViewMode}
-                                className="flex-1"
                               />
-                              <div className="space-y-2 flex-shrink-0">
-                                <label className={`block text-sm font-medium ${theme.textPrimary}`}>Type</label>
-                                <select
-                                  value={item.discountType}
-                                  onChange={(e) => updateItem(index, 'discountType', e.target.value as 'percentage' | 'amount')}
-                                  className={`
-                                    w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                                    ${theme.inputBg} ${theme.textPrimary}
-                                    focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
-                                  `}
-                                  disabled={isViewMode}
-                                >
-                                  <option value="percentage">%</option>
-                                  <option value="amount">Amt</option>
-                                </select>
-                              </div>
                             </div>
-                            <div>
-                              <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Amount</label>
-                              <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg`}>
+                            <div className="col-span-1"> {/* Tax Rate */}
+                              <FormField
+                                label="Tax Rate (%)"
+                                type="number"
+                                value={item.taxRate.toString()}
+                                onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
+                                readOnly={isViewMode}
+                              />
+                            </div>
+                            <div className="col-span-1"> {/* Gross Amount */}
+                              <label className={`block text-sm font-medium ${theme.textPrimary} whitespace-nowrap`}>Gross Amount</label>
+                              <div className={`px-3 py-2.5 border ${theme.inputBorder} ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary} text-sm`}>
                                 ₹{item.amount.toLocaleString()}
                               </div>
                             </div>
-                            <div className="flex items-center justify-center h-full pt-6"> {/* Aligned delete button */}
+                            <div className="col-span-1"> {/* Net Amount */}
+                              <label className={`block text-sm font-medium ${theme.textPrimary} whitespace-nowrap`}>Net Amount</label>
+                              <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 ${theme.borderRadius} font-semibold text-sm`}>
+                                ₹{item.lineTotal.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center h-full"> {/* Aligned delete button */}
                               {!isViewMode && (
                                 <Button
                                   variant="ghost"
@@ -995,8 +1012,8 @@ function SalesInvoicesPage() {
                     <div className="space-y-4">
                       {additionalLedgerEntries.map((entry, index) => (
                         <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-2 items-center"> {/* Adjusted gap */}
-                            <div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-2 items-center"> {/* Adjusted gap */}
+                            <div className="col-span-2">
                               <MasterSelectField
                                 label="Account Name"
                                 value={entry.accountName}
@@ -1007,10 +1024,11 @@ function SalesInvoicesPage() {
                                 required
                                 readOnly={isViewMode}
                                 allowCreation={true}
-                                onNewValueConfirmed={(val) => handleNewMasterCreation(val, 'account')}
+                                onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'account', index)}
+                                fieldIndex={index}
                               />
                             </div>
-                            <div>
+                            <div className="col-span-1">
                               <FormField
                                 label="Amount"
                                 type="number"
@@ -1019,7 +1037,7 @@ function SalesInvoicesPage() {
                                 readOnly={isViewMode}
                               />
                             </div>
-                            <div>
+                            <div className="col-span-1 flex items-center justify-end h-full"> {/* Aligned delete button */}
                               <FormField
                                 label="Notes"
                                 value={entry.notes}
@@ -1027,8 +1045,6 @@ function SalesInvoicesPage() {
                                 placeholder="Entry notes"
                                 readOnly={isViewMode}
                               />
-                            </div>
-                            <div className="flex items-center justify-center h-full pt-6"> {/* Aligned delete button */}
                               {!isViewMode && (
                                 <Button
                                   variant="ghost"
@@ -1036,7 +1052,7 @@ function SalesInvoicesPage() {
                                   icon={<Trash2 size={16} />}
                                   onClick={() => removeAdditionalLedgerEntry(index)}
                                   disabled={additionalLedgerEntries.length === 1}
-                                  className="text-red-600 hover:text-red-800"
+                                  className="text-red-600 hover:text-red-800 ml-2"
                                 />
                               )}
                             </div>
@@ -1115,6 +1131,15 @@ function SalesInvoicesPage() {
             ) 
          }
         </Card>
+        {/* Confirmation Modal for Master Creation */}
+        <ConfirmationModal
+          isOpen={showMasterConfirmModal}
+          onClose={() => setShowMasterConfirmModal(false)}
+          onConfirm={handleConfirmMasterCreation}
+          title={`Create New ${pendingMasterCreation?.type === 'customer' ? 'Customer' : pendingMasterCreation?.type === 'item' ? 'Item' : 'Account'}?`}
+          message={`The ${pendingMasterCreation?.type} "${pendingMasterCreation?.value}" does not exist. Do you want to create it?`}
+          confirmText={`Yes, Create ${pendingMasterCreation?.type === 'customer' ? 'Customer' : pendingMasterCreation?.type === 'item' ? 'Item' : 'Account'}`}
+        />
     </div>
   );
 }

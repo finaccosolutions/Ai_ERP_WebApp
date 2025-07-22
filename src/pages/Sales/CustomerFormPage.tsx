@@ -139,6 +139,9 @@ function CustomerFormPage() {
   // Add a state for isNewCustomer
   const [isNewCustomer, setIsNewCustomer] = useState(!id);
 
+  // Flag to check if navigated from Sales Invoice Create Page
+  const fromSalesInvoiceCreate = location.state?.fromInvoiceCreation === true;
+
   const tabs = [
     { id: 'basic-info', label: 'Basic Info', icon: Home },
     { id: 'billing-address', label: 'Billing Address', icon: BookUser },
@@ -167,17 +170,8 @@ function CustomerFormPage() {
         generateCustomerCode(currentCompany.id);
       }
     }
-  }, [currentCompany?.id, id]); // Add 'id' to dependency array
 
-  useEffect(() => {
-    if (id && currentCompany?.id) {
-      fetchCustomerData(id);
-    }
-  }, [id, currentCompany?.id]);
-
-  // Effect to handle return from CustomerGroupsPage
-  useEffect(() => {
-    // Check for the specific flag indicating return from group creation
+    // Handle navigation back from customer group creation
     if (location.state?.fromCustomerGroupCreation) {
       // Restore customer form data
       if (location.state.customerFormData) {
@@ -204,7 +198,7 @@ function CustomerFormPage() {
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [currentCompany?.id, id, location.pathname]);
 
 
   // Effect to update tax labels based on billing country
@@ -432,6 +426,7 @@ function CustomerFormPage() {
       };
 
 
+      let newCustomerId = formData.id;
       if (formData.id) {
         // Update existing customer
         const { error } = await supabase
@@ -442,13 +437,29 @@ function CustomerFormPage() {
         showNotification('Customer updated successfully!', 'success');
       } else {
         // Create new customer
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('customers')
-          .insert(customerToSave);
+          .insert(customerToSave)
+          .select('id, name')
+          .single();
         if (error) throw error;
+        newCustomerId = data.id;
         showNotification('Customer created successfully!', 'success');
       }
-      navigate('/sales/customers'); // Redirect back to list
+
+      if (fromSalesInvoiceCreate) {
+        navigate(location.state.returnPath, {
+          replace: true,
+          state: {
+            fromInvoiceCreation: true,
+            createdId: newCustomerId,
+            createdName: formData.name,
+            masterType: 'customer'
+          }
+        });
+      } else {
+        navigate('/sales/customers'); // Redirect back to list
+      }
     } catch (err: any) {
       showNotification(`Failed to save customer: ${err.message}`, 'error');
       console.error('Save customer error:', err);
@@ -458,7 +469,7 @@ function CustomerFormPage() {
   };
 
   const getStatesForCountry = (countryCode: string) => {
-    const country = getCountryByCode(countryCode);
+    const country = COUNTRIES.find(country => country.code === countryCode);
     return country ? country.states.map(s => ({ id: s.code, name: s.name })) : [];
   };
 
@@ -530,7 +541,7 @@ function CustomerFormPage() {
   };
 
   // Function to handle blur event on MasterSelectField for Customer Group
-  const handleCustomerGroupBlur = () => {
+  const handleCustomerGroupBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Clear any existing timeout to prevent multiple triggers
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
@@ -584,9 +595,16 @@ function CustomerFormPage() {
             {id ? (viewOnly ? 'View customer details.' : 'Update customer information.') : 'Enter new customer details.'}
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/sales/customers')} icon={<ArrowLeft size={16} />}>
-          Back to Customer List
-        </Button>
+        {!fromSalesInvoiceCreate && (
+          <Button variant="outline" onClick={() => navigate('/sales/customers')} icon={<ArrowLeft size={16} />}>
+            Back to Customer List
+          </Button>
+        )}
+        {fromSalesInvoiceCreate && (
+          <Button variant="outline" onClick={() => navigate(location.state.returnPath, { replace: true, state: { fromInvoiceCreation: true } })} icon={<ArrowLeft size={16} />}>
+            Cancel
+          </Button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -1030,7 +1048,13 @@ function CustomerFormPage() {
 
         {!viewOnly && (
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => navigate('/sales/customers')}>
+            <Button type="button" variant="outline" onClick={() => {
+              if (fromSalesInvoiceCreate) {
+                navigate(location.state.returnPath, { replace: true, state: { fromInvoiceCreation: true } });
+              } else {
+                navigate('/sales/customers');
+              }
+            }}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading} icon={<Save size={16} />}>
@@ -1085,4 +1109,4 @@ function CustomerFormPage() {
   );
 }
 
-export default CustomerFormPage; 
+export default CustomerFormPage;

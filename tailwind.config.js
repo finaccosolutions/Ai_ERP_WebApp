@@ -139,6 +139,8 @@ export default {
         // Reverted to original for now, will be removed if not needed
         'invoice-item-row': '2fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 0.2fr',
         'ledger-entry-row': '1.5fr 0.7fr 1.5fr 0.2fr',
+        // NEW: Custom grid for invoice item rows
+        'invoice-item-row-v2': '3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.5fr 1fr 1fr 0.2fr', // ItemName, Qty, Unit, Rate, Discount, TaxRate, GrossAmount, NetAmount, Delete
       }
     },
   },

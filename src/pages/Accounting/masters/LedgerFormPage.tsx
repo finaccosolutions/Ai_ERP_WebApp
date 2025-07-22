@@ -10,7 +10,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import { useCompany } from '../../../contexts/CompanyContext';
 import { useNotification } from '../../../contexts/NotificationContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom'; // Import useLocation
 
 interface AccountGroupOption {
   id: string;
@@ -27,6 +27,7 @@ function LedgerFormPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
+  const location = useLocation(); // Get location object
 
   const [formData, setFormData] = useState({
     id: '',
@@ -48,6 +49,8 @@ function LedgerFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditMode = !!id;
+  // Flag to check if navigated from Sales Invoice Create Page
+  const fromSalesInvoiceCreate = location.state?.fromInvoiceCreation === true;
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -228,7 +231,7 @@ function LedgerFormPage() {
         account_name: formData.accountName,
         account_type: formData.accountType,
         account_group: formData.accountGroup,
-        parent_account_id: formData.parentAccountId,
+        parent_account_id: formData.parentAccountId || null,
         is_group: false, // Always false for ledgers
         is_active: formData.isActive,
         opening_balance: formData.openingBalance,
@@ -237,6 +240,7 @@ function LedgerFormPage() {
         comment: formData.notes, // Using 'comment' for notes
       };
 
+      let newLedgerId = formData.id;
       if (formData.id) {
         const { error } = await supabase
           .from('chart_of_accounts')
@@ -247,11 +251,27 @@ function LedgerFormPage() {
       } else {
         const { data, error } = await supabase
           .from('chart_of_accounts')
-          .insert(ledgerToSave);
+          .insert(ledgerToSave)
+          .select('id, account_name')
+          .single();
         if (error) throw error;
+        newLedgerId = data.id;
         showNotification('Ledger created successfully!', 'success');
       }
-      navigate('/accounting/masters/ledgers');
+
+      if (fromSalesInvoiceCreate) {
+        navigate(location.state.returnPath, {
+          replace: true,
+          state: {
+            fromInvoiceCreation: true,
+            createdId: newLedgerId,
+            createdName: formData.accountName,
+            masterType: 'account'
+          }
+        });
+      } else {
+        navigate('/accounting/masters/ledgers');
+      }
       resetForm();
     } catch (err: any) {
       showNotification(`Failed to save ledger: ${err.message}`, 'error');
@@ -306,9 +326,16 @@ function LedgerFormPage() {
             {isEditMode ? 'Update existing ledger account details.' : 'Create a new financial ledger account.'}
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/accounting/masters/ledgers')} icon={<ArrowLeft size={16} />}>
-          Back to Ledgers List
-        </Button>
+        {!fromSalesInvoiceCreate && (
+          <Button variant="outline" onClick={() => navigate('/accounting/masters/ledgers')} icon={<ArrowLeft size={16} />}>
+            Back to Ledgers List
+          </Button>
+        )}
+        {fromSalesInvoiceCreate && (
+          <Button variant="outline" onClick={() => navigate(location.state.returnPath, { replace: true, state: { fromInvoiceCreation: true } })} icon={<ArrowLeft size={16} />}>
+            Cancel
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -422,7 +449,13 @@ function LedgerFormPage() {
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => navigate('/accounting/masters/ledgers')}>
+            <Button type="button" variant="outline" onClick={() => {
+              if (fromSalesInvoiceCreate) {
+                navigate(location.state.returnPath, { replace: true, state: { fromInvoiceCreation: true } });
+              } else {
+                navigate('/accounting/masters/ledgers');
+              }
+            }}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} icon={<Save size={16} />}>
@@ -435,4 +468,4 @@ function LedgerFormPage() {
   );
 }
 
-export default LedgerFormPage;
+export default LedgerFormPage; 

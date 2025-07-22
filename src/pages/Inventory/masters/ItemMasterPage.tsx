@@ -112,6 +112,9 @@ function ItemMasterPage() {
     isActive: 'all',
   });
 
+  // Flag to check if navigated from Sales Invoice Create Page
+  const fromSalesInvoiceCreate = location.state?.fromInvoiceCreation === true;
+
   useEffect(() => {
     console.log("ItemMasterPage useEffect triggered.");
     console.log("Current URL Pathname:", location.pathname);
@@ -127,6 +130,7 @@ function ItemMasterPage() {
         console.log("Detected '/new' in URL. Setting viewMode to 'create'.");
         setViewMode('create');
         resetForm(); // Ensure form is clean for new item
+        generateItemCode(currentCompany.id); // Autofill item code
       } else {
         console.log("No ID or '/new' detected. Setting viewMode to 'list'.");
         fetchItems();
@@ -283,6 +287,24 @@ function ItemMasterPage() {
       navigate('/inventory/masters/items');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateItemCode = async (companyId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('items')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const nextNumber = (count || 0) + 1;
+      const newItemCode = `ITEM-${String(nextNumber).padStart(4, '0')}`; // e.g., ITEM-0001
+      setFormData(prev => ({ ...prev, itemCode: newItemCode }));
+    } catch (err) {
+      console.error('Error generating item code:', err);
+      showNotification('Failed to generate item code. Please enter manually.', 'error');
     }
   };
 
@@ -461,12 +483,12 @@ function ItemMasterPage() {
         tax_rate: formData.taxRate,
         image_url: uploadedImageUrl,
         is_active: formData.isActive,
-        custom_attributes: {}, // Removed from UI, default to empty object
-        item_group_id: formData.itemGroupId || '', // NEW: Save item_group_id
+        item_group_id: formData.itemGroupId || null, // FIX: Set to null if empty string
       };
 
       console.log("Item data to save:", itemToSave); // Debugging log
 
+      let newItemId = formData.id;
       if (formData.id) {
         console.log("Updating existing item:", formData.id); // Debugging log
         const { error } = await supabase
@@ -477,14 +499,30 @@ function ItemMasterPage() {
         showNotification('Item updated successfully!', 'success');
       } else {
         console.log("Inserting new item."); // Debugging log
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('items')
-          .insert(itemToSave);
+          .insert(itemToSave)
+          .select('id, item_name')
+          .single();
         if (error) throw error;
+        newItemId = data.id;
         showNotification('Item created successfully!', 'success');
       }
-      console.log("Navigating to /inventory/masters/items after successful save."); // Debugging log
-      navigate('/inventory/masters/items'); // Navigate back to list on success
+      
+      if (fromSalesInvoiceCreate) {
+        navigate(location.state.returnPath, {
+          replace: true,
+          state: {
+            fromInvoiceCreation: true,
+            createdId: newItemId,
+            createdName: formData.itemName,
+            masterType: 'item'
+          }
+        });
+      } else {
+        console.log("Navigating to /inventory/masters/items after successful save."); // Debugging log
+        navigate('/inventory/masters/items'); // Navigate back to list on success
+      }
       resetForm();
     } catch (err: any) {
       console.error('Save item error:', err); // Detailed error log
@@ -546,9 +584,14 @@ function ItemMasterPage() {
             {viewMode === 'create' ? 'Define a new inventory item.' : (viewMode === 'edit' ? 'Update existing item details.' : 'Manage all your inventory items, products, and services.')}
           </p>
         </div>
-        {viewMode !== 'list' && ( // Only show "Back to Item List" button if not already in list view
+        {!fromSalesInvoiceCreate && (
           <Button variant="outline" onClick={() => navigate('/inventory/masters/items')} icon={<ArrowLeft size={16} />}>
             Back to Item List
+          </Button>
+        )}
+        {fromSalesInvoiceCreate && (
+          <Button variant="outline" onClick={() => navigate(location.state.returnPath, { replace: true, state: { fromInvoiceCreation: true } })} icon={<ArrowLeft size={16} />}>
+            Cancel
           </Button>
         )}
       </div>
@@ -652,6 +695,7 @@ function ItemMasterPage() {
                 onChange={(val) => handleInputChange('itemCode', val)}
                 placeholder="e.g., PROD-A-001, SVC-CONSULT"
                 required
+                readOnly={!!formData.id} // Make read-only if editing existing item
               />
               <FormField
                 label="Description"
@@ -661,20 +705,20 @@ function ItemMasterPage() {
                 className="md:col-span-2"
               />
               <MasterSelectField
-                label="Item Category"
-                value={availableCategories.find(cat => cat.id === formData.categoryId)?.name || ''}
-                onValueChange={(val) => {}} // No direct typing for this field
-                onSelect={(id) => handleInputChange('categoryId', id)}
-                options={availableCategories}
-                placeholder="Select Category"
-              />
-              <MasterSelectField
                 label="Item Group" // NEW: Item Group Field
                 value={availableItemGroups.find(group => group.id === formData.itemGroupId)?.name || ''}
                 onValueChange={(val) => {}}
                 onSelect={(id) => handleInputChange('itemGroupId', id)}
                 options={availableItemGroups}
                 placeholder="Select Item Group"
+              />
+              <MasterSelectField
+                label="Item Category"
+                value={availableCategories.find(cat => cat.id === formData.categoryId)?.name || ''}
+                onValueChange={(val) => {}} // No direct typing for this field
+                onSelect={(id) => handleInputChange('categoryId', id)}
+                options={availableCategories}
+                placeholder="Select Category"
               />
               <MasterSelectField
                 label="Unit of Measure"
@@ -724,7 +768,7 @@ function ItemMasterPage() {
                 icon={<DollarSign size={18} />}
               />
               <FormField
-                label="Tax Rate (%)"
+                label={currentCompany?.country === 'IN' ? "GST (%)" : "Tax Rate (%)"}
                 type="number"
                 value={formData.taxRate.toString()}
                 onChange={(val) => handleInputChange('taxRate', parseFloat(val) || 0)}
@@ -897,4 +941,3 @@ function ItemMasterPage() {
 }
 
 export default ItemMasterPage;
-
