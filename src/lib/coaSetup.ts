@@ -1,9 +1,10 @@
 // src/lib/coaSetup.ts
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from './supabase'; // Assuming your Supabase types are in src/lib/supabase.ts
+import { getCountryByCode } from '../constants/geoData'; // Import getCountryByCode
 
-export async function populateDefaultChartOfAccounts(supabase: SupabaseClient<Database>, companyId: string) {
-  console.log(`Populating Chart of Accounts for Company ID: ${companyId}`);
+export async function populateDefaultChartOfAccounts(supabase: SupabaseClient<Database>, companyId: string, countryCode: string) {
+  console.log(`Populating Chart of Accounts for Company ID: ${companyId} and Country: ${countryCode}`);
 
   try {
     // Helper function to insert an account and return its ID
@@ -21,6 +22,10 @@ export async function populateDefaultChartOfAccounts(supabase: SupabaseClient<Da
       if (error) throw error;
       return data.id;
     };
+
+    // Get country-specific CoA template
+    const countryConfig = getCountryByCode(countryCode);
+    const taxAccountsTemplate = countryConfig?.chartOfAccountsTemplate?.taxAccounts || [];
 
     // --- 1. Top-Level Groups (Balance Sheet & Income Statement Categories) ---
     const asset_id = await insertAccount({ account_code: '10000', account_name: 'Assets', account_type: 'asset', account_group: 'Assets', is_group: true, balance_type: 'debit' });
@@ -102,11 +107,12 @@ export async function populateDefaultChartOfAccounts(supabase: SupabaseClient<Da
     const provisions_id = await insertAccount({ account_code: '21500', account_name: 'Provisions', account_type: 'liability', account_group: 'Provisions', parent_account_id: current_liability_id, is_group: true, balance_type: 'credit' });
     await insertAccount({ account_code: '21600', account_name: 'Unearned Revenue', account_type: 'liability', account_group: 'Unearned Revenue', parent_account_id: current_liability_id, is_group: false, balance_type: 'credit' });
 
-    // Duties & Taxes Payable Sub-accounts
-    await insertAccount({ account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'GST Payable', parent_account_id: duties_taxes_payable_id, is_group: false, balance_type: 'credit' });
-    await insertAccount({ account_code: '21402', account_name: 'TDS Payable', account_type: 'liability', account_group: 'TDS Payable', parent_account_id: duties_taxes_payable_id, is_group: false, balance_type: 'credit' });
-    await insertAccount({ account_code: '21403', account_name: 'PF Payable', account_type: 'liability', account_group: 'PF Payable', parent_account_id: duties_taxes_payable_id, is_group: false, balance_type: 'credit' });
-    await insertAccount({ account_code: '21404', account_name: 'ESI Payable', account_type: 'liability', account_group: 'ESI Payable', parent_account_id: duties_taxes_payable_id, is_group: false, balance_type: 'credit' });
+    // Dynamically add country-specific tax accounts
+    for (const taxAccount of taxAccountsTemplate) {
+      // Check if a parent group for 'Duties & Taxes Payable' exists, otherwise use general current_liability_id
+      const parentId = taxAccount.account_group === 'Duties & Taxes Payable' ? duties_taxes_payable_id : current_liability_id;
+      await insertAccount({ ...taxAccount, parent_account_id: parentId, is_group: false });
+    }
 
     // Provisions Sub-accounts
     await insertAccount({ account_code: '21501', account_name: 'Provision for Gratuity', account_type: 'liability', account_group: 'Provision for Gratuity', parent_account_id: provisions_id, is_group: false, balance_type: 'credit' });

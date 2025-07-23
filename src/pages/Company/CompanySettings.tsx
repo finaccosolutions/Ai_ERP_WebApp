@@ -29,170 +29,9 @@ import { supabase } from '../../lib/supabase';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
+import { COUNTRIES, getCountryByCode, getPhoneCountryCodes } from '../../constants/geoData'; // Import geoData
 
 // --- ALL STATIC DATA DEFINED HERE, ABOVE THE COMPONENT FUNCTION ---
-const countries = [
-  {
-    id: 'IN',
-    name: 'India',
-    flag: '🇮🇳',
-    currency: 'INR',
-    taxType: 'GST',
-    timezone: 'Asia/Kolkata',
-    dialCode: '+91',
-    fiscalYearStartMonth: 3, // April (0-indexed)
-    states: [
-      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
-      'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-      'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-      'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
-      'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh'
-    ]
-  },
-  {
-    id: 'US',
-    name: 'United States',
-    flag: '🇺🇸',
-    currency: 'USD',
-    taxType: 'VAT', // Using VAT for generic sales tax/custom tax
-    timezone: 'America/New_York',
-    dialCode: '+1',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
-      'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
-      'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
-      'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
-      'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
-      'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
-      'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
-      'Wisconsin', 'Wyoming'
-    ]
-  },
-  {
-    id: 'AE',
-    name: 'United Arab Emirates',
-    flag: '🇦🇪',
-    currency: 'AED',
-    taxType: 'VAT',
-    timezone: 'Asia/Dubai',
-    dialCode: '+971',
-    fiscalYearStartMonth: 0, // January
-    states: ['Abu Dhabi', 'Ajman', 'Dubai', 'Fujairah', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain']
-  },
-  {
-    id: 'SA',
-    name: 'Saudi Arabia',
-    flag: '🇸🇦',
-    currency: 'SAR',
-    taxType: 'VAT',
-    timezone: 'Asia/Riyadh',
-    dialCode: '+966',
-    fiscalYearStartMonth: 0, // January
-    states: [] // Add specific regions if needed
-  },
-  {
-    id: 'QA',
-    name: 'Qatar',
-    flag: '🇶🇦',
-    currency: 'QAR',
-    taxType: 'VAT',
-    timezone: 'Asia/Qatar',
-    dialCode: '+974',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'KW',
-    name: 'Kuwait',
-    flag: '🇰🇼',
-    currency: 'KWD',
-    taxType: 'VAT',
-    timezone: 'Asia/Kuwait',
-    dialCode: '+965',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'BH',
-    name: 'Bahrain',
-    flag: '🇧🇭',
-    currency: 'BHD',
-    taxType: 'VAT',
-    timezone: 'Asia/Bahrain',
-    dialCode: '+973',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'OM',
-    name: 'Oman',
-    flag: '🇴🇲',
-    currency: 'OMR',
-    taxType: 'VAT',
-    timezone: 'Asia/Muscat',
-    dialCode: '+968',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'GB',
-    name: 'United Kingdom',
-    flag: '🇬🇧',
-    currency: 'GBP',
-    taxType: 'VAT',
-    timezone: 'Europe/London',
-    dialCode: '+44',
-    fiscalYearStartMonth: 3, // April
-    states: ['England', 'Scotland', 'Wales', 'Northern Ireland']
-  },
-  {
-    id: 'CA',
-    name: 'Canada',
-    flag: '🇨🇦',
-    currency: 'CAD',
-    taxType: 'VAT', // Using VAT for generic sales tax/custom tax
-    timezone: 'America/Toronto',
-    dialCode: '+1',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
-      'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
-      'Quebec', 'Saskatchewan', 'Yukon'
-    ]
-  },
-  {
-    id: 'AU',
-    name: 'Australia',
-    flag: '🇦🇺',
-    currency: 'AUD',
-    taxType: 'GST',
-    timezone: 'Australia/Sydney',
-    dialCode: '+61',
-    fiscalYearStartMonth: 6, // July
-    states: [
-      'New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia',
-      'Tasmania', 'Australian Capital Territory', 'Northern Territory'
-    ]
-  },
-  {
-    id: 'DE',
-    name: 'Germany',
-    flag: '🇩🇪',
-    currency: 'EUR',
-    taxType: 'VAT',
-    timezone: 'Europe/Berlin',
-    dialCode: '+49',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Baden-Württemberg', 'Bavaria', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg',
-      'Hesse', 'Lower Saxony', 'Mecklenburg-Vorpommern', 'North Rhine-Westphalia',
-      'Rhineland-Palatinate', 'Saarland', 'Saxony', 'Saxony-Anhalt', 'Schleswig-Holstein',
-      'Thuringia'
-    ]
-  }
-];
-
 const currencies = [
   { id: 'INR', name: 'Indian Rupee', symbol: '₹' },
   { id: 'USD', name: 'US Dollar', symbol: '$' },
@@ -310,6 +149,7 @@ function CompanySettings() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPhoneCountryDropdown, setShowPhoneCountryDropdown] = useState(false);
+  const [showAlternatePhoneCountryDropdown, setShowAlternatePhoneCountryDropdown] = useState(false); // NEW state
 
   const [activeTab, setActiveTab] = useState('company_info');
 
@@ -390,9 +230,9 @@ function CompanySettings() {
         companyName: currentCompany.name || '',
         legalName: currentCompany.settings?.legalName || '',
         industry: currentCompany.settings?.industry || industries[0].id,
-        businessType: currentCompany.settings?.businessType || companyTypes[0].id,
+        businessType: currentCompany.settings?.businessType || COUNTRIES.find(c => c.code === currentCompany.country)?.businessTypes?.[0]?.id || globalBusinessTypes[0].id,
         registrationNo: currentCompany.settings?.registrationNo || '',
-        country: currentCompany.country || countries[0].id,
+        country: currentCompany.country || COUNTRIES[0].code,
         state: currentCompany.address?.state || '',
         city: currentCompany.address?.city || '',
         addressLine1: currentCompany.address?.street1 || '',
@@ -400,16 +240,16 @@ function CompanySettings() {
         zipCode: currentCompany.address?.zipCode || '',
         languagePreference: currentCompany.settings?.languagePreference || languages[0].id,
         companyLogo: currentCompany.logo || null, // This will be the URL
-        timezone: currentCompany.timezone || countries[0].timezone,
+        timezone: currentCompany.timezone || COUNTRIES[0].timezone,
 
         contactPersonName: currentCompany.contactInfo?.contactPersonName || '',
         designation: currentCompany.contactInfo?.designation || '',
         email: currentCompany.contactInfo?.email || '',
         mobile: currentCompany.contactInfo?.mobile || '',
-        phoneCountry: currentCompany.contactInfo?.phoneCountry || currentCompany.country || countries[0].id,
+        phoneCountry: currentCompany.contactInfo?.phoneCountry || COUNTRIES[0].dialCode,
         alternateContactNumber: currentCompany.contactInfo?.alternatePhone || '',
 
-        taxSystem: currentCompany.taxConfig?.type || countries[0].taxType,
+        taxSystem: currentCompany.taxConfig?.type || COUNTRIES[0].taxConfig.type,
         taxConfig: {
           enabled: currentCompany.taxConfig?.enabled ?? true,
           rates: currentCompany.taxConfig?.rates || [],
@@ -444,7 +284,7 @@ function CompanySettings() {
         enableBarcodeSupport: currentCompany.settings?.barcodeSupport ?? false,
         allowAutoVoucherCreationAI: currentCompany.settings?.autoVoucherCreationAI ?? true,
 
-        companyType: currentCompany.settings?.companyType || companyTypes[0].id,
+        companyType: currentCompany.settings?.companyType || COUNTRIES.find(c => c.code === currentCompany.country)?.businessTypes?.[0]?.id || globalBusinessTypes[0].id,
         employeeCount: currentCompany.settings?.employeeCount || employeeCounts[0].id,
         annualRevenue: currentCompany.settings?.annualRevenue || revenueRanges[0].id,
         inventoryTracking: currentCompany.settings?.inventoryTracking ?? true
@@ -454,7 +294,7 @@ function CompanySettings() {
 
   // Auto-calculate fiscal year end date and update tax rates based on country
   useEffect(() => {
-    const selectedCountryData = countries.find(c => c.id === formData.country);
+    const selectedCountryData = COUNTRIES.find(c => c.code === formData.country);
     if (selectedCountryData) {
       const startDate = new Date(formData.fiscalYearStartDate);
       const fiscalYearEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), 0);
@@ -462,39 +302,18 @@ function CompanySettings() {
       setFormData((prev: any) => ({
         ...prev,
         timezone: selectedCountryData.timezone,
-        defaultCurrency: selectedCountryData.currency,
-        taxSystem: selectedCountryData.taxType,
+        defaultCurrency: selectedCountryData.defaultCurrency,
+        taxSystem: selectedCountryData.taxConfig.type,
         fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0],
-        phoneCountry: selectedCountryData.id, // Auto-update phone country code
-        // Reset state if country changes and previous state is not valid for new country
-        state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
-      }));
-
-      // Update tax rates based on country
-      const taxRates: { [key: string]: number[] } = {
-        'IN': [0, 5, 12, 18, 28],
-        'US': [0, 5, 8.5, 10],
-        'AE': [0, 5],
-        'SA': [0, 15],
-        'QA': [0, 5],
-        'KW': [0, 5],
-        'BH': [0, 10],
-        'OM': [0, 5],
-        'GB': [0, 5, 20],
-        'CA': [0, 5, 13, 15],
-        'AU': [0, 10],
-        'DE': [0, 7, 19],
-        'JP': [0, 10],
-        'SG': [0, 9],
-      };
-
-      setFormData((prev: any) => ({
-        ...prev,
+        phoneCountry: selectedCountryData.dialCode,
+        state: selectedCountryData.states.map(s => s.name).includes(prev.state) ? prev.state : '', // Use .name for comparison
+        decimalPlaces: selectedCountryData.defaultDecimalPlaces,
         taxConfig: {
           ...prev.taxConfig,
-          rates: taxRates[selectedCountryData.id] || [0, 10, 20],
+          rates: selectedCountryData.taxConfig.rates,
         },
       }));
+
     }
   }, [formData.country, formData.fiscalYearStartDate]);
 
@@ -604,12 +423,14 @@ function CompanySettings() {
           gstDetails: formData.taxSystem === 'GST' ? {
             pan: formData.pan,
             tan: formData.tan,
+            registrationNumber: formData.gstin,
             registrationType: formData.gstRegistrationType,
             filingFrequency: formData.filingFrequency,
             tdsApplicable: formData.tdsApplicable,
             tcsApplicable: formData.tcsApplicable,
           } : null,
           vatDetails: formData.taxSystem === 'VAT' ? {
+            registrationNumber: formData.trnVatNumber,
             registrationType: formData.vatRegistrationType,
             filingCycle: formData.filingCycle,
           } : null,
@@ -647,12 +468,8 @@ function CompanySettings() {
           aiSuggestions: formData.allowAiSuggestions,
           enablePassword: formData.enableCompanyPassword,
           password: formData.enableCompanyPassword ? formData.companyPassword : null,
-          splitByPeriod: formData.allowSplitByPeriod,
           barcodeSupport: formData.enableBarcodeSupport,
-          autoVoucherCreationAI: formData.allowAutoVoucherCreationAI,
           companyType: formData.companyType,
-          employeeCount: formData.employeeCount,
-          annualRevenue: formData.annualRevenue,
           inventoryTracking: formData.inventoryTracking,
         },
       };
@@ -674,17 +491,9 @@ function CompanySettings() {
     }
   };
 
-  const selectedCountry = countries.find(c => c.id === formData.country);
-  const selectedPhoneCountry = countries.find(c => c.id === formData.phoneCountry);
-  const availableStates = selectedCountry?.states || [];
-
-  if (!currentCompany) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className={theme.textMuted}>No company selected</p>
-      </div>
-    );
-  }
+  const selectedCountry = COUNTRIES.find(c => c.code === formData.country);
+  const selectedPhoneCountry = COUNTRIES.find(c => c.dialCode === formData.phoneCountry);
+  const availableStates = selectedCountry?.states.map(s => s.name) || [];
 
   return (
     <div className="space-y-6">
@@ -782,8 +591,10 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {companyTypes.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
+                    {selectedCountry?.businessTypes ? selectedCountry.businessTypes.map((type: any) => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    )) : globalBusinessTypes.map(type => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
                     ))}
                   </select>
                   {errors.businessType && <p className="mt-2 text-sm text-red-500">{errors.businessType}</p>}
@@ -797,7 +608,7 @@ function CompanySettings() {
               </div>
 
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-                <MapPin size={20} className="mr-2 text-[#6AC8A3]" />
+                <MapPin size={20} className="mr-3 text-[#6AC8A3]" />
                 Business Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -814,8 +625,8 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {countries.map(country => (
-                      <option key={country.id} value={country.id}>
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
                         {country.flag} {country.name}
                       </option>
                     ))}
@@ -927,7 +738,7 @@ function CompanySettings() {
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
                         `}
                       >
-                        <span className="text-lg">{selectedPhoneCountry?.flag}</span>
+                        <span className="text-lg">{selectedPhoneCountry?.name.split(' ')[0]}</span> {/* Display flag only */}
                         <span className="text-sm">{selectedPhoneCountry?.dialCode}</span>
                         <ChevronDown size={14} />
                       </button>
@@ -937,7 +748,7 @@ function CompanySettings() {
                           border ${theme.isDark ? 'border-gray-600' : 'border-gray-300'}
                           ${theme.borderRadius} shadow-lg z-50 max-h-60 overflow-y-auto
                         `}>
-                          {countries.map((country) => (
+                          {getPhoneCountryCodes().map((country) => (
                             <button
                               key={country.id}
                               type="button"
@@ -951,9 +762,9 @@ function CompanySettings() {
                                 flex items-center space-x-3
                               `}
                             >
-                              <span className="text-lg">{country.flag}</span>
+                              <span className="text-lg">{country.name.split(' ')[0]}</span> {/* Display flag only */}
                               <span className="text-sm">{country.dialCode}</span>
-                              <span className="text-sm">{country.name}</span>
+                              <span className="text-sm">{country.name.substring(country.name.indexOf(' ') + 1)}</span> {/* Display country name */}
                             </button>
                           ))}
                         </div>
@@ -969,7 +780,7 @@ function CompanySettings() {
                         error={errors.mobile}
                         className={`
                           w-full pl-10 pr-3 py-2 border ${theme.inputBorder}
-                          ${theme.borderRadius} rounded-l-none border-l-0
+                          ${theme.borderRadius} rounded-l-none border-l-0 h-full
                           ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
                         `}
@@ -977,503 +788,524 @@ function CompanySettings() {
                     </div>
                   </div>
                 </div>
-                <FormField
-                  label="Alternate Contact Number (Optional)"
-                  value={formData.alternateContactNumber}
-                  onChange={(val) => setFormData({ ...formData, alternateContactNumber: val })}
-                  icon={<Phone size={18} className="text-gray-400" />}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Tax Tab */}
-          {activeTab === 'tax' && (
-            <div>
-              <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
-                <ReceiptText size={24} className="mr-3 text-[#6AC8A3]" />
-                Tax / Compliance Details
-              </h2>
-              <div className="flex items-center space-x-3 mb-4">
-                <input
-                  type="checkbox"
-                  id="taxEnabled"
-                  checked={formData.taxConfig.enabled}
-                  onChange={(e) => setFormData({ ...formData, taxConfig: { ...formData.taxConfig, enabled: e.target.checked } })}
-                  className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                />
-                <label htmlFor="taxEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
-                  Enable {formData.taxSystem} / Tax Management
-                </label>
-              </div>
-
-              {formData.taxConfig.enabled && (
-                <>
-                  {formData.taxSystem === 'GST' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        label="GSTIN"
-                        value={formData.gstin}
-                        onChange={(val) => setFormData({ ...formData, gstin: val })}
-                        placeholder="22AAAAA0000A1Z5"
-                        required
-                        error={errors.gstin}
-                      />
-                      <FormField
-                        label="PAN"
-                        value={formData.pan}
-                        onChange={(val) => setFormData({ ...formData, pan: val })}
-                        placeholder="AAAAA0000A"
-                        required
-                        error={errors.pan}
-                      />
-                      <FormField
-                        label="TAN (Optional)"
-                        value={formData.tan}
-                        onChange={(val) => setFormData({ ...formData, tan: val })}
-                        placeholder="TAN Number"
-                      />
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                          GST Registration Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formData.gstRegistrationType}
-                          onChange={(e) => setFormData({ ...formData, gstRegistrationType: e.target.value })}
-                          className={`
-                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
-                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                          `}
-                        >
-                          {gstRegistrationTypes.map(item => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
+                <div className="space-y-2"> {/* NEW: Alternate Contact Number with country code */}
+                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                    Alternate Contact Number (Optional)
+                  </label>
+                  <div className="flex items-stretch">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowAlternatePhoneCountryDropdown(!showAlternatePhoneCountryDropdown)}
+                        className={`
+                          flex items-center space-x-2 px-3 py-2 border ${theme.borderColor}
+                          ${theme.borderRadius} border-r-0 rounded-r-none
+                          ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                          focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
+                        `}
+                      >
+                        <span className="text-lg">{selectedPhoneCountry?.name.split(' ')[0]}</span>
+                        <span className="text-sm">{selectedPhoneCountry?.dialCode}</span>
+                        <ChevronDown size={14} />
+                      </button>
+                      {showAlternatePhoneCountryDropdown && (
+                        <div className={`
+                          absolute top-full left-0 mt-1 w-64 ${theme.isDark ? 'bg-gray-700' : 'bg-white'}
+                          border ${theme.isDark ? 'border-gray-600' : 'border-gray-300'}
+                          ${theme.borderRadius} shadow-lg z-50 max-h-60 overflow-y-auto
+                        `}>
+                          {getPhoneCountryCodes().map((country) => (
+                            <button
+                              key={country.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, alternateContactNumber: country.id }); // Assuming same phoneCountry for both
+                                setShowAlternatePhoneCountryDropdown(false);
+                              }}
+                              className={`
+                                w-full px-3 py-2 text-left hover:bg-gray-100
+                                ${theme.isDark ? 'hover:bg-gray-600 text-white' : 'hover:bg-gray-100'}
+                                flex items-center space-x-3
+                              `}
+                            >
+                              <span className="text-lg">{country.name.split(' ')[0]}</span>
+                              <span className="text-sm">{country.dialCode}</span>
+                              <span className="text-sm">{country.name.substring(country.name.indexOf(' ') + 1)}</span>
+                            </button>
                           ))}
-                        </select>
-                        {errors.gstRegistrationType && <p className="mt-2 text-sm text-red-500">{errors.gstRegistrationType}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                          Filing Frequency <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formData.filingFrequency}
-                          onChange={(e) => setFormData({ ...formData, filingFrequency: e.target.value })}
-                          className={`
-                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
-                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                          `}
-                        >
-                          {filingFrequencies.map(item => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
-                          ))}
-                        </select>
-                        {errors.filingFrequency && <p className="mt-2 text-sm text-red-500">{errors.filingFrequency}</p>}
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          id="tdsApplicable"
-                          checked={formData.tdsApplicable}
-                          onChange={(e) => setFormData({ ...formData, tdsApplicable: e.target.checked })}
-                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                        />
-                        <label htmlFor="tdsApplicable" className={`text-sm font-medium ${theme.textPrimary}`}>
-                          TDS Applicable
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          id="tcsApplicable"
-                          checked={formData.tcsApplicable}
-                          onChange={(e) => setFormData({ ...formData, tcsApplicable: e.target.checked })}
-                          className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                        />
-                        <label htmlFor="tcsApplicable" className={`text-sm font-medium ${theme.textPrimary}`}>
-                          TCS Applicable
-                        </label>
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {formData.taxSystem === 'VAT' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        label="TRN / VAT Number"
-                        value={formData.trnVatNumber}
-                        onChange={(val) => setFormData({ ...formData, trnVatNumber: val })}
-                        required
-                        error={errors.trnVatNumber}
+                    <div className="relative flex-1">
+                      <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="tel"
+                        value={formData.alternateContactNumber}
+                        onChange={(e) => setFormData({ ...formData, alternateContactNumber: e.target.value })}
+                        placeholder="Enter alternate number"
+                        error={errors.alternateContactNumber}
+                        className={`
+                          w-full pl-10 pr-3 py-2 border ${theme.inputBorder}
+                          ${theme.borderRadius} rounded-l-none border-l-0 h-full
+                          ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
+                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                        `}
                       />
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                          VAT Registration Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formData.vatRegistrationType}
-                          onChange={(e) => setFormData({ ...formData, vatRegistrationType: e.target.value })}
-                          className={`
-                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
-                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                          `}
-                        >
-                          {vatRegistrationTypes.map(item => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
-                          ))}
-                        </select>
-                        {errors.vatRegistrationType && <p className="mt-2 text-sm text-red-500">{errors.vatRegistrationType}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                          Filing Cycle <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formData.filingCycle}
-                          onChange={(e) => setFormData({ ...formData, filingCycle: e.target.value })}
-                          className={`
-                            w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                            ${theme.inputBg} ${theme.textPrimary}
-                            focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                          `}
-                        >
-                          {filingCycles.map(item => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
-                          ))}
-                        </select>
-                        {errors.filingCycle && <p className="mt-2 text-sm text-red-500">{errors.filingCycle}</p>}
-                      </div>
                     </div>
-                  )}
-                  {formData.taxSystem === 'Custom' && (
-                    <div className="text-center py-8">
-                      <AlertTriangle size={48} className="mx-auto text-yellow-500 mb-4" />
-                      <p className={theme.textMuted}>Custom tax system selected. Please configure manually after setup.</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Books Tab */}
-          {activeTab === 'books' && (
-            <div>
-              <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
-                <BookMarked size={24} className="mr-3 text-[#6AC8A3]" />
-                Books & Financial Period Setup
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  label="Books Start Date"
-                  type="date"
-                  value={formData.booksStartDate}
-                  onChange={(val) => setFormData({ ...formData, booksStartDate: val })} // Made editable
-                  required
-                  error={errors.booksStartDate}
-                  icon={<Calendar size={18} />}
-                />
-                <FormField
-                  label="Financial Year Start Date"
-                  type="date"
-                  value={formData.fiscalYearStartDate}
-                  onChange={(val) => setFormData({ ...formData, fiscalYearStartDate: val })}
-                  required
-                  error={errors.fiscalYearStartDate}
-                  icon={<Calendar size={18} />}
-                />
-                {/* Financial Year End Date removed as it's auto-calculated */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Default Currency <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.defaultCurrency}
-                    onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {currencies.map(item => (
-                      <option key={item.id} value={item.id}>{item.symbol} {item.name}</option>
-                    ))}
-                  </select>
-                  {errors.defaultCurrency && <p className="mt-2 text-sm text-red-500">{errors.defaultCurrency}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Decimal Places <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.decimalPlaces}
-                    onChange={(e) => setFormData({ ...formData, decimalPlaces: parseInt(e.target.value) })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {decimalPlacesOptions.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.decimalPlaces && <p className="mt-2 text-sm text-red-500">{errors.decimalPlaces}</p>}
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="multiCurrencySupport"
-                    checked={formData.multiCurrencySupport}
-                    onChange={(e) => setFormData({ ...formData, multiCurrencySupport: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="multiCurrencySupport" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Multi-Currency Support
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="autoRounding"
-                    checked={formData.autoRounding}
-                    onChange={(e) => setFormData({ ...formData, autoRounding: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="autoRounding" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Auto Rounding
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Preferences Tab */}
-          {activeTab === 'preferences' && (
-            <div>
-              <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
-                <SlidersHorizontal size={24} className="mr-3 text-[#6AC8A3]" />
-                Company Preferences
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Default Language <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.languagePreference}
-                    onChange={(e) => setFormData({ ...formData, languagePreference: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {languages.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.languagePreference && <p className="mt-2 text-sm text-red-500">{errors.languagePreference}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Date Format <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.dateFormat}
-                    onChange={(e) => setFormData({ ...formData, dateFormat: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {dateFormats.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.dateFormat && <p className="mt-2 text-sm text-red-500">{errors.dateFormat}</p>}
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableBatchTracking"
-                    checked={formData.enableBatchTracking}
-                    onChange={(e) => setFormData({ ...formData, enableBatchTracking: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="enableBatchTracking" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Batch Tracking
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableCostCenterAllocation"
-                    checked={formData.enableCostCenterAllocation}
-                    onChange={(e) => setFormData({ ...formData, enableCostCenterAllocation: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="enableCostCenterAllocation" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Cost Center Allocation
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableMultiUserAccess"
-                    checked={formData.enableMultiUserAccess}
-                    onChange={(e) => setFormData({ ...formData, enableMultiUserAccess: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="enableMultiUserAccess" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Multi-User Access
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="allowAiSuggestions"
-                    checked={formData.allowAiSuggestions}
-                    onChange={(e) => setFormData({ ...formData, allowAiSuggestions: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="allowAiSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow AI Suggestions
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableCompanyPassword"
-                    checked={formData.enableCompanyPassword}
-                    onChange={(e) => setFormData({ ...formData, enableCompanyPassword: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="enableCompanyPassword" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Company Password (Optional)
-                  </label>
-                </div>
-                {formData.enableCompanyPassword && (
-                  <div className="relative">
-                    <FormField
-                      label="Set Company Password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.companyPassword}
-                      onChange={(val) => setFormData({ ...formData, companyPassword: val })}
-                      placeholder="Enter a password for this company"
-                      required
-                      error={errors.companyPassword}
-                      icon={<Lock size={18} />}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
                   </div>
-                )}
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="allowSplitByPeriod"
-                    checked={formData.allowSplitByPeriod}
-                    onChange={(e) => setFormData({ ...formData, allowSplitByPeriod: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="allowSplitByPeriod" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow Split by Period
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="enableBarcodeSupport"
-                    checked={formData.enableBarcodeSupport}
-                    onChange={(e) => setFormData({ ...formData, enableBarcodeSupport: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="enableBarcodeSupport" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Barcode Support
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="allowAutoVoucherCreationAI"
-                    checked={formData.allowAutoVoucherCreationAI}
-                    onChange={(e) => setFormData({ ...formData, allowAutoVoucherCreationAI: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="allowAutoVoucherCreationAI" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Allow Auto-Voucher Creation via AI
-                  </label>
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Company Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.companyType}
-                    onChange={(e) => setFormData({ ...formData, companyType: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {companyTypes.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.companyType && <p className="mt-2 text-sm text-red-500">{errors.companyType}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Employee Count <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.employeeCount}
-                    onChange={(e) => setFormData({ ...formData, employeeCount: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {employeeCounts.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.employeeCount && <p className="mt-2 text-sm text-red-500">{errors.employeeCount}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Annual Revenue <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.annualRevenue}
-                    onChange={(e) => setFormData({ ...formData, annualRevenue: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {revenueRanges.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.annualRevenue && <p className="mt-2 text-sm text-red-500">{errors.annualRevenue}</p>}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
+            {/* Tax Tab */}
+            {activeTab === 'tax' && (
+              <div>
+                <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
+                  <ReceiptText size={24} className="mr-3 text-[#6AC8A3]" />
+                  Tax / Compliance Details
+                </h2>
+                <div className="flex items-center space-x-3 mb-4">
+                  <input
+                    type="checkbox"
+                    id="taxEnabled"
+                    checked={formData.taxConfig.enabled}
+                    onChange={(e) => setFormData({ ...formData, taxConfig: { ...formData.taxConfig, enabled: e.target.checked } })}
+                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    disabled={readOnly}
+                  />
+                  <label htmlFor="taxEnabled" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable {formData.taxSystem} / Tax Management
+                  </label>
+                </div>
+
+                {formData.taxConfig.enabled && (
+                  <>
+                    {formData.taxSystem === 'GST' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          label="GSTIN"
+                          value={formData.gstin}
+                          onChange={(val) => setFormData({ ...formData, gstin: val })}
+                          placeholder="22AAAAA0000A1Z5"
+                          required
+                          error={errors.gstin}
+                          readOnly={readOnly}
+                        />
+                        <FormField
+                          label="PAN"
+                          value={formData.pan}
+                          onChange={(val) => setFormData({ ...formData, pan: val })}
+                          placeholder="AAAAA0000A"
+                          required
+                          error={errors.pan}
+                          readOnly={readOnly}
+                        />
+                        <FormField
+                          label="TAN (Optional)"
+                          value={formData.tan}
+                          onChange={(val) => setFormData({ ...formData, tan: val })}
+                          placeholder="TAN Number"
+                          readOnly={readOnly}
+                        />
+                        <div className="space-y-2">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                            GST Registration Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.gstRegistrationType}
+                            onChange={(e) => setFormData({ ...formData, gstRegistrationType: e.target.value })}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                              ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                            `}
+                            disabled={readOnly}
+                          >
+                            {gstRegistrationTypes.map(item => (
+                              <option key={item.id} value={item.id}>{item.name}</option>
+                            ))}
+                          </select>
+                          {errors.gstRegistrationType && <p className="mt-2 text-sm text-red-500">{errors.gstRegistrationType}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                            Filing Frequency <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.filingFrequency}
+                            onChange={(e) => setFormData({ ...formData, filingFrequency: e.target.value })}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.inputBg} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                              ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                            `}
+                            disabled={readOnly}
+                          >
+                            {filingFrequencies.map(item => (
+                              <option key={item.id} value={item.id}>{item.name}</option>
+                            ))}
+                          </select>
+                          {errors.filingFrequency && <p className="mt-2 text-sm text-red-500">{errors.filingFrequency}</p>}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="tdsApplicable"
+                            checked={formData.tdsApplicable}
+                            onChange={(e) => setFormData({ ...formData, tdsApplicable: e.target.checked })}
+                            className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                            disabled={readOnly}
+                          />
+                          <label htmlFor="tdsApplicable" className={`text-sm font-medium ${theme.textPrimary}`}>
+                            TDS Applicable
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="tcsApplicable"
+                            checked={formData.tcsApplicable}
+                            onChange={(e) => setFormData({ ...formData, tcsApplicable: e.target.checked })}
+                            className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                            disabled={readOnly}
+                          />
+                          <label htmlFor="tcsApplicable" className={`text-sm font-medium ${theme.textPrimary}`}>
+                            TCS Applicable
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {formData.taxSystem === 'VAT' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          label="TRN / VAT Number"
+                          value={formData.trnVatNumber}
+                          onChange={(val) => setFormData({ ...formData, trnVatNumber: val })}
+                          placeholder="TRN / VAT Number"
+                          required
+                          error={errors.trnVatNumber}
+                          readOnly={readOnly}
+                        />
+                        <div className="space-y-2">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                            VAT Registration Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.vatRegistrationType}
+                            onChange={(e) => setFormData({ ...formData, vatRegistrationType: e.target.value })}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                              ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                            `}
+                            disabled={readOnly}
+                          >
+                            {vatRegistrationTypes.map(item => (
+                              <option key={item.id} value={item.id}>{item.name}</option>
+                            ))}
+                          </select>
+                          {errors.vatRegistrationType && <p className="mt-2 text-sm text-red-500">{errors.vatRegistrationType}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                            Filing Cycle <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.filingCycle}
+                            onChange={(e) => setFormData({ ...formData, filingCycle: e.target.value })}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.inputBg} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                              ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+                            `}
+                            disabled={readOnly}
+                          >
+                            {filingCycles.map(item => (
+                              <option key={item.id} value={item.id}>{item.name}</option>
+                            ))}
+                          </select>
+                          {errors.filingCycle && <p className="mt-2 text-sm text-red-500">{errors.filingCycle}</p>}
+                        </div>
+                      </div>
+                    )}
+                    {formData.taxSystem === 'Custom' && (
+                      <div className="text-center py-8">
+                        <AlertTriangle size={48} className="mx-auto text-yellow-500 mb-4" />
+                        <p className={theme.textMuted}>Custom tax system selected. Please configure manually after setup.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Books Tab */}
+            {activeTab === 'books' && (
+              <div>
+                <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
+                  <BookMarked size={24} className="mr-3 text-[#6AC8A3]" />
+                  Books & Financial Period Setup
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    label="Books Start Date"
+                    type="date"
+                    value={formData.booksStartDate}
+                    onChange={(val) => setFormData({ ...formData, booksStartDate: val })} // Made editable
+                    required
+                    error={errors.booksStartDate}
+                    icon={<Calendar size={18} />}
+                    readOnly={readOnly}
+                  />
+                  <FormField
+                    label="Financial Year Start Date"
+                    type="date"
+                    value={formData.fiscalYearStartDate}
+                    onChange={(val) => setFormData({ ...formData, fiscalYearStartDate: val })}
+                    required
+                    error={errors.fiscalYearStartDate}
+                    icon={<Calendar size={18} />}
+                    readOnly={readOnly}
+                  />
+                  {/* Financial Year End Date removed as it's auto-calculated */}
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Default Currency <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.defaultCurrency}
+                      onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                    >
+                      {currencies.map(item => (
+                        <option key={item.id} value={item.id}>{item.symbol} {item.name}</option>
+                      ))}
+                    </select>
+                    {errors.defaultCurrency && <p className="mt-2 text-sm text-red-500">{errors.defaultCurrency}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Decimal Places <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.decimalPlaces}
+                      onChange={(e) => setFormData({ ...formData, decimalPlaces: parseInt(e.target.value) })}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                    >
+                      {decimalPlacesOptions.map(item => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                    {errors.decimalPlaces && <p className="mt-2 text-sm text-red-500">{errors.decimalPlaces}</p>}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="multiCurrencySupport"
+                      checked={formData.multiCurrencySupport}
+                      onChange={(e) => setFormData({ ...formData, multiCurrencySupport: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="multiCurrencySupport" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Multi-Currency Support
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="autoRounding"
+                      checked={formData.autoRounding}
+                      onChange={(e) => setFormData({ ...formData, autoRounding: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="autoRounding" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Auto Rounding
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Preferences Tab */}
+            {activeTab === 'preferences' && (
+              <div>
+                <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
+                  <SlidersHorizontal size={24} className="mr-3 text-[#6AC8A3]" />
+                  Company Preferences
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Default Language <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.languagePreference}
+                      onChange={(e) => setFormData({ ...formData, languagePreference: e.target.value })}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                    >
+                      {languages.map(item => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                    {errors.languagePreference && <p className="mt-2 text-sm text-red-500">{errors.languagePreference}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                      Date Format <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.dateFormat}
+                      onChange={(e) => setFormData({ ...formData, dateFormat: e.target.value })}
+                      className={`
+                        w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                        ${theme.inputBg} ${theme.textPrimary}
+                        focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                      `}
+                    >
+                      {dateFormats.map(item => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                    {errors.dateFormat && <p className="mt-2 text-sm text-red-500">{errors.dateFormat}</p>}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="enableBatchTracking"
+                      checked={formData.enableBatchTracking}
+                      onChange={(e) => setFormData({ ...formData, enableBatchTracking: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="enableBatchTracking" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Batch Tracking
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="enableCostCenterAllocation"
+                      checked={formData.costCenterAllocation}
+                      onChange={(e) => setFormData({ ...formData, costCenterAllocation: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="enableCostCenterAllocation" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Cost Center Allocation
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="enableMultiUserAccess"
+                      checked={formData.enableMultiUserAccess}
+                      onChange={(e) => setFormData({ ...formData, enableMultiUserAccess: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="enableMultiUserAccess" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Multi-User Access
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="allowAiSuggestions"
+                      checked={formData.allowAiSuggestions}
+                      onChange={(e) => setFormData({ ...formData, allowAiSuggestions: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="allowAiSuggestions" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Allow AI Suggestions
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="allowSplitByPeriod"
+                      checked={formData.allowSplitByPeriod}
+                      onChange={(e) => setFormData({ ...formData, allowSplitByPeriod: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="allowSplitByPeriod" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Allow Split by Period
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="enableBarcodeSupport"
+                      checked={formData.enableBarcodeSupport}
+                      onChange={(e) => setFormData({ ...formData, enableBarcodeSupport: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="enableBarcodeSupport" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Barcode Support
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="allowAutoVoucherCreationAI"
+                      checked={formData.allowAutoVoucherCreationAI}
+                      onChange={(e) => setFormData({ ...formData, allowAutoVoucherCreationAI: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="allowAutoVoucherCreationAI" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Allow Auto-Voucher Creation via AI
+                    </label>
+                  </div>
+                  {/* Company Password (Optional) checkbox and field */}
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="enableCompanyPassword"
+                      checked={formData.enableCompanyPassword}
+                      onChange={(e) => setFormData({ ...formData, enableCompanyPassword: e.target.checked })}
+                      className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                    />
+                    <label htmlFor="enableCompanyPassword" className={`text-sm font-medium ${theme.textPrimary}`}>
+                      Enable Company Password
+                    </label>
+                  </div>
+                  {formData.enableCompanyPassword && (
+                    <div className="relative">
+                      <FormField
+                        label="Set Company Password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.companyPassword}
+                        onChange={(val) => setFormData({ ...formData, companyPassword: val })}
+                        placeholder="Enter a password for this company"
+                        required
+                        error={errors.companyPassword}
+                        icon={<Lock size={18} />}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+ 
           {/* Error/Success Messages */}
           {errors.submit && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1486,14 +1318,40 @@ function CompanySettings() {
             </div>
           )}
 
-          <div className="flex justify-end mt-6">
-            <Button
-              onClick={handleSave}
-              disabled={loading}
-              icon={<Save size={16} />}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-6 border-t border-gray-200">
+            {activeTab !== tabs[0].id && (
+              <Button
+                variant="outline"
+                onClick={handlePreviousTab}
+                icon={<ArrowLeft size={16} />}
+                disabled={loading}
+              >
+                Previous
+              </Button>
+            )}
+            {activeTab !== tabs[tabs.length - 1].id ? (
+              <Button
+                onClick={handleNextTab}
+                icon={<ArrowRight size={16} />}
+                className="ml-auto"
+                disabled={loading}
+              >
+                Next
+              </Button>
+            ) : (
+              // Only show Save button if not in readOnly mode
+              !readOnly && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  icon={<Save size={16} />}
+                  className="ml-auto"
+                >
+                  {loading ? 'Saving...' : (companyToEdit ? 'Save Changes' : 'Create Company')}
+                </Button>
+              )
+            )}
           </div>
         </div>
       </Card>
@@ -1501,4 +1359,4 @@ function CompanySettings() {
   );
 }
 
-export default CompanySettings;
+export default CompanySetup; 

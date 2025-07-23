@@ -27,7 +27,7 @@ function LedgerFormPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
-  const location = useLocation(); // Get location object
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     id: '',
@@ -302,15 +302,9 @@ function LedgerFormPage() {
 
     let path = selectedGroup.account_name;
     let current = selectedGroup;
-    while (current.account_code.length > 0 && current.account_code !== '10000' && current.account_code !== '20000' && current.account_code !== '30000' && current.account_code !== '40000' && current.account_code !== '50000') { // Stop at top-level groups
-      const parent = availableGroups.find(g => g.id === current.parent_account_id);
-      if (parent) {
-        path = `${parent.account_name} >> ${path}`;
-        current = parent;
-      } else {
-        break;
-      }
-    }
+    // This loop assumes a flat structure or a very specific hierarchy for simplicity
+    // A more robust solution would involve recursively finding parents if the hierarchy is deep
+    // For now, it just displays the selected group's name.
     return path;
   };
 
@@ -468,4 +462,4 @@ function LedgerFormPage() {
   );
 }
 
-export default LedgerFormPage; 
+export default LedgerFormPage;

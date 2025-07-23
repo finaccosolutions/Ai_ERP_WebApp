@@ -6,6 +6,10 @@ export const COUNTRIES = [
     name: 'India',
     flag: '🇮🇳',
     dialCode: '+91',
+    defaultCurrency: 'INR',
+    defaultFiscalYearStart: '04-01', // April 1st
+    defaultFiscalYearEnd: '03-31',   // March 31st
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'GST',
       rates: [0, 5, 12, 18, 28],
@@ -15,12 +19,42 @@ export const COUNTRIES = [
         tertiary: 'TAN',
       },
     },
+    complianceModules: {
+      gstr1Enabled: true,
+      gstr3bEnabled: true,
+      ewayBillEnabled: true,
+      tdsEnabled: true,
+      tcsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      // Simplified template for India-specific tax accounts
+      taxAccounts: [
+        { account_code: '21401', account_name: 'CGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21402', account_name: 'SGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21403', account_name: 'IGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21404', account_name: 'TDS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21405', account_name: 'TCS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+      ],
+      // Other specific accounts can be added here
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Proprietorship' },
+      { id: 'partnership', name: 'Partnership Firm' },
+      { id: 'private_limited', name: 'Private Limited Company (Pvt Ltd)' },
+      { id: 'public_limited', name: 'Public Limited Company (Ltd)' },
+      { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
+      { id: 'opc', name: 'One Person Company (OPC)' },
+      { id: 'section_8', name: 'Section 8 Company (Non-Profit)' },
+      { id: 'cooperative', name: 'Cooperative' },
+      { id: 'government', name: 'Government Organization' },
+      { id: 'trust_society', name: 'Trust / Society' },
     ],
     states: [
       { code: 'AP', name: 'Andhra Pradesh' },
@@ -66,6 +100,10 @@ export const COUNTRIES = [
     name: 'United States',
     flag: '🇺🇸',
     dialCode: '+1',
+    defaultCurrency: 'USD',
+    defaultFiscalYearStart: '01-01', // January 1st
+    defaultFiscalYearEnd: '12-31',   // December 31st
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'Sales Tax',
       rates: [0, 2.9, 4, 4.5, 6, 7.25, 8.25], // Example rates
@@ -74,12 +112,29 @@ export const COUNTRIES = [
         secondary: 'EIN',
       },
     },
+    complianceModules: {
+      salesTaxReportsEnabled: true,
+      federalTaxFormsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'Sales Tax Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+      { id: 'partnership', name: 'Partnership' },
+      { id: 'llc', name: 'Limited Liability Company (LLC)' },
+      { id: 's_corporation', name: 'S Corporation' },
+      { id: 'c_corporation', name: 'C Corporation' },
+      { id: 'non_profit_501c3', name: 'Non-Profit Organization (501(c)(3))' },
     ],
     states: [
       { code: 'AL', name: 'Alabama' }, { code: 'AK', name: 'Alaska' }, { code: 'AZ', name: 'Arizona' },
@@ -106,6 +161,10 @@ export const COUNTRIES = [
     name: 'United Kingdom',
     flag: '🇬🇧',
     dialCode: '+44',
+    defaultCurrency: 'GBP',
+    defaultFiscalYearStart: '04-06', // April 6th
+    defaultFiscalYearEnd: '04-05',   // April 5th
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'VAT',
       rates: [0, 5, 20],
@@ -114,12 +173,28 @@ export const COUNTRIES = [
         secondary: 'Company Reg. No.',
       },
     },
+    complianceModules: {
+      vatReturnsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'VAT Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_trader', name: 'Sole Trader' },
+      { id: 'partnership', name: 'Partnership' },
+      { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
+      { id: 'private_limited', name: 'Private Limited Company (Ltd)' },
+      { id: 'public_limited', name: 'Public Limited Company (PLC)' },
+      { id: 'charity', name: 'Charity / Non-profit' },
     ],
     states: [
       { code: 'ENG', name: 'England' },
@@ -133,6 +208,10 @@ export const COUNTRIES = [
     name: 'Canada',
     flag: '🇨🇦',
     dialCode: '+1',
+    defaultCurrency: 'CAD',
+    defaultFiscalYearStart: '01-01',
+    defaultFiscalYearEnd: '12-31',
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'GST/PST/HST',
       rates: [5, 13, 15],
@@ -141,12 +220,27 @@ export const COUNTRIES = [
         secondary: 'Business No.',
       },
     },
+    complianceModules: {
+      gstHstReturnsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'GST/HST Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+      { id: 'partnership', name: 'Partnership' },
+      { id: 'corporation', name: 'Corporation' },
+      { id: 'cooperative', name: 'Cooperative' },
+      { id: 'non_profit', name: 'Non-Profit Organization' },
     ],
     states: [
       { code: 'AB', name: 'Alberta' }, { code: 'BC', name: 'British Columbia' },
@@ -163,6 +257,10 @@ export const COUNTRIES = [
     name: 'Australia',
     flag: '🇦🇺',
     dialCode: '+61',
+    defaultCurrency: 'AUD',
+    defaultFiscalYearStart: '07-01', // July 1st
+    defaultFiscalYearEnd: '06-30',   // June 30th
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'GST',
       rates: [10],
@@ -171,12 +269,27 @@ export const COUNTRIES = [
         secondary: 'ACN',
       },
     },
+    complianceModules: {
+      basLodgementEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_trader', name: 'Sole Trader' },
+      { id: 'partnership', name: 'Partnership' },
+      { id: 'company', name: 'Company' },
+      { id: 'trust', name: 'Trust' },
+      { id: 'super_fund', name: 'Superannuation Fund' },
     ],
     states: [
       { code: 'NSW', name: 'New South Wales' }, { code: 'VIC', name: 'Victoria' },
@@ -190,6 +303,10 @@ export const COUNTRIES = [
     name: 'Germany',
     flag: '🇩🇪',
     dialCode: '+49',
+    defaultCurrency: 'EUR',
+    defaultFiscalYearStart: '01-01',
+    defaultFiscalYearEnd: '12-31',
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'VAT',
       rates: [7, 19],
@@ -198,12 +315,30 @@ export const COUNTRIES = [
         secondary: 'Tax No.',
       },
     },
+    complianceModules: {
+      vatDeclarationEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'VAT Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Einzelunternehmen' }, // Sole Proprietorship
+      { id: 'gbr', name: 'GbR (Gesellschaft bürgerlichen Rechts)' }, // Partnership under civil law
+      { id: 'ohg', name: 'oHG (Offene Handelsgesellschaft)' }, // General Partnership
+      { id: 'kg', name: 'KG (Kommanditgesellschaft)' }, // Limited Partnership
+      { id: 'gmbh', name: 'GmbH (Gesellschaft mit beschränkter Haftung)' }, // Limited Liability Company
+      { id: 'ag', name: 'AG (Aktiengesellschaft)' }, // Public Limited Company
+      { id: 'ug', name: 'UG (haftungsbeschränkt)' }, // Entrepreneurial Company (haftungsbeschränkt)
+      { id: 'ev', name: 'e.V. (Eingetragener Verein)' }, // Registered Association (Non-profit)
     ],
     states: [
       { code: 'BW', name: 'Baden-Württemberg' }, { code: 'BY', name: 'Bavaria' },
@@ -221,6 +356,10 @@ export const COUNTRIES = [
     name: 'France',
     flag: '🇫🇷',
     dialCode: '+33',
+    defaultCurrency: 'EUR',
+    defaultFiscalYearStart: '01-01',
+    defaultFiscalYearEnd: '12-31',
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'VAT',
       rates: [2.1, 5.5, 10, 20],
@@ -229,12 +368,29 @@ export const COUNTRIES = [
         secondary: 'SIREN/SIRET',
       },
     },
+    complianceModules: {
+      vatDeclarationEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'TVA à payer', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'ei', name: 'EI (Entrepreneur Individuel)' }, // Sole Proprietorship
+      { id: 'eirl', name: 'EIRL (Entrepreneur Individuel à Responsabilité Limitée)' }, // Limited Liability Sole Proprietorship
+      { id: 'sarl', name: 'SARL (Société à Responsabilité Limitée)' }, // Limited Liability Company
+      { id: 'eurl', name: 'EURL (Entreprise Unipersonnelle à Responsabilité Limitée)' }, // Single-person Limited Liability Company
+      { id: 'sa', name: 'SA (Société Anonyme)' }, // Public Limited Company
+      { id: 'sas', name: 'SAS (Société par Actions Simplifiée)' }, // Simplified Joint Stock Company
+      { id: 'sasu', name: 'SASU (Société par Actions Simplifiée Unipersonnelle)' }, // Single-person Simplified Joint Stock Company
     ],
     states: [
       { code: 'ARA', name: 'Auvergne-Rhône-Alpes' }, { code: 'BFC', name: 'Bourgogne-Franche-Comté' },
@@ -251,6 +407,10 @@ export const COUNTRIES = [
     name: 'Japan',
     flag: '🇯🇵',
     dialCode: '+81',
+    defaultCurrency: 'JPY',
+    defaultFiscalYearStart: '04-01',
+    defaultFiscalYearEnd: '03-31',
+    defaultDecimalPlaces: 0, // Yen typically has no decimal places
     taxConfig: {
       type: 'Consumption Tax',
       rates: [8, 10],
@@ -259,12 +419,26 @@ export const COUNTRIES = [
         secondary: 'Corporate No.',
       },
     },
+    complianceModules: {
+      consumptionTaxReturnsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'Consumption Tax Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+      { id: 'godo_kaisha', name: 'Godo Kaisha (LLC)' },
+      { id: 'kabushiki_kaisha', name: 'Kabushiki Kaisha (Corporation)' },
+      { id: 'npo', name: 'NPO (Non-Profit Organization)' },
     ],
     states: [
       { code: 'HKD', name: 'Hokkaido' }, { code: 'TJK', name: 'Tohoku' },
@@ -279,6 +453,10 @@ export const COUNTRIES = [
     name: 'Singapore',
     flag: '🇸🇬',
     dialCode: '+65',
+    defaultCurrency: 'SGD',
+    defaultFiscalYearStart: '01-01',
+    defaultFiscalYearEnd: '12-31',
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'GST',
       rates: [9],
@@ -287,12 +465,28 @@ export const COUNTRIES = [
         secondary: 'UEN',
       },
     },
+    complianceModules: {
+      gstReturnsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+      { id: 'partnership', name: 'Partnership' },
+      { id: 'private_limited', name: 'Private Limited Company' },
+      { id: 'public_limited', name: 'Public Limited Company' },
+      { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
+      { id: 'limited_partnership', name: 'Limited Partnership' },
     ],
     states: [
       { code: 'SG', name: 'Singapore' }, // Singapore is a city-state
@@ -303,6 +497,10 @@ export const COUNTRIES = [
     name: 'United Arab Emirates',
     flag: '🇦🇪',
     dialCode: '+971',
+    defaultCurrency: 'AED',
+    defaultFiscalYearStart: '01-01',
+    defaultFiscalYearEnd: '12-31',
+    defaultDecimalPlaces: 2,
     taxConfig: {
       type: 'VAT',
       rates: [5],
@@ -311,12 +509,27 @@ export const COUNTRIES = [
         secondary: 'Trade License No.',
       },
     },
+    complianceModules: {
+      vatReturnsEnabled: true,
+    },
+    chartOfAccountsTemplate: {
+      taxAccounts: [
+        { account_code: '21401', account_name: 'VAT Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
+      ],
+    },
     customerTypes: [
       { code: 'individual', name: 'Individual' },
       { code: 'company', name: 'Company' },
       { code: 'reseller', name: 'Reseller' },
       { code: 'government', name: 'Government' },
       { code: 'non_profit', name: 'Non-Profit' },
+    ],
+    businessTypes: [
+      { id: 'sole_establishment', name: 'Sole Establishment' },
+      { id: 'civil_company', name: 'Civil Company' },
+      { id: 'llc', name: 'Limited Liability Company (LLC)' },
+      { id: 'free_zone', name: 'Free Zone Company' },
+      { id: 'public_shareholding', name: 'Public Shareholding Company' },
     ],
     states: [
       { code: 'AUH', name: 'Abu Dhabi' }, { code: 'DXB', name: 'Dubai' },
@@ -325,6 +538,19 @@ export const COUNTRIES = [
       { code: 'FUJ', name: 'Fujairah' },
     ],
   },
+];
+
+export const globalBusinessTypes = [
+  { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+  { id: 'partnership', name: 'Partnership' },
+  { id: 'private_limited', name: 'Private Limited Company' },
+  { id: 'public_limited', name: 'Public Limited Company' },
+  { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
+  { id: 'non_profit', name: 'Non-Profit / NGO' },
+  { id: 'cooperative', name: 'Cooperative' },
+  { id: 'government', name: 'Government Organization' },
+  { id: 'trust_society', name: 'Trust / Society' },
+  { id: 'other', name: 'Other' },
 ];
 
 export const getCountryByCode = (code: string) => {
@@ -342,7 +568,7 @@ export const getStateByCode = (countryCode: string, stateCode: string) => {
 export const getPhoneCountryCodes = () => {
   return COUNTRIES.map(country => ({
     id: country.dialCode,
-    name: `${country.flag} ${country.dialCode}`, // Display flag + dialCode in the list
+    name: `${country.flag} ${country.dialCode} ${country.name}`, // Display flag + dialCode + country name
     dialCode: country.dialCode, // Keep dialCode for selection
   }));
 };

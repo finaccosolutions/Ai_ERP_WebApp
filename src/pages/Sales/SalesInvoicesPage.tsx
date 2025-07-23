@@ -14,7 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useNotification } from '../../contexts/NotificationContext';
 import { COUNTRIES, getCountryByCode, getStateByCode } from '../../constants/geoData';
-import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
+import ConfirmationModal from '../../components/UI/ConfirmationModal';
 
 // Interface for Invoice Items
 interface InvoiceItem {
@@ -258,7 +258,8 @@ function SalesInvoicesPage() {
           id, item_code, item_name, description, standard_rate, tax_rate, hsn_code,
           units_of_measure ( name )
         `)
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .eq('is_active', true);
       if (itemsError) throw itemsError;
       setStockItems(itemsData.map(item => ({
         id: item.id,
@@ -877,7 +878,7 @@ function SalesInvoicesPage() {
                       <MasterSelectField
                         label="Place of Supply (State)"
                         value={invoice.placeOfSupply}
-                        onValueChange={(value) => handleInvoiceChange('placeOfSupply', value)}
+                        onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
                         onSelect={(id, name) => handleInvoiceChange('placeOfSupply', name)}
                         options={getStatesForCountry(customerDetails?.billing_address?.country || currentCompany?.country || 'IN')}
                         placeholder="Select State"
@@ -930,7 +931,7 @@ function SalesInvoicesPage() {
                                 label="Qty"
                                 type="number"
                                 value={item.quantity.toString()}
-                                onChange={(value) => updateItem(index, 'quantity', parseFloat(value) || 0)}
+                                onChange={(val) => updateItem(index, 'quantity', parseFloat(val) || 0)}
                                 required
                                 readOnly={isViewMode}
                               />
@@ -947,7 +948,7 @@ function SalesInvoicesPage() {
                                 label="Rate"
                                 type="number"
                                 value={item.rate.toString()}
-                                onChange={(value) => updateItem(index, 'rate', parseFloat(value) || 0)}
+                                onChange={(val) => updateItem(index, 'rate', parseFloat(val) || 0)}
                                 required
                                 readOnly={isViewMode}
                               />
@@ -957,7 +958,7 @@ function SalesInvoicesPage() {
                                 label="Discount (%)"
                                 type="number"
                                 value={item.discountValue.toString()}
-                                onChange={(value) => updateItem(index, 'discountValue', parseFloat(value) || 0)}
+                                onChange={(val) => updateItem(index, 'discountValue', parseFloat(val) || 0)}
                                 readOnly={isViewMode}
                               />
                             </div>
@@ -966,7 +967,7 @@ function SalesInvoicesPage() {
                                 label="Tax Rate (%)"
                                 type="number"
                                 value={item.taxRate.toString()}
-                                onChange={(value) => updateItem(index, 'taxRate', parseFloat(value) || 0)}
+                                onChange={(val) => updateItem(index, 'taxRate', parseFloat(val) || 0)}
                                 readOnly={isViewMode}
                               />
                             </div>
@@ -1057,6 +1058,48 @@ function SalesInvoicesPage() {
                               )}
                             </div>
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* Tax Details Section */}
+                  <Card className="p-6">
+                    <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Tax Details</h4>
+                    <div className="space-y-4">
+                      {taxRows.length === 0 && !isViewMode ? (
+                        <div className="text-center text-gray-500 py-4">
+                          No tax details generated. Select customer and items to calculate tax.
+                        </div>
+                      ) : taxRows.map((row, index) => (
+                        <div key={row.id} className={`p-4 border ${theme.borderColor} rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-center`}>
+                          <FormField
+                            label="Tax Name"
+                            value={row.accountName}
+                            readOnly
+                          />
+                          <FormField
+                            label="Percentage (%)"
+                            type="number"
+                            value={row.percentage.toString()}
+                            readOnly={isViewMode}
+                            onChange={(val) => updateTaxRow(index, 'percentage', parseFloat(val) || 0)}
+                          />
+                          <FormField
+                            label="Amount"
+                            type="number"
+                            value={row.amount.toString()}
+                            readOnly
+                          />
+                          {!isViewMode && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 size={16} />}
+                              onClick={() => setTaxRows(prev => prev.filter((_, i) => i !== index))}
+                              className="text-red-600 hover:text-red-800"
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

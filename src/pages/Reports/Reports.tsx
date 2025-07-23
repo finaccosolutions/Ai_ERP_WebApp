@@ -1,12 +1,19 @@
 import React from 'react';
-import { BarChart3, TrendingUp, FileText, Download, Plus } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Download, Plus, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useCompany } from '../../contexts/CompanyContext';
+import { COUNTRIES } from '../../constants/geoData'; // Import COUNTRIES
 
 function Reports() {
   const { theme } = useTheme();
+  const { currentCompany } = useCompany();
+
+  // Get country-specific compliance modules
+  const countryConfig = COUNTRIES.find(c => c.code === currentCompany?.country);
+  const complianceModules = countryConfig?.complianceModules || {};
 
   const reportCategories = [
     { name: 'Financial Reports', count: 25, icon: TrendingUp, color: 'bg-blue-500' },
@@ -20,6 +27,44 @@ function Reports() {
     { name: 'Sales Summary', category: 'Sales', lastGenerated: '1 day ago' },
     { name: 'Inventory Valuation', category: 'Inventory', lastGenerated: '3 days ago' },
   ];
+
+  // Dynamically add compliance reports based on country config
+  if (complianceModules.gstr1Enabled) {
+    popularReports.push({ name: 'GSTR-1 Report', category: 'Compliance', lastGenerated: '1 week ago' });
+  }
+  if (complianceModules.gstr3bEnabled) {
+    popularReports.push({ name: 'GSTR-3B Report', category: 'Compliance', lastGenerated: '1 week ago' });
+  }
+  if (complianceModules.ewayBillEnabled) {
+    popularReports.push({ name: 'E-Way Bill Report', category: 'Compliance', lastGenerated: '2 days ago' });
+  }
+  if (complianceModules.vatReturnsEnabled) {
+    popularReports.push({ name: 'VAT Return Report', category: 'Compliance', lastGenerated: '3 weeks ago' });
+  }
+  if (complianceModules.salesTaxReportsEnabled) {
+    popularReports.push({ name: 'Sales Tax Report', category: 'Compliance', lastGenerated: '2 weeks ago' });
+  }
+  if (complianceModules.consumptionTaxReturnsEnabled) {
+    popularReports.push({ name: 'Consumption Tax Report', category: 'Compliance', lastGenerated: '1 month ago' });
+  }
+  if (complianceModules.basLodgementEnabled) {
+    popularReports.push({ name: 'BAS Lodgement Report', category: 'Compliance', lastGenerated: '1 month ago' });
+  }
+  if (complianceModules.federalTaxFormsEnabled) {
+    popularReports.push({ name: 'Federal Tax Forms', category: 'Compliance', lastGenerated: '2 months ago' });
+  }
+  if (complianceModules.gstHstReturnsEnabled) {
+    popularReports.push({ name: 'GST/HST Returns', category: 'Compliance', lastGenerated: '1 month ago' });
+  }
+  if (complianceModules.tdsEnabled) {
+    popularReports.push({ name: 'TDS Report', category: 'Compliance', lastGenerated: '1 week ago' });
+  }
+  if (complianceModules.tcsEnabled) {
+    popularReports.push({ name: 'TCS Report', category: 'Compliance', lastGenerated: '1 week ago' });
+  }
+  if (complianceModules.vatDeclarationEnabled) {
+    popularReports.push({ name: 'VAT Declaration', category: 'Compliance', lastGenerated: '2 weeks ago' });
+  }
 
   return (
     <div className="space-y-6">

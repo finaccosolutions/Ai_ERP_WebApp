@@ -30,11 +30,13 @@ import { useCompany } from '../../contexts/CompanyContext';
 import FormField from '../../components/UI/FormField';
 
 // Import all inventory sub-module pages
-import ItemMasterPage from './masters/ItemMasterPage';
+import ItemMasterListPage from './masters/ItemMasterListPage'; // UPDATED IMPORT
+import ItemMasterFormPage from './masters/ItemMasterFormPage'; // NEW IMPORT
 import ItemCategoriesGroupsPage from './masters/ItemCategoriesGroupsPage';
 import UnitsOfMeasurePage from './masters/UnitsOfMeasurePage';
 import WarehousesPage from './masters/WarehousesPage';
-import ItemGroupsPage from './masters/ItemGroupsPage'; // NEW: Import ItemGroupsPage
+import ItemGroupListPage from './masters/ItemGroupListPage'; // UPDATED IMPORT
+import ItemGroupFormPage from './masters/ItemGroupFormPage'; // NEW IMPORT
 
 import StockJournalPage from './transactions/StockJournalPage';
 import StockTransfersPage from './transactions/StockTransfersPage';
@@ -389,11 +391,13 @@ function Inventory() {
   if (!isMainInventoryPage) {
     return (
       <Routes>
-        <Route path="/masters/items" element={<ItemMasterPage />} />
-        <Route path="/masters/items/new" element={<ItemMasterPage />} />
-        <Route path="/masters/items/edit/:id" element={<ItemMasterPage />} />
+        <Route path="/masters/items" element={<ItemMasterListPage />} /> {/* UPDATED */}
+        <Route path="/masters/items/new" element={<ItemMasterFormPage />} /> {/* NEW */}
+        <Route path="/masters/items/edit/:id" element={<ItemMasterFormPage />} /> {/* NEW */}
         <Route path="/masters/categories-groups" element={<ItemCategoriesGroupsPage />} />
-        <Route path="/masters/item-groups" element={<ItemGroupsPage />} />
+        <Route path="/masters/item-groups" element={<ItemGroupListPage />} /> {/* UPDATED */}
+        <Route path="/masters/item-groups/new" element={<ItemGroupFormPage />} /> {/* NEW */}
+        <Route path="/masters/item-groups/edit/:id" element={<ItemGroupFormPage />} /> {/* NEW */}
         <Route path="/masters/units" element={<UnitsOfMeasurePage />} />
         <Route path="/masters/warehouses" element={<WarehousesPage />} />
 
@@ -722,4 +726,3 @@ function Inventory() {
 }
 
 export default Inventory;
-

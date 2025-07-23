@@ -13,7 +13,7 @@ interface Company {
   timezone: string;
   logo?: string;
   taxConfig: {
-    type: 'GST' | 'VAT' | 'Custom';
+    type: 'GST' | 'VAT' | 'Custom' | 'Sales Tax' | 'Consumption Tax' | 'GST/PST/HST'; // Added more types
     rates: number[];
     enabled: boolean;
     registrationNumber: string;
@@ -303,4 +303,3 @@ export function useCompany() {
   }
   return context;
 }
-

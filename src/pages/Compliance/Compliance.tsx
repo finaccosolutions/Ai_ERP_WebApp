@@ -5,10 +5,16 @@ import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCompany } from '../../contexts/CompanyContext';
+import { COUNTRIES } from '../../constants/geoData'; // Import COUNTRIES
 
 function Compliance() {
   const { theme } = useTheme();
   const { currentCompany } = useCompany();
+
+  // Get country-specific compliance modules
+  const countryConfig = COUNTRIES.find(c => c.code === currentCompany?.country);
+  const complianceModules = countryConfig?.complianceModules || {};
+  const taxType = currentCompany?.taxConfig.type || 'GST';
 
   const complianceStats = [
     { name: 'Tax Returns', value: '12', icon: FileText, color: 'bg-blue-500' },
@@ -17,7 +23,45 @@ function Compliance() {
     { name: 'Audits', value: '2', icon: Shield, color: 'bg-purple-500' },
   ];
 
-  const taxType = currentCompany?.taxConfig.type || 'GST';
+  const upcomingDeadlines = [];
+
+  // Dynamically add deadlines based on compliance modules
+  if (complianceModules.gstr1Enabled) {
+    upcomingDeadlines.push({ title: 'GSTR-1 Filing', due: '2024-01-20', priority: 'high' });
+  }
+  if (complianceModules.gstr3bEnabled) {
+    upcomingDeadlines.push({ title: 'GSTR-3B Filing', due: '2024-01-20', priority: 'high' });
+  }
+  if (complianceModules.ewayBillEnabled) {
+    upcomingDeadlines.push({ title: 'E-Way Bill Reconciliation', due: '2024-01-25', priority: 'medium' });
+  }
+  if (complianceModules.tdsEnabled) {
+    upcomingDeadlines.push({ title: 'TDS Return', due: '2024-01-31', priority: 'medium' });
+  }
+  if (complianceModules.tcsEnabled) {
+    upcomingDeadlines.push({ title: 'TCS Return', due: '2024-01-31', priority: 'medium' });
+  }
+  if (complianceModules.vatReturnsEnabled) {
+    upcomingDeadlines.push({ title: 'VAT Return Filing', due: '2024-02-15', priority: 'high' });
+  }
+  if (complianceModules.salesTaxReportsEnabled) {
+    upcomingDeadlines.push({ title: 'Sales Tax Filing', due: '2024-02-20', priority: 'high' });
+  }
+  if (complianceModules.consumptionTaxReturnsEnabled) {
+    upcomingDeadlines.push({ title: 'Consumption Tax Filing', due: '2024-03-10', priority: 'high' });
+  }
+  if (complianceModules.basLodgementEnabled) {
+    upcomingDeadlines.push({ title: 'BAS Lodgement', due: '2024-03-20', priority: 'high' });
+  }
+  if (complianceModules.federalTaxFormsEnabled) {
+    upcomingDeadlines.push({ title: 'Federal Tax Forms', due: '2024-04-15', priority: 'medium' });
+  }
+  if (complianceModules.gstHstReturnsEnabled) {
+    upcomingDeadlines.push({ title: 'GST/HST Returns', due: '2024-04-30', priority: 'high' });
+  }
+  if (complianceModules.vatDeclarationEnabled) {
+    upcomingDeadlines.push({ title: 'VAT Declaration', due: '2024-05-10', priority: 'high' });
+  }
 
   return (
     <div className="space-y-6">
@@ -54,26 +98,28 @@ function Compliance() {
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Deadlines</h3>
         <div className="space-y-3">
-          {[
-            { title: 'GST Return Filing', due: '2024-01-20', priority: 'high' },
-            { title: 'TDS Return', due: '2024-01-25', priority: 'medium' },
-            { title: 'Annual Filing', due: '2024-03-31', priority: 'low' },
-          ].map((item, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium text-gray-900">{item.title}</p>
-                <p className="text-sm text-gray-600">Due: {item.due}</p>
+          {upcomingDeadlines.length > 0 ? (
+            upcomingDeadlines.map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{item.title}</p>
+                  <p className="text-sm text-gray-600">Due: {item.due}</p>
+                </div>
+                <span className={`
+                  px-2 py-1 text-xs rounded-full
+                  ${item.priority === 'high' ? 'bg-red-100 text-red-800' :
+                    item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'}
+                `}>
+                  {item.priority} priority
+                </span>
               </div>
-              <span className={`
-                px-2 py-1 text-xs rounded-full
-                ${item.priority === 'high' ? 'bg-red-100 text-red-800' :
-                  item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'}
-              `}>
-                {item.priority} priority
-              </span>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No upcoming compliance deadlines found for your country.
             </div>
-          ))}
+          )}
         </div>
       </Card>
     </div>
