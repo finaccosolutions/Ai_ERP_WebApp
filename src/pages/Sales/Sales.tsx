@@ -86,7 +86,7 @@ function Sales() {
     salesReturns: { count: '0', totalAmount: '0' },
     priceLists: { count: '0' },
     customerOutstanding: { count: '0', totalAmount: '0' },
-    customerAgingReport: { count: '0' },
+    customerAgingReport: { count: '0', totalAmount: '0' },
     salesAnalysis: { count: '0' },
     salesRegister: { count: '0' },
     customerWiseSalesSummary: { count: '0' },
@@ -110,12 +110,14 @@ function Sales() {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   useEffect(() => {
+    console.log('Sales.tsx: useEffect triggered. currentCompany?.id:', currentCompany?.id); // ADDED LOG
     if (currentCompany?.id) {
       fetchSalesData(currentCompany.id);
     }
   }, [currentCompany?.id, filterCriteria]); // Re-fetch data when filterCriteria changes
 
   const fetchSalesData = async (companyId: string) => {
+    console.log('Sales.tsx: fetchSalesData called with companyId:', companyId); // ADDED LOG
     setIsLoadingSalesData(true);
     try {
       // Base query for sales invoices
@@ -124,19 +126,14 @@ function Sales() {
         .select('id, invoice_no, total_amount, invoice_date, status, customers(name)', { count: 'exact' })
         .eq('company_id', companyId);
 
-      // Apply filters
-      if (filterCriteria.startDate) {
-        salesInvoicesQuery = salesInvoicesQuery.gte('invoice_date', filterCriteria.startDate);
-      }
-      if (filterCriteria.endDate) {
-        salesInvoicesQuery = salesInvoicesQuery.lte('invoice_date', filterCriteria.endDate);
-      }
-      if (filterCriteria.customerName) {
-        salesInvoicesQuery = salesInvoicesQuery.ilike('customers.name', `%${filterCriteria.customerName}%`);
-      }
-
+      console.log('Sales.tsx: Initiating salesInvoicesQuery...'); // ADDED LOG
       const { data: salesInvoicesData, count: salesInvoicesCount, error: salesInvoicesError } = await salesInvoicesQuery;
-      if (salesInvoicesError) throw salesInvoicesError;
+      
+      if (salesInvoicesError) {
+        console.error('Sales.tsx: salesInvoicesQuery error:', salesInvoicesError); // ADDED LOG
+        throw salesInvoicesError;
+      }
+      console.log('Sales.tsx: salesInvoicesQuery result - data:', salesInvoicesData, 'error:', salesInvoicesError); // ADDED LOG
 
       // Fetch other counts (simplified, not applying filters to all for brevity)
       const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
@@ -190,7 +187,7 @@ function Sales() {
       })));
 
     } catch (error) {
-      console.error('Error fetching sales data:', error);
+      console.error('Error fetching sales data:', error); // ENSURED LOG IS PRESENT
     } finally {
       setIsLoadingSalesData(false);
     }
@@ -298,7 +295,7 @@ function Sales() {
       title: 'Masters',
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
-        { name: 'Customer Master', description: 'Manage customer profiles', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
+        { name: 'Customer Master', description: 'Define and manage all products and services.', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
         { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups.count, totalAmount: null },
         { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists.count, totalAmount: null },
       ]

@@ -139,8 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', supabaseUser.id);
 
       console.log('AuthContext.tsx: handleAuthUser: User profile select query completed.');
-      console.log('AuthContext.tsx: handleAuthUser: User profile select query result data:', fetchedProfileArray);
-      console.log('AuthContext.tsx: handleAuthUser: User profile select query result error:', fetchError);
+      console.log('AuthContext.tsx: handleAuthUser: User profile select query result data:', fetchedProfileArray); // ADDED LOG
+      console.log('AuthContext.tsx: handleAuthUser: User profile select query result error:', fetchError); // ADDED LOG
 
       const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
 
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('AuthContext.tsx: handleAuthUser: Error fetching user companies:', userCompaniesError);
         throw userCompaniesError;
       }
-      console.log('AuthContext.tsx: handleAuthUser: User companies fetched successfully:', userCompanies);
+      console.log('AuthContext.tsx: handleAuthUser: User companies fetched successfully:', userCompanies); // ADDED LOG
 
       // For simplicity, we'll take the role from the first company if multiple exist
       // A more complex app might handle roles per company or aggregate permissions
@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         preferences: profile?.preferences || {}, // Include preferences
       };
 
-      console.log('AuthContext.tsx: handleAuthUser: Setting user and authentication states.');
+      console.log('AuthContext.tsx: handleAuthUser: Setting user and authentication states with userData:', userData); // ADDED LOG
       setUser(userData);
       setIsAuthenticated(true);
       console.log('AuthContext.tsx: handleAuthUser: User and isAuthenticated states updated.');
@@ -313,4 +313,3 @@ export function useAuth() {
   }
   return context;
 }
-

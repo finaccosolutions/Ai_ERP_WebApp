@@ -109,6 +109,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    console.log('CompanyContext.tsx: useEffect triggered. isAuthenticated:', isAuthenticated, 'user ID:', user?.id); // ADDED LOG
     if (isAuthenticated && user) {
       loadUserCompanies();
     } else {
@@ -180,6 +181,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       })) || [];
 
       setCompanies(companiesData);
+      console.log('CompanyContext.tsx: loadUserCompanies: Companies data set:', companiesData); // ADDED LOG
 
       const savedCompanyId = localStorage.getItem('erp-current-company');
       const currentComp = savedCompanyId
@@ -188,6 +190,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       if (currentComp) {
         setCurrentCompany(currentComp);
+        console.log('CompanyContext.tsx: loadUserCompanies: Current company set to:', currentComp.id, currentComp.name); // ADDED LOG
         try {
           await loadCompanyPeriods(currentComp.id);
         } catch (periodError) {
@@ -225,6 +228,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading periods:', error);
         throw error; // Re-throw the error so the caller (loadUserCompanies) can catch it
       }
+      console.log('CompanyContext.tsx: loadCompanyPeriods: Periods data fetched:', periodsData, 'Error:', error); // ADDED LOG
 
       const periods = periodsData?.map(p => ({
         id: p.id,
