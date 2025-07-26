@@ -125,13 +125,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     isAuthUserProcessing.current = true; // Set flag to true
-    setLoading(true); // Set loading to true when starting to fetch user data
-
-    console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
-    let profile: any = null;
-    let userRole: any = null;
 
     try {
+      setLoading(true); // Set loading to true when starting to fetch user data
+      console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
+      let profile: any = null;
+      let userRole: any = null;
+
       // Attempt to fetch user profile
       console.log(`AuthContext.tsx: handleAuthUser: Attempting to query user_profiles table for user: ${supabaseUser.id}`);
       const { data: fetchedProfileArray, error: fetchError } = await supabase
@@ -320,3 +320,4 @@ export function useAuth() {
   }
   return context;
 }
+
