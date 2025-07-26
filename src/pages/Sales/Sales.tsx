@@ -113,19 +113,6 @@ function Sales() {
     if (currentCompany?.id) {
       fetchSalesData(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('Sales.tsx: Document became visible, re-fetching sales data.');
-        fetchSalesData(currentCompany.id);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, filterCriteria]); // Re-fetch data when filterCriteria changes
 
   const fetchSalesData = async (companyId: string) => {
@@ -887,4 +874,3 @@ function Sales() {
 }
 
 export default Sales;
-

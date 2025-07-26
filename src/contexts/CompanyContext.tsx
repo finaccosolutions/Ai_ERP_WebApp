@@ -120,23 +120,6 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, user]);
 
-  // Add visibility change listener for company data refresh
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isAuthenticated && user) {
-        console.log('CompanyContext.tsx: Document became visible, re-fetching user companies.');
-        loadUserCompanies();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isAuthenticated, user]);
-
-
   const loadUserCompanies = async () => {
     setLoadingCompanies(true);
     try {
@@ -325,4 +308,3 @@ export function useCompany() {
   }
   return context;
 }
-

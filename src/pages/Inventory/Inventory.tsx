@@ -77,19 +77,6 @@ function Inventory() {
     if (currentCompany?.id) {
       fetchInventoryData(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('Inventory.tsx: Document became visible, re-fetching inventory data.');
-        fetchInventoryData(currentCompany.id);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id]);
 
   const fetchInventoryData = async (companyId: string) => {
