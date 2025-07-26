@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react'; // Import useRef
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -45,17 +45,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('AuthContext.tsx: useEffect started.');
 
     const handleAuthStateChange = async (event: string, session: any) => {
+      setLoading(true); // Set loading to true at the beginning of any auth state change
       console.log('AuthContext.tsx: handleAuthStateChange: Auth state change event:', event);
-      if (session?.user) {
-        // Always call handleAuthUser if a session user exists.
-        // handleAuthUser will now contain the logic to prevent redundant processing.
-        console.log('AuthContext.tsx: handleAuthStateChange: Session user found, calling handleAuthUser.');
-        await handleAuthUser(session.user);
-      } else {
-        console.log('AuthContext.tsx: handleAuthStateChange: No session user, setting states to unauthenticated.');
+      try {
+        if (session?.user) {
+          console.log('AuthContext.tsx: handleAuthStateChange: Session user found, calling handleAuthUser.');
+          await handleAuthUser(session.user);
+        } else {
+          console.log('AuthContext.tsx: handleAuthStateChange: No session user, setting states to unauthenticated.');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('AuthContext.tsx: handleAuthStateChange: Error during state change processing:', error);
         setUser(null);
         setIsAuthenticated(false);
-        setLoading(false); // Only set loading to false here if no user is found
+      } finally {
+        setLoading(false); // Ensure loading is false after processing the auth state change
       }
     };
 
@@ -73,13 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('AuthContext.tsx: initializeAuth: No initial session found.');
           setUser(null);
           setIsAuthenticated(false);
-          setLoading(false); // Set loading to false if no session is found
         }
       } catch (error) {
         console.error('AuthContext.tsx: initializeAuth: Error during initial session check:', error);
         setUser(null);
         setIsAuthenticated(false);
-        setLoading(false); // Ensure loading is false on error
+      } finally {
+        setLoading(false); // Ensure loading is false after initial check, regardless of outcome
       }
 
       const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(handleAuthStateChange);
@@ -127,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthUserProcessing.current = true; // Set flag to true
 
     try {
-      setLoading(true); // Set loading to true when starting to fetch user data
+      // Removed: setLoading(true); // Loading state is managed by handleAuthStateChange or initializeAuth
       console.log('AuthContext.tsx: handleAuthUser: Started for user ID:', supabaseUser.id);
       let profile: any = null;
       let userRole: any = null;
@@ -210,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
       isAuthUserProcessing.current = false; // Reset flag
-      setLoading(false); // Ensure loading is false after processing
+      // Removed: setLoading(false); // Loading state is managed by handleAuthStateChange or initializeAuth
     }
   };
 
@@ -320,4 +326,3 @@ export function useAuth() {
   }
   return context;
 }
-
