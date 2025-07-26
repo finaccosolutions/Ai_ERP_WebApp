@@ -98,6 +98,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
+    // Add visibility change listener for session refresh
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('AuthContext.tsx: Document became visible, attempting to refresh session.');
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.error('AuthContext.tsx: Error refreshing session on visibility change:', error);
+        } else if (data.session) {
+          console.log('AuthContext.tsx: Session refreshed successfully on visibility change.');
+          // Re-process user data if session changed
+          if (data.user && (!user || user.id !== data.user.id)) {
+            await handleAuthUser(data.user);
+          }
+        } else {
+          console.log('AuthContext.tsx: No session returned after refresh on visibility change.');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+
   }, []);
 
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
@@ -288,3 +313,4 @@ export function useAuth() {
   }
   return context;
 }
+

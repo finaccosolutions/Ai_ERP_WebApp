@@ -120,94 +120,115 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, user]);
 
-  const loadUserCompanies = async () => {
-  setLoadingCompanies(true);
-  try {
-    const { data: userCompanies, error: companiesError } = await supabase
-      .from('users_companies')
-      .select(`
-        company_id,
-        companies (
-          id,
-          name,
-          country,
-          currency,
-          fiscal_year_start,
-          fiscal_year_end,
-          timezone,
-          logo,
-          tax_config,
-          address,
-          contact_info,
-          settings
-        )
-      `)
-      .eq('user_id', user?.id)
-      .eq('is_active', true);
+  // Add visibility change listener for company data refresh
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated && user) {
+        console.log('CompanyContext.tsx: Document became visible, re-fetching user companies.');
+        loadUserCompanies();
+      }
+    };
 
-    if (companiesError) {
-      console.error('Error loading companies:', companiesError);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, user]);
+
+
+  const loadUserCompanies = async () => {
+    setLoadingCompanies(true);
+    try {
+      const { data: userCompanies, error: companiesError } = await supabase
+        .from('users_companies')
+        .select(`
+          company_id,
+          companies (
+            id,
+            name,
+            country,
+            currency,
+            fiscal_year_start,
+            fiscal_year_end,
+            timezone,
+            logo,
+            tax_config,
+            address,
+            contact_info,
+            settings
+          )
+        `)
+        .eq('user_id', user?.id)
+        .eq('is_active', true);
+
+      if (companiesError) {
+        console.error('Error loading companies:', companiesError);
+        throw companiesError; // Re-throw to be caught by the outer catch
+      }
+
+      const companiesData = userCompanies?.map(uc => ({
+        id: uc.companies.id,
+        name: uc.companies.name,
+        country: uc.companies.country,
+        currency: uc.companies.currency,
+        fiscalYearStart: uc.companies.fiscal_year_start,
+        fiscalYearEnd: uc.companies.fiscal_year_end,
+        timezone: uc.companies.timezone,
+        logo: uc.companies.logo,
+        // Ensure these JSONB fields always default to a structured object if null from DB
+        taxConfig: uc.companies.tax_config || {
+          type: 'GST', rates: [0, 5, 12, 18, 28], enabled: true, registrationNumber: '',
+          gstDetails: { pan: '', tan: '', registrationType: '', filingFrequency: '', tdsApplicable: false, tcsApplicable: false },
+          vatDetails: { registrationNumber: '', registrationType: '', filingCycle: '' }
+        },
+        address: uc.companies.address || { street1: '', street2: '', city: '', state: '', country: '', zipCode: '' },
+        contactInfo: uc.companies.contact_info || {
+          contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: ''
+        },
+        settings: uc.companies.settings || {
+          displayName: '', legalName: '', industry: '', businessType: '', registrationNo: '',
+          languagePreference: 'en', decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
+          dateFormat: 'DD-MM-YYYY', batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
+          aiSuggestions: false, enablePassword: false, password: '', splitByPeriod: false,
+          barcodeSupport: false, autoVoucherCreationAI: false, companyType: '', employeeCount: '',
+          annualRevenue: '', inventoryTracking: true, companyUsername: ''
+        }
+      })) || [];
+
+      setCompanies(companiesData);
+
+      const savedCompanyId = localStorage.getItem('erp-current-company');
+      const currentComp = savedCompanyId
+        ? companiesData.find(c => c.id === savedCompanyId)
+        : companiesData[0];
+
+      if (currentComp) {
+        setCurrentCompany(currentComp);
+        try {
+          await loadCompanyPeriods(currentComp.id);
+        } catch (periodError) {
+          console.error('Error loading company periods within loadUserCompanies:', periodError);
+          // Explicitly clear periods if loading fails
+          setPeriods([]);
+          setCurrentPeriod(null);
+        }
+      } else {
+        setCurrentCompany(null);
+        setPeriods([]);
+        setCurrentPeriod(null);
+      }
+    } catch (error) {
+      console.error('Error loading user companies:', error);
+      // Ensure states are cleared on any error in this function
       setCompanies([]);
       setCurrentCompany(null);
       setPeriods([]);
       setCurrentPeriod(null);
-      return;
+    } finally {
+      setLoadingCompanies(false);
     }
-
-    const companiesData = userCompanies?.map(uc => ({
-      id: uc.companies.id,
-      name: uc.companies.name,
-      country: uc.companies.country,
-      currency: uc.companies.currency,
-      fiscalYearStart: uc.companies.fiscal_year_start,
-      fiscalYearEnd: uc.companies.fiscal_year_end,
-      timezone: uc.companies.timezone,
-      logo: uc.companies.logo,
-      // Ensure these JSONB fields always default to a structured object if null from DB
-      taxConfig: uc.companies.tax_config || {
-        type: 'GST', rates: [0, 5, 12, 18, 28], enabled: true, registrationNumber: '',
-        gstDetails: { pan: '', tan: '', registrationType: '', filingFrequency: '', tdsApplicable: false, tcsApplicable: false },
-        vatDetails: { registrationNumber: '', registrationType: '', filingCycle: '' }
-      },
-      address: uc.companies.address || { street1: '', street2: '', city: '', state: '', country: '', zipCode: '' },
-      contactInfo: uc.companies.contact_info || {
-        contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: ''
-      },
-      settings: uc.companies.settings || {
-        displayName: '', legalName: '', industry: '', businessType: '', registrationNo: '',
-        languagePreference: 'en', decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
-        dateFormat: 'DD-MM-YYYY', batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
-        aiSuggestions: false, enablePassword: false, password: '', splitByPeriod: false,
-        barcodeSupport: false, autoVoucherCreationAI: false, companyType: '', employeeCount: '',
-        annualRevenue: '', inventoryTracking: true, companyUsername: ''
-      }
-    })) || [];
-
-    setCompanies(companiesData);
-
-    const savedCompanyId = localStorage.getItem('erp-current-company');
-    const currentComp = savedCompanyId
-      ? companiesData.find(c => c.id === savedCompanyId)
-      : companiesData[0];
-
-    if (currentComp) {
-      setCurrentCompany(currentComp);
-      await loadCompanyPeriods(currentComp.id);
-    } else {
-      setCurrentCompany(null);
-      setPeriods([]);
-      setCurrentPeriod(null);
-    }
-  } catch (error) {
-    console.error('Error loading user companies:', error);
-    setCompanies([]);
-    setCurrentCompany(null);
-    setPeriods([]);
-    setCurrentPeriod(null);
-  } finally {
-    setLoadingCompanies(false);
-  }
-}; 
+  }; 
 
   const loadCompanyPeriods = async (companyId: string) => {
     try {
@@ -219,7 +240,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error loading periods:', error);
-        return;
+        throw error; // Re-throw the error so the caller (loadUserCompanies) can catch it
       }
 
       const periods = periodsData?.map(p => ({
@@ -244,6 +265,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading periods:', error);
+      throw error; // Re-throw the error so the caller (loadUserCompanies) can catch it
     }
   };
 
@@ -303,3 +325,4 @@ export function useCompany() {
   }
   return context;
 }
+
