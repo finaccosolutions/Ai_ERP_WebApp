@@ -40,6 +40,19 @@ function LedgerAccountPage() {
     if (ledgerId && currentCompany?.id && currentPeriod?.id) {
       fetchLedgerAccountData();
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && ledgerId && currentCompany?.id && currentPeriod?.id) {
+        console.log('LedgerAccountPage: Document became visible, re-fetching ledger account data.');
+        fetchLedgerAccountData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [ledgerId, currentCompany?.id, currentPeriod?.id]);
 
   const fetchLedgerAccountData = async () => {

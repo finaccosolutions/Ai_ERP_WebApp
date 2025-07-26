@@ -64,7 +64,7 @@ function GoodsReceiptsIssuesPage() {
     id: '',
     entryNo: '',
     entryType: 'material_receipt', // Can be toggled between receipt/issue
-    entryDate: new Date().toISOString().split('T')[0],
+    entryDate: new Date().toISOString().split('T'),
     warehouseId: '',
     referenceNo: '',
     notes: '',
@@ -90,6 +90,19 @@ function GoodsReceiptsIssuesPage() {
         fetchGoodsEntries();
       }
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentCompany?.id) {
+        console.log('GoodsReceiptsIssuesPage: Document became visible, re-fetching goods entries.');
+        fetchGoodsEntries();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentCompany?.id, viewMode, filterCriteria]); // Added filterCriteria to dependencies
 
   const fetchMastersData = async (companyId: string) => {
@@ -124,7 +137,7 @@ function GoodsReceiptsIssuesPage() {
         .select(`
           *,
           from_warehouses:warehouses!stock_entries_from_warehouse_id_fkey ( name ),
-          to_warehouses:warehouses!stock_entries_to_warehouse_id_fkey ( name )
+          to_warehouses:warehouses:warehouses!stock_entries_to_warehouse_id_fkey ( name )
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id)
         .in('entry_type', ['material_receipt', 'material_issue']); // Filter for receipts/issues
@@ -172,7 +185,7 @@ function GoodsReceiptsIssuesPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -221,7 +234,7 @@ function GoodsReceiptsIssuesPage() {
       id: '',
       entryNo: '',
       entryType: 'material_receipt',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: new Date().toISOString().split('T'),
       warehouseId: '',
       referenceNo: '',
       notes: '',
@@ -401,7 +414,7 @@ function GoodsReceiptsIssuesPage() {
     endDate: '',
     warehouseId: '',
     status: 'all',
-  })[0]; // Initialize filterCriteria state
+  }); // Initialize filterCriteria state
 
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     filterCriteria.entryNo = newFilters.entryNo;
@@ -638,7 +651,7 @@ function GoodsReceiptsIssuesPage() {
           </Button>
           <MasterSelectField
             label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsOptions[0].id)?.name || ''}
+            value={numResultsOptions.find(opt => opt.id === numResultsOptions.id)?.name || ''}
             onValueChange={() => {}} // Not used for typing
             onSelect={(id) => {
               // Update filterCriteria.numResults and trigger fetch

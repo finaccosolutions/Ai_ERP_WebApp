@@ -64,7 +64,7 @@ function StockJournalPage() {
     id: '',
     entryNo: '',
     entryType: 'stock_adjustment', // Fixed for this page
-    entryDate: new Date().toISOString().split('T')[0],
+    entryDate: new Date().toISOString().split('T'),
     warehouseId: '', // For stock adjustment, single warehouse
     notes: '',
     status: 'draft',
@@ -101,7 +101,20 @@ function StockJournalPage() {
         fetchStockEntries();
       }
     }
-  }, [currentCompany?.id, viewMode, filterCriteria, numResultsToShow]); // Added filterCriteria and numResultsToShow to dependencies
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentCompany?.id) {
+        console.log('StockJournalPage: Document became visible, re-fetching stock entries.');
+        fetchStockEntries();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentCompany?.id, viewMode, filterCriteria, numResultsToShow]);
 
   const fetchMastersData = async (companyId: string) => {
     try {
@@ -185,7 +198,7 @@ function StockJournalPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -234,7 +247,7 @@ function StockJournalPage() {
       id: '',
       entryNo: '',
       entryType: 'stock_adjustment',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: new Date().toISOString().split('T'),
       warehouseId: '',
       notes: '',
       status: 'draft',

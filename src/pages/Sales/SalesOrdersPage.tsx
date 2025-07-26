@@ -95,7 +95,20 @@ function SalesOrdersPage() {
       fetchSalesOrders();
       fetchAvailableItems(currentCompany.id);
     }
-  }, [viewMode, currentCompany?.id]);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentCompany?.id) {
+        console.log('SalesOrdersPage: Document became visible, re-fetching sales orders.');
+        fetchSalesOrders();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentCompany?.id, viewMode]);
 
   const fetchSalesOrders = async () => {
     if (!currentCompany?.id) return;
@@ -752,4 +765,3 @@ function SalesOrdersPage() {
 }
 
 export default SalesOrdersPage;
-

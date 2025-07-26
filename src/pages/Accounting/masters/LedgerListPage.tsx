@@ -56,6 +56,19 @@ function LedgerListPage() {
     if (currentCompany?.id && currentPeriod?.id) {
       fetchLedgers();
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentCompany?.id && currentPeriod?.id) {
+        console.log('LedgerListPage: Document became visible, re-fetching ledgers.');
+        fetchLedgers();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentCompany?.id, currentPeriod?.id, filterCriteria, numResultsToShow, searchTerm]);
 
   const fetchLedgers = async () => {
