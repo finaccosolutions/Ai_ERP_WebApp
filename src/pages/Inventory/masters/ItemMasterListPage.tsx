@@ -6,10 +6,10 @@ import Button from '../../../components/UI/Button';
 import AIButton from '../../../components/UI/AIButton';
 import FormField from '../../../components/UI/FormField';
 import MasterSelectField from '../../../components/UI/MasterSelectField';
-import { useTheme } from '../../contexts/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { useCompany } from '../../contexts/CompanyContext';
-import { useNotification } from '../../contexts/NotificationContext';
+import { useTheme } from '../../../contexts/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { useCompany } from '../../../contexts/CompanyContext';
+import { useNotification } from '../../../contexts/NotificationContext';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../../components/UI/ConfirmationModal';
 import ItemMasterFilterModal from '../../../components/Modals/ItemMasterFilterModal';
@@ -91,19 +91,6 @@ function ItemMasterListPage() {
     if (currentCompany?.id) {
       fetchItems();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('ItemMasterListPage: Document became visible, re-fetching items.');
-        fetchItems();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, currentPeriod?.id, filterCriteria, numResultsToShow, searchTerm]);
 
   const fetchItems = async () => {
@@ -122,7 +109,7 @@ function ItemMasterListPage() {
           item_categories ( name ),
           units_of_measure ( name ),
           item_groups ( name )
-        `, { count: 'exact' }) // NEW: Select item_groups name
+        `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
       // Apply search term

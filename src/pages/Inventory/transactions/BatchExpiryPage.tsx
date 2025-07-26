@@ -75,23 +75,6 @@ function BatchExpiryPage() {
         fetchSerialNumbers();
       }
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('BatchExpiryPage: Document became visible, re-fetching data.');
-        if (activeTab === 'batches') {
-          fetchBatches();
-        } else {
-          fetchSerialNumbers();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, activeTab, filterCriteria, numResultsToShow]);
 
   const fetchBatches = async () => {

@@ -43,7 +43,7 @@ import { useNavigate } from 'react-router-dom'; // Add this line
 //   rate numeric(15,2) DEFAULT 0,
 //   amount numeric(15,2) DEFAULT 0,
 //   tax_rate numeric(5,2) DEFAULT 0,
-//   tax_amount numeric(5,2) DEFAULT 0,
+//   tax_amount numeric(15,2) DEFAULT 0,
 //   line_total numeric(15,2) DEFAULT 0,
 //   description text,
 //   created_at timestamp with time zone DEFAULT now()
@@ -127,19 +127,6 @@ function SalesReturnsPage() {
       fetchSalesReturns();
       fetchAvailableItems(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('SalesReturnsPage: Document became visible, re-fetching sales returns.');
-        fetchSalesReturns();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [viewMode, currentCompany?.id]);
 
   const fetchSalesReturns = async () => {
@@ -756,3 +743,4 @@ function SalesReturnsPage() {
 }
 
 export default SalesReturnsPage;
+

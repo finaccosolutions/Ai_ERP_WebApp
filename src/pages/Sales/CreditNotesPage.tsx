@@ -87,19 +87,6 @@ function CreditNotesPage() {
     if (currentCompany?.id) {
       fetchAvailableCustomers(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('CreditNotesPage: Document became visible, re-fetching credit notes.');
-        fetchCreditNotes();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [viewMode, currentCompany?.id]);
 
   const fetchCreditNotes = async () => {
@@ -289,6 +276,7 @@ function CreditNotesPage() {
         setSuccessMessage('Credit Note created successfully!');
       }
 
+      // Handle items for credit note (optional, depending on how detailed you want them)
       if (creditNoteMode === 'item_mode' && creditNoteId) { // This block will not run as creditNoteMode is fixed to 'voucher_mode'
         await supabase.from('sales_invoice_items').delete().eq('invoice_id', creditNoteId);
 
@@ -655,3 +643,4 @@ function CreditNotesPage() {
 }
 
 export default CreditNotesPage;
+

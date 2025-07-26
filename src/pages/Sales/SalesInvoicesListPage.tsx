@@ -68,19 +68,6 @@ function SalesInvoicesListPage() {
     if (currentCompany?.id) {
       fetchSalesInvoices();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('SalesInvoicesListPage: Document became visible, re-fetching sales invoices.');
-        fetchSalesInvoices();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, filterCriteria]); // Removed viewMode from dependency array
 
   const fetchSalesInvoices = async () => {
@@ -328,3 +315,4 @@ function SalesInvoicesListPage() {
 }
 
 export default SalesInvoicesListPage;
+

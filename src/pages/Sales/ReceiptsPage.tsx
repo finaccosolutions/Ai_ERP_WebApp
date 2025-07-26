@@ -48,19 +48,6 @@ function ReceiptsPage() {
       fetchReceipts();
       fetchAvailableCustomers(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('ReceiptsPage: Document became visible, re-fetching receipts.');
-        fetchReceipts();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [viewMode, currentCompany?.id]);
 
   const fetchReceipts = async () => {
@@ -420,3 +407,4 @@ function ReceiptsPage() {
 }
 
 export default ReceiptsPage;
+

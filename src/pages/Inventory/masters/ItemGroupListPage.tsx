@@ -6,10 +6,10 @@ import Button from '../../../components/UI/Button';
 import AIButton from '../../../components/UI/AIButton';
 import FormField from '../../../components/UI/FormField';
 import MasterSelectField from '../../../components/UI/MasterSelectField';
-import { useTheme } from '../../contexts/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { useCompany } from '../../contexts/CompanyContext';
-import { useNotification } from '../../contexts/NotificationContext';
+import { useTheme } from '../../../contexts/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { useCompany } from '../../../contexts/CompanyContext';
+import { useNotification } from '../../../contexts/NotificationContext';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link
 import ConfirmationModal from '../../../components/UI/ConfirmationModal';
 import ItemGroupFilterModal from '../../../components/Modals/ItemGroupFilterModal'; // NEW: Import the new filter modal
@@ -46,19 +46,6 @@ function ItemGroupListPage() {
     if (currentCompany?.id) {
       fetchItemGroups();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('ItemGroupListPage: Document became visible, re-fetching item groups.');
-        fetchItemGroups();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm]);
 
   const fetchItemGroups = async () => {

@@ -43,19 +43,6 @@ function LedgersUnderGroupPage() {
     if (groupId && currentCompany?.id) {
       fetchGroupAndLedgers();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && groupId && currentCompany?.id) {
-        console.log('LedgersUnderGroupPage: Document became visible, re-fetching ledgers under group.');
-        fetchGroupAndLedgers();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [groupId, currentCompany?.id, searchTerm, numResultsToShow]);
 
   const fetchGroupAndLedgers = async () => {

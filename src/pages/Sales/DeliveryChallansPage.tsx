@@ -110,19 +110,6 @@ function DeliveryChallansPage() {
       fetchDeliveryChallans();
       fetchAvailableItems(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('DeliveryChallansPage: Document became visible, re-fetching delivery challans.');
-        fetchDeliveryChallans();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [viewMode, currentCompany?.id]);
 
   const fetchDeliveryChallans = async () => {
@@ -662,3 +649,4 @@ function DeliveryChallansPage() {
 }
 
 export default DeliveryChallansPage;
+

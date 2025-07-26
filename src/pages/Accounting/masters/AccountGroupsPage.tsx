@@ -62,19 +62,6 @@ function AccountGroupsPage() {
     if (currentCompany?.id) {
       fetchGroups();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('AccountGroupsPage: Document became visible, re-fetching groups.');
-        fetchGroups();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm]); // Added searchTerm to dependencies for real-time search
 
   const fetchGroups = async () => {
@@ -171,7 +158,7 @@ function AccountGroupsPage() {
 
       let nextNumber = 1;
       if (data && data.length > 0) {
-        const lastCode = data.account_code;
+        const lastCode = data[0].account_code;
         const lastNum = parseInt(lastCode.replace(prefix, ''));
         if (!isNaN(lastNum)) {
           nextNumber = lastNum + 1;

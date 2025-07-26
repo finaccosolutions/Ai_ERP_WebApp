@@ -63,7 +63,7 @@ function StockTransfersPage() {
   const [formData, setFormData] = useState({
     id: '',
     entryNo: '',
-    entryDate: new Date().toISOString().split('T'),
+    entryDate: new Date().toISOString().split('T')[0],
     fromWarehouseId: '',
     toWarehouseId: '',
     notes: '',
@@ -101,19 +101,6 @@ function StockTransfersPage() {
         fetchStockTransfers();
       }
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('StockTransfersPage: Document became visible, re-fetching stock transfers.');
-        fetchStockTransfers();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, viewMode, filterCriteria, numResultsToShow]);
 
   const fetchMastersData = async (companyId: string) => {
@@ -196,7 +183,7 @@ function StockTransfersPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -244,7 +231,7 @@ function StockTransfersPage() {
     setFormData({
       id: '',
       entryNo: '',
-      entryDate: new Date().toISOString().split('T'),
+      entryDate: new Date().toISOString().split('T')[0],
       fromWarehouseId: '',
       toWarehouseId: '',
       notes: '',

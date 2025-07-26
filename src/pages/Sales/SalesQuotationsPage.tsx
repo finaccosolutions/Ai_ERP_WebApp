@@ -116,20 +116,7 @@ function SalesQuotationsPage() {
       fetchSalesQuotations();
       fetchAvailableItems(currentCompany.id);
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('SalesQuotationsPage: Document became visible, re-fetching sales quotations.');
-        fetchSalesQuotations();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [currentCompany?.id, filterCriteria, numResultsToShow]); // Added filterCriteria and numResultsToShow to dependencies
+  }, [viewMode, currentCompany?.id, filterCriteria, numResultsToShow]); // Added filterCriteria and numResultsToShow to dependencies
 
   const fetchSalesQuotations = async () => {
     if (!currentCompany?.id) return;
@@ -890,3 +877,4 @@ function SalesQuotationsPage() {
 }
 
 export default SalesQuotationsPage;
+

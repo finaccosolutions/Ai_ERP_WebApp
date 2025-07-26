@@ -46,19 +46,6 @@ function CustomersListPage() {
     if (currentCompany?.id) {
       fetchCustomers();
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentCompany?.id) {
-        console.log('CustomersListPage: Document became visible, re-fetching customers.');
-        fetchCustomers();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
   }, [currentCompany?.id, numCustomersToShow]); // Refetch when numCustomersToShow changes
 
   const fetchCustomers = async () => {
@@ -253,3 +240,4 @@ function CustomersListPage() {
 }
 
 export default CustomersListPage;
+
