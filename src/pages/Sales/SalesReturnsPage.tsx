@@ -130,6 +130,9 @@ function SalesReturnsPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchSalesReturns = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesReturnsPage: Supabase session at fetchSalesReturns start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -141,17 +144,23 @@ function SalesReturnsPage() {
         .eq('company_id', currentCompany.id)
         .order('return_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesReturnsPage: Error fetching sales returns:', error);
+        throw error;
+      }
       setSalesReturnsList(data);
     } catch (err: any) {
       setError(`Error fetching sales returns: ${err.message}. Make sure 'sales_returns' table exists.`);
-      console.error('Error fetching sales returns:', err);
+      console.error('SalesReturnsPage: Caught error fetching sales returns:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableItems = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesReturnsPage: Supabase session at fetchAvailableItems start:', session);
+
     try {
       const { data, error } = await supabase
         .from('items')
@@ -168,7 +177,10 @@ function SalesReturnsPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesReturnsPage: Error fetching available items:', error);
+        throw error;
+      }
       setAvailableItems(data.map(item => ({
         id: item.id,
         name: item.item_name,
@@ -180,8 +192,8 @@ function SalesReturnsPage() {
         description: item.description,
         units_of_measure: item.units_of_measure,
       })));
-    } catch (error) {
-      console.error('Error fetching available items:', error);
+    } catch (error: any) {
+      console.error('SalesReturnsPage: Caught error fetching available items:', error);
     }
   };
 
@@ -313,7 +325,10 @@ function SalesReturnsPage() {
           .update(salesReturnToSave)
           .eq('id', salesReturn.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesReturnsPage: Error updating sales return:', error);
+          throw error;
+        }
         setSuccessMessage('Sales Return updated successfully!');
       } else {
         // NOTE: This will fail if 'sales_returns' table does not exist
@@ -321,7 +336,10 @@ function SalesReturnsPage() {
           .from('sales_returns')
           .insert(salesReturnToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesReturnsPage: Error creating sales return:', error);
+          throw error;
+        }
         salesReturnId = data[0].id;
         setSuccessMessage('Sales Return created successfully!');
       }
@@ -340,7 +358,10 @@ function SalesReturnsPage() {
           line_total: item.lineTotal,
         }));
         const { error: itemsError } = await supabase.from('sales_return_items').insert(itemsToSave);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('SalesReturnsPage: Error saving sales return items:', itemsError);
+          throw itemsError;
+        }
       }
 
       resetForm();
@@ -348,7 +369,7 @@ function SalesReturnsPage() {
       fetchSalesReturns();
     } catch (err: any) {
       setError(`Failed to save sales return: ${err.message}. Check console for details.`);
-      console.error('Save sales return error:', err);
+      console.error('SalesReturnsPage: Caught error saving sales return:', err);
     } finally {
       setLoading(false);
     }
@@ -373,7 +394,9 @@ function SalesReturnsPage() {
       .select('*')
       .eq('return_id', sr.id)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('SalesReturnsPage: Error fetching sales return items for edit:', error);
+        } else if (data) {
           setItems(data.map(item => ({
             id: item.id,
             itemId: item.item_id,
@@ -404,12 +427,15 @@ function SalesReturnsPage() {
     try {
       // NOTE: This will fail if 'sales_returns' table does not exist
       const { error } = await supabase.from('sales_returns').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('SalesReturnsPage: Error deleting sales return:', error);
+        throw error;
+      }
       setSuccessMessage('Sales Return deleted successfully!');
       fetchSalesReturns();
     } catch (err: any) {
       setError(`Failed to delete sales return: ${err.message}. Check console for details.`);
-      console.error('Delete sales return error:', err);
+      console.error('SalesReturnsPage: Caught error deleting sales return:', err);
     } finally {
       setLoading(false);
     }
@@ -443,7 +469,7 @@ function SalesReturnsPage() {
         }
       }
     } catch (error) {
-      console.error('Item AI suggestion error:', error);
+      console.error('SalesReturnsPage: Item AI suggestion error:', error);
     }
   };
 

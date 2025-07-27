@@ -51,6 +51,9 @@ function ReceiptsPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchReceipts = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('ReceiptsPage: Supabase session at fetchReceipts start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -61,17 +64,23 @@ function ReceiptsPage() {
         .eq('company_id', currentCompany.id)
         .order('receipt_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('ReceiptsPage: Error fetching receipts:', error);
+        throw error;
+      }
       setReceiptsList(data);
     } catch (err: any) {
       setError(`Error fetching receipts: ${err.message}`);
-      console.error('Error fetching receipts:', err);
+      console.error('ReceiptsPage: Caught error fetching receipts:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableCustomers = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('ReceiptsPage: Supabase session at fetchAvailableCustomers start:', session);
+
     try {
       const { data, error } = await supabase
         .from('customers')
@@ -79,10 +88,13 @@ function ReceiptsPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('ReceiptsPage: Error fetching available customers:', error);
+        throw error;
+      }
       setAvailableCustomers(data || []);
-    } catch (error) {
-      console.error('Error fetching available customers:', error);
+    } catch (error: any) {
+      console.error('ReceiptsPage: Caught error fetching available customers:', error);
     }
   };
 
@@ -136,14 +148,20 @@ function ReceiptsPage() {
           .update(receiptToSave)
           .eq('id', receiptData.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('ReceiptsPage: Error updating receipt:', error);
+          throw error;
+        }
         setSuccessMessage('Receipt updated successfully!');
       } else {
         const { data, error } = await supabase
           .from('receipts')
           .insert(receiptToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('ReceiptsPage: Error creating receipt:', error);
+          throw error;
+        }
         setSuccessMessage('Receipt created successfully!');
       }
 
@@ -152,7 +170,7 @@ function ReceiptsPage() {
       fetchReceipts();
     } catch (err: any) {
       setError(`Failed to save receipt: ${err.message}`);
-      console.error('Save receipt error:', err);
+      console.error('ReceiptsPage: Caught error saving receipt:', err);
     } finally {
       setLoading(false);
     }
@@ -181,12 +199,15 @@ function ReceiptsPage() {
     setSuccessMessage(null);
     try {
       const { error } = await supabase.from('receipts').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('ReceiptsPage: Error deleting receipt:', error);
+        throw error;
+      }
       setSuccessMessage('Receipt deleted successfully!');
       fetchReceipts();
     } catch (err: any) {
       setError(`Failed to delete receipt: ${err.message}`);
-      console.error('Delete receipt error:', err);
+      console.error('ReceiptsPage: Caught error deleting receipt:', err);
     } finally {
       setLoading(false);
     }
@@ -215,7 +236,7 @@ function ReceiptsPage() {
         }
       }
     } catch (error) {
-      console.error('Customer AI suggestion error:', error);
+      console.error('ReceiptsPage: Customer AI suggestion error:', error);
     }
   };
 

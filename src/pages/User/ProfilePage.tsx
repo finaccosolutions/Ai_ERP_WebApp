@@ -52,6 +52,9 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
       // Fetch additional profile details if they are not in the initial user context
       // This would typically be done by fetching from the user_profiles table
       const fetchProfileDetails = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('ProfilePage: Supabase session at fetchProfileDetails start:', session);
+
         if (user.id) {
           const { data, error } = await supabase
             .from('user_profiles')
@@ -59,7 +62,7 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
             .eq('id', user.id)
             .single();
           if (error) {
-            console.error('Error fetching additional profile details:', error);
+            console.error('ProfilePage: Error fetching additional profile details:', error);
           } else if (data) {
             setDepartment(data.department || '');
             setDesignation(data.designation || '');
@@ -111,10 +114,10 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
           });
 
         if (uploadError) {
-          console.error('Supabase Storage Upload Error:', uploadError); // Log upload error
+          console.error('ProfilePage: Supabase Storage Upload Error:', uploadError); // Log upload error
           throw uploadError;
         }
-        console.log('Supabase Storage Upload Success:', uploadData); // Log upload success
+        console.log('ProfilePage: Supabase Storage Upload Success:', uploadData); // Log upload success
         newAvatarUrl = supabase.storage.from('avatars').getPublicUrl(filePath).data.publicUrl;
       }
 
@@ -134,10 +137,10 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
         .select();
 
       if (error) {
-        console.error('Supabase Profile Update Error:', error); // Log update error
+        console.error('ProfilePage: Supabase Profile Update Error:', error); // Log update error
         throw error;
       }
-      console.log('Supabase Profile Update Success:', data); // Log update success
+      console.log('ProfilePage: Supabase Profile Update Success:', data); // Log update success
 
       updateUser({
         name: fullName,
@@ -152,7 +155,7 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
       setIsEditing(false);
       setAvatarFile(null);
     } catch (err: any) {
-      console.error('Error updating profile:', err);
+      console.error('ProfilePage: Error updating profile:', err);
       setErrors({ submit: err.message || 'Failed to update profile.' });
       showNotification(err.message || 'Failed to update profile.', 'error');
     } finally {
@@ -183,17 +186,17 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
       });
 
       if (error) {
-        console.error('Supabase Password Update Error:', error); // Log password update error
+        console.error('ProfilePage: Supabase Password Update Error:', error); // Log password update error
         throw error;
       }
-      console.log('Supabase Password Update Success:', data); // Log password update success
+      console.log('ProfilePage: Supabase Password Update Success:', data); // Log password update success
 
       showNotification('Password updated successfully!', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
     } catch (err: any) {
-      console.error('Error changing password:', err);
+      console.error('ProfilePage: Error changing password:', err);
       setPasswordChangeErrors({ submit: err.message || 'Failed to change password.' });
       showNotification(err.message || 'Failed to change password.', 'error');
     } finally {
@@ -379,3 +382,4 @@ function ProfilePage({ activeSection }: ProfilePageProps) {
 }
 
 export default ProfilePage;
+

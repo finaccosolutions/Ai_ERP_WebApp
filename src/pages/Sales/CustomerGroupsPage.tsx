@@ -1,6 +1,6 @@
 // src/pages/Sales/CustomerGroupsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Edit, Trash2, RefreshCw, AlertTriangle, CheckCircle, Search, Info, ArrowLeft, Eye } from 'lucide-react';
+import { Plus, Search, Users, Edit, Trash2, RefreshCw, AlertTriangle, CheckCircle, Info, ArrowLeft, Eye } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
@@ -71,6 +71,9 @@ function CustomerGroupsPage() {
 
 
   const fetchCustomerGroups = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CustomerGroupsPage: Supabase session at fetchCustomerGroups start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setFormErrors({});
@@ -78,8 +81,7 @@ function CustomerGroupsPage() {
       let query = supabase
         .from('customer_groups')
         .select('*', { count: 'exact' })
-        .eq('company_id', currentCompany.id)
-        .order('name', { ascending: true });
+        .eq('company_id', currentCompany.id);
 
       if (searchTerm) {
         query = query.ilike('name', `%${searchTerm}%`);
@@ -91,12 +93,15 @@ function CustomerGroupsPage() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerGroupsPage: Error fetching customer groups:', error);
+        throw error;
+      }
       setCustomerGroups(data || []);
       setTotalGroupsCount(count || 0);
     } catch (err: any) {
       setFormErrors({ fetch: `Failed to fetch customer groups: ${err.message}` });
-      console.error('Error fetching customer groups:', err);
+      console.error('CustomerGroupsPage: Caught error fetching customer groups:', err);
     } finally {
       setLoading(false);
     }
@@ -145,7 +150,10 @@ function CustomerGroupsPage() {
         .select('id, name')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerGroupsPage: Error creating customer group:', error);
+        throw error;
+      }
 
       // Only show notification here if NOT coming from CustomerFormPage
       if (!location.state?.fromCustomerForm) {
@@ -193,7 +201,10 @@ function CustomerGroupsPage() {
         })
         .eq('id', editingGroup.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerGroupsPage: Error updating customer group:', error);
+        throw error;
+      }
 
       showNotification('Customer group updated successfully!', 'success');
       setShowCreateForm(false);
@@ -226,6 +237,7 @@ function CustomerGroupsPage() {
         .eq('customer_group_id', groupToDeleteId);
 
       if (countError) {
+        console.error('CustomerGroupsPage: Error checking assigned users:', countError);
         showNotification(`Error checking assigned users: ${countError.message}`, 'error');
         setLoading(false);
         return;
@@ -242,7 +254,10 @@ function CustomerGroupsPage() {
         .delete()
         .eq('id', groupToDeleteId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerGroupsPage: Error deleting customer group:', error);
+        throw error;
+      }
 
       showNotification('Customer group deleted successfully!', 'success');
       fetchCustomerGroups();
@@ -488,3 +503,4 @@ function CustomerGroupsPage() {
 }
 
 export default CustomerGroupsPage;
+

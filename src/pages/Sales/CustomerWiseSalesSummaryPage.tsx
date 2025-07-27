@@ -1,3 +1,4 @@
+// src/pages/Sales/CustomerWiseSalesSummaryPage.tsx
 import React, { useState } from 'react';
 import { BarChart3, Search, Users, Filter, Calendar, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';

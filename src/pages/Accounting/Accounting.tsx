@@ -81,37 +81,55 @@ function Accounting() {
   }, [currentCompany?.id]);
 
   const fetchAccountingMetrics = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Accounting.tsx: Supabase session at fetchAccountingMetrics start:', session);
+
     setLoadingMetrics(true);
     try {
       // Fetch counts for Ledgers and Groups
-      const { count: ledgersCount } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
-      const { count: groupsCount } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', true);
+      const { count: ledgersCount, error: ledgersCountError } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
+      if (ledgersCountError) console.error('Accounting.tsx: Error fetching ledgers count:', ledgersCountError);
+
+      const { count: groupsCount, error: groupsCountError } = await supabase.from('chart_of_accounts').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', true);
+      if (groupsCountError) console.error('Accounting.tsx: Error fetching groups count:', groupsCountError);
 
       // Fetch counts for Customers and Vendors
-      const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: vendorsCount } = await supabase.from('vendors').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      const { count: customersCount, error: customersCountError } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (customersCountError) console.error('Accounting.tsx: Error fetching customers count:', customersCountError);
+
+      const { count: vendorsCount, error: vendorsCountError } = await supabase.from('vendors').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (vendorsCountError) console.error('Accounting.tsx: Error fetching vendors count:', vendorsCountError);
+
+      const { count: customerGroupsCount, error: customerGroupsCountError } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (customerGroupsCountError) console.error('Accounting.tsx: Error fetching customer groups count:', customerGroupsCountError);
 
 
       // Fetch counts and amounts for Vouchers
-      const { count: paymentsCount, data: paymentsData } = await supabase.from('payments').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: paymentsCount, data: paymentsData, error: paymentsError } = await supabase.from('payments').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      if (paymentsError) console.error('Accounting.tsx: Error fetching payments data:', paymentsError);
       const totalPaymentsAmount = paymentsData?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
-      const { count: receiptsCount, data: receiptsData } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: receiptsCount, data: receiptsData, error: receiptsError } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      if (receiptsError) console.error('Accounting.tsx: Error fetching receipts data:', receiptsError);
       const totalReceiptsAmount = receiptsData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
       
-      const { count: journalCount } = await supabase.from('journal_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'journal');
+      const { count: journalCount, error: journalCountError } = await supabase.from('journal_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'journal');
+      if (journalCountError) console.error('Accounting.tsx: Error fetching journal count:', journalCountError);
       
-      const { count: salesVouchersCount, data: salesVouchersData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).neq('status', 'credit_note');
+      const { count: salesVouchersCount, data: salesVouchersData, error: salesVouchersError } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).neq('status', 'credit_note');
+      if (salesVouchersError) console.error('Accounting.tsx: Error fetching sales vouchers data:', salesVouchersError);
       const totalSalesVouchersAmount = salesVouchersData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
 
-      const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: salesReturnsCount, data: salesReturnsData, error: salesReturnsError } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (salesReturnsError) console.error('Accounting.tsx: Error fetching sales returns data:', salesReturnsError);
       const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, sr) => sum + (sr.total_amount || 0), 0) || 0;
 
-      const { count: purchaseVouchersCount, data: purchaseVouchersData } = await supabase.from('purchase_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: purchaseVouchersCount, data: purchaseVouchersData, error: purchaseVouchersError } = await supabase.from('purchase_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (purchaseVouchersError) console.error('Accounting.tsx: Error fetching purchase vouchers data:', purchaseVouchersError);
       const totalPurchaseVouchersAmount = purchaseVouchersData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
 
-      const { count: creditNotesCount, data: creditNotesData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
+      const { count: creditNotesCount, data: creditNotesData, error: creditNotesError } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
+      if (creditNotesError) console.error('Accounting.tsx: Error fetching credit notes data:', creditNotesError);
       const totalCreditNotesAmount = creditNotesData?.reduce((sum, cn) => sum + (cn.total_amount || 0), 0) || 0;
       
       // Debit notes table is not in schema, so placeholder
@@ -119,12 +137,16 @@ function Accounting() {
       const totalDebitNotesAmount = 0; // Placeholder
 
       // Fixed Assets
-      const { count: assetsCount, data: assetsData } = await supabase.from('fixed_assets').select('purchase_amount', { count: 'exact' }).eq('company_id', companyId);
+      const { count: assetsCount, data: assetsData, error: assetsError } = await supabase.from('fixed_assets').select('purchase_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (assetsError) console.error('Accounting.tsx: Error fetching assets data:', assetsError);
       const totalAssetsValue = assetsData?.reduce((sum, asset) => sum + (asset.purchase_amount || 0), 0) || 0;
 
       // Cost Centers
-      const { count: costCentersCount } = await supabase.from('cost_centers').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
-      const { count: costCategoriesCount } = await supabase.from('cost_centers').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', true);
+      const { count: costCentersCount, error: costCentersCountError } = await supabase.from('cost_centers').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', false);
+      if (costCentersCountError) console.error('Accounting.tsx: Error fetching cost centers count:', costCentersCountError);
+
+      const { count: costCategoriesCount, error: costCategoriesCountError } = await supabase.from('cost_centers').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_group', true);
+      if (costCategoriesCountError) console.error('Accounting.tsx: Error fetching cost categories count:', costCategoriesCountError);
 
 
       setAccountingMetrics({
@@ -145,7 +167,7 @@ function Accounting() {
         costCategories: { count: costCategoriesCount?.toString() || '0' },
       });
     } catch (error) {
-      console.error('Error fetching accounting metrics:', error);
+      console.error('Accounting.tsx: Error fetching accounting metrics:', error);
     } finally {
       setLoadingMetrics(false);
     }
@@ -385,3 +407,4 @@ function Accounting() {
 }
 
 export default Accounting;
+

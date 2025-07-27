@@ -38,6 +38,9 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
   useEffect(() => {
     // Fetch user preferences from database on component mount
     const fetchPreferences = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('SettingsPage: Supabase session at fetchPreferences start:', session);
+
       if (user?.id) {
         const { data, error } = await supabase
           .from('user_profiles')
@@ -46,7 +49,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
           .single();
 
         if (error) {
-          console.error('Error fetching user preferences:', error);
+          console.error('SettingsPage: Error fetching user preferences:', error);
         } else if (data?.preferences) {
           setSettings((prev: any) => ({ ...prev, ...data.preferences }));
         }
@@ -84,10 +87,10 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
         .select(); // Added select() to get data back
 
       if (error) {
-        console.error('Supabase Settings Update Error:', error); // Log error
+        console.error('SettingsPage: Supabase Settings Update Error:', error); // Log error
         throw error;
       }
-      console.log('Supabase Settings Update Success:', data); // Log success
+      console.log('SettingsPage: Supabase Settings Update Success:', data); // Log success
 
       if (settings.defaultTheme === 'dark' && !theme.isDark) {
         toggleDarkMode();
@@ -97,7 +100,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
       
       showNotification('Settings saved successfully!', 'success');
     } catch (error: any) {
-      console.error('Error saving settings:', error);
+      console.error('SettingsPage: Error saving settings:', error);
       showNotification(error.message || 'Failed to save settings.', 'error');
     } finally {
       setLoading(false);
@@ -311,6 +314,7 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
             <label htmlFor="twoFactorAuth" className={`text-sm font-medium ${theme.textPrimary}`}>
               Enable Two-Factor Authentication
             </label>
+            </div>
           </div>
         </Card>
       )}

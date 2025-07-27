@@ -117,6 +117,11 @@ function Sales() {
   }, [currentCompany?.id, filterCriteria]); // Re-fetch data when filterCriteria changes
 
   const fetchSalesData = async (companyId: string) => {
+    // --- START ADDITION ---
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Sales.tsx: Supabase session at fetchSalesData start:', session);
+    // --- END ADDITION ---
+
     console.log('Sales.tsx: fetchSalesData called with companyId:', companyId); // ADDED LOG
     setIsLoadingSalesData(true);
     try {
@@ -130,21 +135,40 @@ function Sales() {
       const { data: salesInvoicesData, count: salesInvoicesCount, error: salesInvoicesError } = await salesInvoicesQuery;
       
       if (salesInvoicesError) {
-        console.error('Sales.tsx: salesInvoicesQuery error:', salesInvoicesError); // ADDED LOG
+        console.error('Sales.tsx: salesInvoicesQuery error:', salesInvoicesError); // MODIFIED LOG
         throw salesInvoicesError;
       }
       console.log('Sales.tsx: salesInvoicesQuery result - data:', salesInvoicesData, 'error:', salesInvoicesError); // ADDED LOG
 
       // Fetch other counts (simplified, not applying filters to all for brevity)
-      const { count: customersCount } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: priceListsCount } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: customerGroupsCount } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: quotationsCount, data: quotationsData } = await supabase.from('quotations').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      const { count: salesOrdersCount, data: salesOrdersData } = await supabase.from('sales_orders').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      const { count: receiptsCount, data: receiptsData } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
-      const { count: creditNotesCount, data: creditNotesData } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
-      const { count: salesReturnsCount, data: salesReturnsData } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      const { count: deliveryChallansCount } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      // --- START MODIFICATION ---
+      const { count: customersCount, error: customersError } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (customersError) console.error('Sales.tsx: Error fetching customers count:', customersError);
+
+      const { count: priceListsCount, error: priceListsError } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (priceListsError) console.error('Sales.tsx: Error fetching price lists count:', priceListsError);
+
+      const { count: customerGroupsCount, error: customerGroupsError } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (customerGroupsError) console.error('Sales.tsx: Error fetching customer groups count:', customerGroupsError);
+
+      const { count: quotationsCount, data: quotationsData, error: quotationsError } = await supabase.from('quotations').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (quotationsError) console.error('Sales.tsx: Error fetching quotations data:', quotationsError);
+
+      const { count: salesOrdersCount, data: salesOrdersData, error: salesOrdersError } = await supabase.from('sales_orders').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (salesOrdersError) console.error('Sales.tsx: Error fetching sales orders data:', salesOrdersError);
+
+      const { count: receiptsCount, data: receiptsData, error: receiptsError } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
+      if (receiptsError) console.error('Sales.tsx: Error fetching receipts data:', receiptsError);
+
+      const { count: creditNotesCount, data: creditNotesData, error: creditNotesError } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
+      if (creditNotesError) console.error('Sales.tsx: Error fetching credit notes data:', creditNotesError);
+
+      const { count: salesReturnsCount, data: salesReturnsData, error: salesReturnsError } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
+      if (salesReturnsError) console.error('Sales.tsx: Error fetching sales returns data:', salesReturnsError);
+
+      const { count: deliveryChallansCount, error: deliveryChallansError } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
+      if (deliveryChallansError) console.error('Sales.tsx: Error fetching delivery challans count:', deliveryChallansError);
+      // --- END MODIFICATION ---
 
       // Calculate total amounts for metrics
       const totalQuotationsAmount = quotationsData?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0;

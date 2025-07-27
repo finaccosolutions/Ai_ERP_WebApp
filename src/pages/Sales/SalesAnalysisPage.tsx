@@ -1,3 +1,4 @@
+// src/pages/Sales/SalesAnalysisPage.tsx
 import React, { useState } from 'react';
 import { PieChart, Search, BarChart3, Filter, Calendar, Package, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';

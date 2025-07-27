@@ -1,3 +1,4 @@
+// src/pages/Sales/CustomerOutstandingPage.tsx
 import React, { useState } from 'react';
 import { UserCheck, Search, DollarSign, Filter, Calendar, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';

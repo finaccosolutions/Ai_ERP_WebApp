@@ -113,6 +113,9 @@ function DeliveryChallansPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchDeliveryChallans = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('DeliveryChallansPage: Supabase session at fetchDeliveryChallans start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -124,17 +127,23 @@ function DeliveryChallansPage() {
         .eq('company_id', currentCompany.id)
         .order('challan_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DeliveryChallansPage: Error fetching delivery challans:', error);
+        throw error;
+      }
       setDeliveryChallans(data);
     } catch (err: any) {
       setError(`Error fetching delivery challans: ${err.message}. Make sure 'delivery_challans' table exists.`);
-      console.error('Error fetching delivery challans:', err);
+      console.error('DeliveryChallansPage: Caught error fetching delivery challans:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableItems = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('DeliveryChallansPage: Supabase session at fetchAvailableItems start:', session);
+
     try {
       const { data, error } = await supabase
         .from('items')
@@ -151,7 +160,10 @@ function DeliveryChallansPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('DeliveryChallansPage: Error fetching available items:', error);
+        throw error;
+      }
       setAvailableItems(data.map(item => ({
         id: item.id,
         name: item.item_name,
@@ -163,8 +175,8 @@ function DeliveryChallansPage() {
         description: item.description,
         units_of_measure: item.units_of_measure,
       })));
-    } catch (error) {
-      console.error('Error fetching available items:', error);
+    } catch (error: any) {
+      console.error('DeliveryChallansPage: Caught error fetching available items:', error);
     }
   };
 
@@ -267,7 +279,10 @@ function DeliveryChallansPage() {
           .update(challanToSave)
           .eq('id', challan.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('DeliveryChallansPage: Error updating delivery challan:', error);
+          throw error;
+        }
         setSuccessMessage('Delivery Challan updated successfully!');
       } else {
         // NOTE: This will fail if 'delivery_challans' table does not exist
@@ -275,7 +290,10 @@ function DeliveryChallansPage() {
           .from('delivery_challans')
           .insert(challanToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('DeliveryChallansPage: Error creating delivery challan:', error);
+          throw error;
+        }
         challanId = data[0].id; // Correctly get the ID from the insert result
         setSuccessMessage('Delivery Challan created successfully!');
       }
@@ -291,7 +309,10 @@ function DeliveryChallansPage() {
           item_name: item.itemName,
         }));
         const { error: itemsError } = await supabase.from('delivery_challan_items').insert(itemsToSave);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('DeliveryChallansPage: Error saving delivery challan items:', itemsError);
+          throw itemsError;
+        }
       }
 
       resetForm();
@@ -299,7 +320,7 @@ function DeliveryChallansPage() {
       fetchDeliveryChallans();
     } catch (err: any) {
       setError(`Failed to save delivery challan: ${err.message}. Check console for details.`);
-      console.error('Save delivery challan error:', err);
+      console.error('DeliveryChallansPage: Caught error saving delivery challan:', err);
     } finally {
       setLoading(false);
     }
@@ -322,7 +343,9 @@ function DeliveryChallansPage() {
       .select('*')
       .eq('challan_id', ch.id)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('DeliveryChallansPage: Error fetching delivery challan items for edit:', error);
+        } else if (data) {
           setItems(data.map(item => ({
             id: item.id,
             itemId: item.item_id,
@@ -348,12 +371,15 @@ function DeliveryChallansPage() {
     try {
       // NOTE: This will fail if 'delivery_challans' table does not exist
       const { error } = await supabase.from('delivery_challans').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('DeliveryChallansPage: Error deleting delivery challan:', error);
+        throw error;
+      }
       setSuccessMessage('Delivery Challan deleted successfully!');
       fetchDeliveryChallans();
     } catch (err: any) {
       setError(`Failed to delete delivery challan: ${err.message}. Check console for details.`);
-      console.error('Delete delivery challan error:', err);
+      console.error('DeliveryChallansPage: Caught error deleting delivery challan:', err);
     } finally {
       setLoading(false);
     }
@@ -385,7 +411,7 @@ function DeliveryChallansPage() {
         }
       }
     } catch (error) {
-      console.error('Item AI suggestion error:', error);
+      console.error('DeliveryChallansPage: Item AI suggestion error:', error);
     }
   };
 

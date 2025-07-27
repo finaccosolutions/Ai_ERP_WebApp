@@ -119,6 +119,9 @@ function SalesQuotationsPage() {
   }, [viewMode, currentCompany?.id, filterCriteria, numResultsToShow]); // Added filterCriteria and numResultsToShow to dependencies
 
   const fetchSalesQuotations = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesQuotationsPage: Supabase session at fetchSalesQuotations start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -167,18 +170,24 @@ function SalesQuotationsPage() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesQuotationsPage: Error fetching quotations:', error);
+        throw error;
+      }
       setSalesQuotations(data || []);
       setTotalQuotationsCount(count || 0);
     } catch (err: any) {
       setError(`Error fetching quotations: ${err.message}`);
-      console.error('Error fetching sales quotations:', err);
+      console.error('SalesQuotationsPage: Caught error fetching sales quotations:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableItems = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesQuotationsPage: Supabase session at fetchAvailableItems start:', session);
+
     try {
       const { data, error } = await supabase
         .from('items')
@@ -195,7 +204,10 @@ function SalesQuotationsPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesQuotationsPage: Error fetching available items:', error);
+        throw error;
+      }
       setAvailableItems(data.map(item => ({
         id: item.id,
         name: item.item_name,
@@ -207,8 +219,8 @@ function SalesQuotationsPage() {
         description: item.description,
         units_of_measure: item.units_of_measure,
       })));
-    } catch (error) {
-      console.error('Error fetching available items:', error);
+    } catch (error: any) {
+      console.error('SalesQuotationsPage: Caught error fetching available items:', error);
     }
   };
 
@@ -218,12 +230,12 @@ function SalesQuotationsPage() {
       quotationNo: '',
       customerId: '',
       customerName: '',
-      quotationDate: new Date().toISOString().split('T')[0],
+      quotationDate: new Date().toISOString().split('T')[0], // Changed to string
       validTill: '',
       referenceNo: '',
       termsAndConditions: '',
       notes: '',
-      status: 'draft',
+      status: 'draft', // draft, sent, accepted, rejected, expired
       subtotal: 0,
       totalTax: 0,
       totalAmount: 0,
@@ -349,14 +361,20 @@ function SalesQuotationsPage() {
           .update(quotationToSave)
           .eq('id', quotation.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesQuotationsPage: Error updating quotation:', error);
+          throw error;
+        }
         setSuccessMessage('Quotation updated successfully!');
       } else {
         const { data, error } = await supabase
           .from('quotations')
           .insert(quotationToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesQuotationsPage: Error creating quotation:', error);
+          throw error;
+        }
         quotationId = data[0].id; // Correctly get the ID from the insert result
         setSuccessMessage('Quotation created successfully!');
       }
@@ -375,7 +393,10 @@ function SalesQuotationsPage() {
           description: item.description, // Ensure description is saved
         }));
         const { error: itemsError } = await supabase.from('quotation_items').insert(itemsToSave);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('SalesQuotationsPage: Error saving quotation items:', itemsError);
+          throw itemsError;
+        }
       }
 
       resetForm();
@@ -383,7 +404,7 @@ function SalesQuotationsPage() {
       fetchSalesQuotations();
     } catch (err: any) {
       setError(`Failed to save quotation: ${err.message}`);
-      console.error('Save quotation error:', err);
+      console.error('SalesQuotationsPage: Caught error saving quotation:', err);
     } finally {
       setLoading(false);
     }
@@ -409,7 +430,9 @@ function SalesQuotationsPage() {
       .select('*')
       .eq('quotation_id', quote.id)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('SalesQuotationsPage: Error fetching quotation items for edit:', error);
+        } else if (data) {
           setItems(data.map(item => ({
             id: item.id,
             itemCode: item.item_code,
@@ -450,12 +473,15 @@ function SalesQuotationsPage() {
       await supabase.from('quotation_items').delete().eq('quotation_id', quotationToDeleteId);
 
       const { error } = await supabase.from('quotations').delete().eq('id', quotationToDeleteId);
-      if (error) throw error;
+      if (error) {
+        console.error('SalesQuotationsPage: Error deleting quotation:', error);
+        throw error;
+      }
       setSuccessMessage('Quotation deleted successfully!');
       fetchSalesQuotations();
     } catch (err: any) {
       setError(`Failed to delete quotation: ${err.message}`);
-      console.error('Delete quotation error:', err);
+      console.error('SalesQuotationsPage: Caught error deleting quotation:', err);
     } finally {
       setLoading(false);
       setQuotationToDeleteId(null);
@@ -491,7 +517,7 @@ function SalesQuotationsPage() {
         }
       }
     } catch (error) {
-      console.error('Item AI suggestion error:', error);
+      console.error('SalesQuotationsPage: Item AI suggestion error:', error);
     }
   };
 

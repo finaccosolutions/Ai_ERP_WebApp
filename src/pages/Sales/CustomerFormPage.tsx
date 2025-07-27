@@ -221,30 +221,39 @@ function CustomerFormPage() {
   }, [selectedBillingCountry]);
 
   const fetchCustomerGroups = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CustomerFormPage: Supabase session at fetchCustomerGroups start:', session);
+
     const { data, error } = await supabase
       .from('customer_groups')
       .select('id, name')
       .eq('company_id', currentCompany?.id);
     if (error) {
-      console.error('Error fetching customer groups:', error);
+      console.error('CustomerFormPage: Error fetching customer groups:', error);
     } else {
       setCustomerGroups(data || []);
     }
   };
 
   const fetchPriceLists = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CustomerFormPage: Supabase session at fetchPriceLists start:', session);
+
     const { data, error } = await supabase
       .from('price_lists')
       .select('id, name')
       .eq('company_id', currentCompany?.id);
     if (error) {
-      console.error('Error fetching price lists:', error);
+      console.error('CustomerFormPage: Error fetching price lists:', error);
     } else {
       setPriceLists(data || []);
     }
   };
 
   const fetchCustomerData = async (customerId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CustomerFormPage: Supabase session at fetchCustomerData start:', session);
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -254,7 +263,10 @@ function CustomerFormPage() {
         .eq('company_id', currentCompany?.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerFormPage: Error fetching customer data:', error);
+        throw error;
+      }
 
       if (data) {
         // Determine the phone country code from the stored phone number
@@ -308,7 +320,7 @@ function CustomerFormPage() {
       }
     } catch (err: any) {
       showNotification(`Error loading customer: ${err.message}`, 'error');
-      console.error('Error loading customer:', err);
+      console.error('CustomerFormPage: Caught error loading customer:', err);
       navigate('/sales/customers'); // Redirect back to list on error
     } finally {
       setLoading(false);
@@ -316,19 +328,25 @@ function CustomerFormPage() {
   };
 
   const generateCustomerCode = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CustomerFormPage: Supabase session at generateCustomerCode start:', session);
+
     try {
       const { count, error } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('CustomerFormPage: Error counting customers for code generation:', error);
+        throw error;
+      }
 
       const nextNumber = (count || 0) + 1;
       const newCustomerCode = `CUST-${String(nextNumber).padStart(4, '0')}`; // e.g., CUST-0001
       setFormData(prev => ({ ...prev, customerCode: newCustomerCode }));
-    } catch (err) {
-      console.error('Error generating customer code:', err);
+    } catch (err: any) {
+      console.error('CustomerFormPage: Caught error generating customer code:', err);
       showNotification('Failed to generate customer code. Please enter manually.', 'error');
     }
   };
@@ -433,7 +451,10 @@ function CustomerFormPage() {
           .from('customers')
           .update(customerToSave)
           .eq('id', formData.id);
-        if (error) throw error;
+        if (error) {
+          console.error('CustomerFormPage: Error updating customer:', error);
+          throw error;
+        }
         showNotification('Customer updated successfully!', 'success');
       } else {
         // Create new customer
@@ -442,7 +463,10 @@ function CustomerFormPage() {
           .insert(customerToSave)
           .select('id, name')
           .single();
-        if (error) throw error;
+        if (error) {
+          console.error('CustomerFormPage: Error creating customer:', error);
+          throw error;
+        }
         newCustomerId = data.id;
         showNotification('Customer created successfully!', 'success');
       }
@@ -462,7 +486,7 @@ function CustomerFormPage() {
       }
     } catch (err: any) {
       showNotification(`Failed to save customer: ${err.message}`, 'error');
-      console.error('Save customer error:', err);
+      console.error('CustomerFormPage: Caught error saving customer:', err);
     } finally {
       setLoading(false);
     }
@@ -1110,3 +1134,4 @@ function CustomerFormPage() {
 }
 
 export default CustomerFormPage;
+

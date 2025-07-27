@@ -98,6 +98,9 @@ function SalesOrdersPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchSalesOrders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesOrdersPage: Supabase session at fetchSalesOrders start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -108,17 +111,23 @@ function SalesOrdersPage() {
         .eq('company_id', currentCompany.id)
         .order('order_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesOrdersPage: Error fetching sales orders:', error);
+        throw error;
+      }
       setSalesOrders(data);
     } catch (err: any) {
       setError(`Error fetching sales orders: ${err.message}`);
-      console.error('Error fetching sales orders:', err);
+      console.error('SalesOrdersPage: Caught error fetching sales orders:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableItems = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesOrdersPage: Supabase session at fetchAvailableItems start:', session);
+
     try {
       const { data, error } = await supabase
         .from('items')
@@ -135,7 +144,10 @@ function SalesOrdersPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesOrdersPage: Error fetching available items:', error);
+        throw error;
+      }
       setAvailableItems(data.map(item => ({
         id: item.id,
         name: item.item_name,
@@ -147,8 +159,8 @@ function SalesOrdersPage() {
         description: item.description,
         units_of_measure: item.units_of_measure,
       })));
-    } catch (error) {
-      console.error('Error fetching available items:', error);
+    } catch (error: any) {
+      console.error('SalesOrdersPage: Caught error fetching available items:', error);
     }
   };
 
@@ -291,14 +303,20 @@ function SalesOrdersPage() {
           .update(salesOrderToSave)
           .eq('id', salesOrder.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesOrdersPage: Error updating sales order:', error);
+          throw error;
+        }
         setSuccessMessage('Sales Order updated successfully!');
       } else {
         const { data, error } = await supabase
           .from('sales_orders')
           .insert(salesOrderToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('SalesOrdersPage: Error creating sales order:', error);
+          throw error;
+        }
         salesOrderId = data[0].id;
         setSuccessMessage('Sales Order created successfully!');
       }
@@ -317,7 +335,10 @@ function SalesOrdersPage() {
           line_total: item.lineTotal,
         }));
         const { error: itemsError } = await supabase.from('sales_order_items').insert(itemsToSave);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('SalesOrdersPage: Error saving sales order items:', itemsError);
+          throw itemsError;
+        }
       }
 
       resetForm();
@@ -325,7 +346,7 @@ function SalesOrdersPage() {
       fetchSalesOrders();
     } catch (err: any) {
       setError(`Failed to save sales order: ${err.message}`);
-      console.error('Save sales order error:', err);
+      console.error('SalesOrdersPage: Caught error saving sales order:', err);
     } finally {
       setLoading(false);
     }
@@ -352,7 +373,9 @@ function SalesOrdersPage() {
       .select('*')
       .eq('order_id', order.id)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('SalesOrdersPage: Error fetching sales order items for edit:', error);
+        } else if (data) {
           setItems(data.map(item => ({
             id: item.id,
             itemCode: item.item_code,
@@ -383,12 +406,15 @@ function SalesOrdersPage() {
     setSuccessMessage(null);
     try {
       const { error } = await supabase.from('sales_orders').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('SalesOrdersPage: Error deleting sales order:', error);
+        throw error;
+      }
       setSuccessMessage('Sales Order deleted successfully!');
       fetchSalesOrders();
     } catch (err: any) {
       setError(`Failed to delete sales order: ${err.message}`);
-      console.error('Delete sales order error:', err);
+      console.error('SalesOrdersPage: Caught error deleting sales order:', err);
     } finally {
       setLoading(false);
     }
@@ -423,7 +449,7 @@ function SalesOrdersPage() {
         }
       }
     } catch (error) {
-      console.error('Item AI suggestion error:', error);
+      console.error('SalesOrdersPage: Item AI suggestion error:', error);
     }
   };
 

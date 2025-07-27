@@ -1,3 +1,4 @@
+// src/pages/Sales/CustomerAgingReportPage.tsx
 import React, { useState } from 'react';
 import { CalendarCheck, Search, Clock, Filter, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
@@ -12,7 +13,7 @@ function CustomerAgingReportPage() {
   const navigate = useNavigate(); // Initialize useNavigate
 
   const [filters, setFilters] = useState({
-    asOfDate: new Date().toISOString().split('T')[0],
+    asOfDate: new Date().toISOString().split('T'),
     customerGroup: '',
   });
 

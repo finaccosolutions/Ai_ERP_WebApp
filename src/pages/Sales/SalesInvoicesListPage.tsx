@@ -71,6 +71,9 @@ function SalesInvoicesListPage() {
   }, [currentCompany?.id, filterCriteria]); // Removed viewMode from dependency array
 
   const fetchSalesInvoices = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('SalesInvoicesListPage: Supabase session at fetchSalesInvoices start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
@@ -119,12 +122,15 @@ function SalesInvoicesListPage() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesInvoicesListPage: Error fetching sales invoices:', error);
+        throw error;
+      }
       setInvoices(data || []);
       setTotalInvoicesCount(count || 0);
     } catch (err: any) {
       showNotification(`Error fetching sales invoices: ${err.message}`, 'error');
-      console.error('Error fetching sales invoices:', err);
+      console.error('SalesInvoicesListPage: Caught error fetching sales invoices:', err);
     } finally {
       setLoading(false);
     }
@@ -154,12 +160,15 @@ function SalesInvoicesListPage() {
         .delete()
         .eq('id', invoiceToDeleteId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('SalesInvoicesListPage: Error deleting invoice:', error);
+        throw error;
+      }
       showNotification('Invoice deleted successfully!', 'success');
       fetchSalesInvoices();
     } catch (err: any) {
       showNotification(`Error deleting invoice: ${err.message}`, 'error');
-      console.error('Error deleting invoice:', err);
+      console.error('SalesInvoicesListPage: Caught error deleting invoice:', err);
     } finally {
       setLoading(false);
       setInvoiceToDeleteId(null);

@@ -1,3 +1,4 @@
+// src/pages/Sales/SalesRegisterPage.tsx
 import React, { useState } from 'react';
 import { BookOpenText, Search, FileText, Filter, Calendar, Users, RefreshCw, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';

@@ -90,6 +90,9 @@ function CreditNotesPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchCreditNotes = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CreditNotesPage: Supabase session at fetchCreditNotes start:', session);
+
     if (!currentCompany?.id) return;
     setLoading(true);
     setError(null);
@@ -101,17 +104,23 @@ function CreditNotesPage() {
         .eq('status', 'credit_note') // Filter for credit notes
         .order('invoice_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('CreditNotesPage: Error fetching credit notes:', error);
+        throw error;
+      }
       setCreditNotesList(data);
     } catch (err: any) {
       setError(`Error fetching credit notes: ${err.message}`);
-      console.error('Error fetching credit notes:', err);
+      console.error('CreditNotesPage: Caught error fetching credit notes:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAvailableCustomers = async (companyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('CreditNotesPage: Supabase session at fetchAvailableCustomers start:', session);
+
     try {
       const { data, error } = await supabase
         .from('customers')
@@ -119,10 +128,13 @@ function CreditNotesPage() {
         .eq('company_id', companyId)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('CreditNotesPage: Error fetching available customers:', error);
+        throw error;
+      }
       setAvailableCustomers(data || []);
-    } catch (error) {
-      console.error('Error fetching available customers:', error);
+    } catch (error: any) {
+      console.error('CreditNotesPage: Caught error fetching available customers:', error);
     }
   };
 
@@ -264,14 +276,20 @@ function CreditNotesPage() {
           .update(creditNoteToSave)
           .eq('id', creditNote.id)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('CreditNotesPage: Error updating sales invoice for credit note:', error);
+          throw error;
+        }
         setSuccessMessage('Credit Note updated successfully!');
       } else {
         const { data, error } = await supabase
           .from('sales_invoices') // Saving to sales_invoices table
           .insert(creditNoteToSave)
           .select();
-        if (error) throw error;
+        if (error) {
+          console.error('CreditNotesPage: Error creating sales invoice for credit note:', error);
+          throw error;
+        }
         creditNoteId = data[0].id;
         setSuccessMessage('Credit Note created successfully!');
       }
@@ -290,7 +308,10 @@ function CreditNotesPage() {
           line_total: item.lineTotal,
         }));
         const { error: itemsError } = await supabase.from('sales_invoice_items').insert(itemsToSave);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('CreditNotesPage: Error saving sales invoice items for credit note:', itemsError);
+          throw itemsError;
+        }
       }
 
       resetForm();
@@ -298,7 +319,7 @@ function CreditNotesPage() {
       fetchCreditNotes();
     } catch (err: any) {
       setError(`Failed to save credit note: ${err.message}`);
-      console.error('Save credit note error:', err);
+      console.error('CreditNotesPage: Caught error saving credit note:', err);
     } finally {
       setLoading(false);
     }
@@ -325,7 +346,9 @@ function CreditNotesPage() {
       .select('*')
       .eq('invoice_id', cn.id)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('CreditNotesPage: Error fetching sales invoice items for edit:', error);
+        } else if (data) {
           setItems(data.map(item => ({
             id: item.id,
             itemCode: item.item_code,
@@ -353,12 +376,15 @@ function CreditNotesPage() {
     setSuccessMessage(null);
     try {
       const { error } = await supabase.from('sales_invoices').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('CreditNotesPage: Error deleting credit note:', error);
+        throw error;
+      }
       setSuccessMessage('Credit Note deleted successfully!');
       fetchCreditNotes();
     } catch (err: any) {
       setError(`Failed to delete credit note: ${err.message}`);
-      console.error('Delete credit note error:', err);
+      console.error('CreditNotesPage: Caught error deleting credit note:', err);
     } finally {
       setLoading(false);
     }
@@ -387,7 +413,7 @@ function CreditNotesPage() {
         }
       }
     } catch (error) {
-      console.error('Customer AI suggestion error:', error);
+      console.error('CreditNotesPage: Customer AI suggestion error:', error);
     }
   };
 
