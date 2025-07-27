@@ -315,7 +315,6 @@ function UserSettingsPage({ activeSection }: UserSettingsPageProps) {
               Enable Two-Factor Authentication
             </label>
             </div>
-          </div>
         </Card>
       )}
     </div>

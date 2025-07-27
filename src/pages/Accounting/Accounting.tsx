@@ -54,6 +54,9 @@ function Accounting() {
   const { hasPermission } = useAuth();
   const location = useLocation();
 
+  // Add these lines:
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
   const [activeTab, setActiveTab] = useState('masters'); // Default active tab
   const [accountingMetrics, setAccountingMetrics] = useState({
     ledgers: { count: '0' },
@@ -74,11 +77,14 @@ function Accounting() {
   });
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
-  useEffect(() => {
-    if (currentCompany?.id) {
-      fetchAccountingMetrics(currentCompany.id);
-    }
-  }, [currentCompany?.id]);
+ useEffect(() => {
+  // Add the condition here:
+  if (!authLoading && isAuthenticated && currentCompany?.id) {
+    fetchAccountingMetrics(currentCompany.id);
+  }
+// Add isAuthenticated and authLoading to the dependency array:
+}, [currentCompany?.id, isAuthenticated, authLoading]);
+
 
   const fetchAccountingMetrics = async (companyId: string) => {
     const { data: { session } } = await supabase.auth.getSession();
