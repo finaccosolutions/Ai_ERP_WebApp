@@ -21,7 +21,6 @@ export interface Database {
       companies: {
         Row: {
           id: string;
-          company_id: string;
           name: string;
           country: string;
           currency: string;
@@ -46,7 +45,6 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          company_id?: string;
           name: string;
           country?: string;
           currency?: string;
@@ -71,7 +69,6 @@ export interface Database {
         };
         Update: {
           id?: string;
-          company_id?: string;
           name?: string;
           country?: string;
           currency?: string;

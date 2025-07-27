@@ -128,10 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleAuthUser = async (supabaseUser: SupabaseUser) => {
     // Prevent redundant calls if already processing for the same user, or if user is already loaded and not in a loading state
-    if (isAuthUserProcessing.current || (user && user.id === supabaseUser.id && isAuthenticated && !loading)) {
-      console.log('AuthContext.tsx: handleAuthUser: Already processing or user is up-to-date. Skipping re-fetch.');
-      return;
-    }
+    if (isAuthUserProcessing.current) {
+    console.log('AuthContext.tsx: handleAuthUser: Already processing. Skipping re-fetch.');
+    return;
+  }
+
 
     isAuthUserProcessing.current = true; // Set flag to true
 
