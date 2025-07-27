@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleAuthStateChange = async (event: string, session: any) => {
       setLoading(true); // Set loading to true at the beginning of any auth state change
-      // MODIFIED LOG: Log event and session directly from Supabase callback
+      // Log event and session directly from Supabase callback
       console.log('AuthContext.tsx: handleAuthStateChange callback fired. Event:', event, 'Session:', session);
       try {
         if (session?.user) {
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Add visibility change listener for session refresh
     const handleVisibilityChange = async () => {
-      // MODIFIED LOG: Confirm visibilitychange event is detected
+      // Confirm visibilitychange event is detected
       console.log('AuthContext.tsx: handleVisibilityChange triggered. Document visibilityState:', document.visibilityState);
       if (document.visibilityState === 'visible') {
         console.log('AuthContext.tsx: Document became visible, attempting to refresh session.');
@@ -136,8 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthUserProcessing.current = true; // Set flag to true
 
     try {
-      // Removed: setLoading(true); // Loading state is managed by handleAuthStateChange or initializeAuth
-      // ADDED LOG
       console.log('AuthContext.tsx: handleAuthUser started for user ID:', supabaseUser.id);
       let profile: any = null;
       let userRole: any = null;
@@ -209,7 +207,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext.tsx: handleAuthUser: Setting user and authentication states with userData:', userData);
       setUser(userData);
       setIsAuthenticated(true);
-      // ADDED LOG
       console.log('AuthContext.tsx: handleAuthUser completed. User and isAuthenticated states updated.');
 
     } catch (error: any) {
@@ -220,13 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
       isAuthUserProcessing.current = false; // Reset flag
-      // Removed: setLoading(false); // Loading state is managed by handleAuthStateChange or initializeAuth
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true); // Set loading to true at the beginning of login
-    // ADDED LOG
     console.log('AuthContext.tsx: login attempt for email:', email);
     try {
       const { error } = await supabase.auth.signInWithPassword({

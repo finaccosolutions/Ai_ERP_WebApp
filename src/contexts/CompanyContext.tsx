@@ -217,6 +217,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   }; 
 
   const loadCompanyPeriods = async (companyId: string) => {
+    console.log('CompanyContext.tsx: loadCompanyPeriods: Fetching periods for company ID:', companyId); // ADDED LOG
     try {
       const { data: periodsData, error } = await supabase
         .from('periods')

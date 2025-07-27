@@ -79,6 +79,7 @@ function Accounting() {
 
  useEffect(() => {
   // Add the condition here:
+  console.log('Accounting.tsx: useEffect triggered. isAuthenticated:', isAuthenticated, 'authLoading:', authLoading, 'currentCompany?.id:', currentCompany?.id); // ADDED LOG
   if (!authLoading && isAuthenticated && currentCompany?.id) {
     fetchAccountingMetrics(currentCompany.id);
   }
@@ -413,4 +414,3 @@ function Accounting() {
 }
 
 export default Accounting;
-
