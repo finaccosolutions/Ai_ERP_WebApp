@@ -15,6 +15,7 @@ import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import SalesInvoiceFilterModal from '../../components/Modals/SalesInvoiceFilterModal';
 import { COUNTRIES } from '../../constants/geoData';
 import { useAI } from '../../contexts/AIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SalesInvoiceItem {
   id: string;
@@ -24,14 +25,14 @@ interface SalesInvoiceItem {
   quantity: number;
   unit: string;
   rate: number;
-  amount: number; // Gross Amount after discount
+  amount: number; // Gross Amount for the line (qty * rate)
   tax_rate: number | null;
   tax_amount: number | null;
-  line_total: number; // Net Amount
+  line_total: number; // Net Amount for the line (taxableValue + tax_amount)
   created_at: string;
   hsn_code: string | null;
   discount_percent: number | null;
-  discount_amount: number | null;
+  discount_amount: number | null; // Calculated discount amount for the line
 }
 
 interface OtherLedgerEntry {
@@ -54,9 +55,9 @@ interface SalesInvoice {
   reference_no: string | null;
   terms_and_conditions: string | null;
   notes: string | null;
-  subtotal: number | null;
+  subtotal: number | null; // Gross Amount of all items
   total_tax: number | null;
-  total_amount: number | null;
+  total_amount: number | null; // Final Invoice Value
   paid_amount: number | null;
   outstanding_amount: number | null;
   created_by: string | null;
@@ -64,7 +65,7 @@ interface SalesInvoice {
   updated_at: string;
   tax_details: any | null; // JSONB to store dynamic tax rows
   other_ledger_entries: any | null; // JSONB to store other ledger entries
-  total_discount: number | null;
+  total_discount: number | null; // Total discount of all items
 }
 
 interface ItemOption {
@@ -127,12 +128,12 @@ function SalesInvoicesPage() {
     termsAndConditions: '',
     notes: '',
     status: 'draft',
-    subtotal: 0,
+    subtotal: 0, // Gross Amount of all items
     totalTax: 0,
-    totalAmount: 0,
+    totalAmount: 0, // Final Invoice Value
     paidAmount: 0,
     outstandingAmount: 0,
-    totalDiscount: 0,
+    totalDiscount: 0, // Total discount of all items
   });
 
   const [items, setItems] = useState<SalesInvoiceItem[]>([
@@ -144,14 +145,14 @@ function SalesInvoicesPage() {
       quantity: 1,
       unit: 'Nos',
       rate: 0,
-      amount: 0,
+      amount: 0, // Gross Amount for the line (qty * rate)
       tax_rate: 0,
       tax_amount: 0,
-      line_total: 0,
+      line_total: 0, // Net Amount for the line (taxableValue + tax_amount)
       created_at: '',
       hsn_code: null,
       discount_percent: 0,
-      discount_amount: 0,
+      discount_amount: 0, // Calculated discount amount for the line
     }
   ]);
 
@@ -165,7 +166,7 @@ function SalesInvoicesPage() {
   const [isInvoiceDetailsExpanded, setIsInvoiceDetailsExpanded] = useState(true);
   const [isInvoiceItemsExpanded, setIsInvoiceItemsExpanded] = useState(true);
   const [isOtherLedgerEntriesExpanded, setIsOtherLedgerEntriesExpanded] = useState(true);
-  const [isTaxSummaryExpanded, setIsTaxSummaryExpanded] = useState(true);
+  const [isTaxSummaryExpanded, setIsTaxSummaryExpanded] = useState(true); // For the new Tax Details section
   const [isInvoiceSummaryExpanded, setIsInvoiceSummaryExpanded] = useState(true);
 
   // Filter state
@@ -229,12 +230,16 @@ function SalesInvoicesPage() {
           fetchMastersData(currentCompany?.id || '').then(() => {
             const newItem = availableItems.find(i => i.id === createdId);
             if (newItem) {
-              updateItem(0, 'item_code', newItem.item_code);
-              updateItem(0, 'item_name', newItem.name);
-              updateItem(0, 'unit', newItem.units_of_measure?.name || 'Nos');
-              updateItem(0, 'rate', newItem.standard_rate);
-              updateItem(0, 'taxRate', newItem.tax_rate);
-              updateItem(0, 'hsnCode', newItem.hsn_code);
+              // Find the first empty item row or add a new one
+              const emptyItemIndex = items.findIndex(item => !item.item_name);
+              const targetIndex = emptyItemIndex !== -1 ? emptyItemIndex : items.length -1; // If no empty, use last row
+
+              updateItem(targetIndex, 'item_code', newItem.item_code);
+              updateItem(targetIndex, 'item_name', newItem.name);
+              updateItem(targetIndex, 'unit', newItem.units_of_measure?.name || 'Nos');
+              updateItem(targetIndex, 'rate', newItem.standard_rate);
+              updateItem(targetIndex, 'tax_rate', newItem.tax_rate);
+              updateItem(targetIndex, 'hsn_code', newItem.hsn_code);
             }
           });
           showNotification(`Item "${createdName}" created and available for selection.`, 'info');
@@ -243,8 +248,12 @@ function SalesInvoicesPage() {
           fetchMastersData(currentCompany?.id || '').then(() => {
             const newAccount = availableAccounts.find(a => a.id === createdId);
             if (newAccount) {
-              handleOtherLedgerEntryChange(0, 'account_id', newAccount.id);
-              handleOtherLedgerEntryChange(0, 'account_name', newAccount.name);
+              // Find the first empty other ledger entry row or add a new one
+              const emptyEntryIndex = otherLedgerEntries.findIndex(entry => !entry.account_name);
+              const targetIndex = emptyEntryIndex !== -1 ? emptyEntryIndex : otherLedgerEntries.length -1;
+
+              handleOtherLedgerEntryChange(targetIndex, 'account_id', newAccount.id);
+              handleOtherLedgerEntryChange(targetIndex, 'account_name', newAccount.name);
             }
           });
           showNotification(`Account "${createdName}" created and available for selection.`, 'info');
@@ -415,18 +424,19 @@ function SalesInvoicesPage() {
         });
         setItems(data.sales_invoice_items.map((item: any) => ({
           id: item.id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
+          item_code: item.item_code,
+          item_name: item.item_name,
           quantity: item.quantity,
           unit: item.unit,
           rate: item.rate,
           amount: item.amount,
-          taxRate: item.tax_rate,
-          taxAmount: item.tax_amount,
-          lineTotal: item.line_total,
-          hsnCode: item.hsn_code,
-          discountPercent: item.discount_percent,
-          discountAmount: item.discount_amount,
+          tax_rate: item.tax_rate,
+          tax_amount: item.tax_amount,
+          line_total: item.line_total,
+          created_at: item.created_at,
+          hsn_code: item.hsn_code,
+          discount_percent: item.discount_percent,
+          discount_amount: item.discount_amount,
         })));
         setOtherLedgerEntries(data.other_ledger_entries || []);
       }
@@ -462,18 +472,18 @@ function SalesInvoicesPage() {
   };
 
   const calculateItemTotals = (item: SalesInvoiceItem) => {
-    const amount = item.quantity * item.rate;
-    const discountAmount = (amount * (item.discountPercent || 0)) / 100;
-    const grossAmountAfterDiscount = amount - discountAmount;
-    const taxAmount = (grossAmountAfterDiscount * (item.taxRate || 0)) / 100;
-    const lineTotal = grossAmountAfterDiscount + taxAmount;
+    const grossAmount = item.quantity * item.rate;
+    const discountAmount = (grossAmount * (item.discount_percent || 0)) / 100;
+    const taxableValue = grossAmount - discountAmount;
+    const taxAmount = (taxableValue * (item.tax_rate || 0)) / 100;
+    const lineTotal = taxableValue + taxAmount;
 
     return {
       ...item,
-      amount: grossAmountAfterDiscount,
+      amount: grossAmount, // This is the gross amount for the line
       discount_amount: discountAmount,
       tax_amount: taxAmount,
-      line_total: lineTotal,
+      line_total: lineTotal, // This is the net amount after tax
     };
   };
 
@@ -485,10 +495,15 @@ function SalesInvoicesPage() {
 
     setItems(newItems);
     calculateInvoiceTotals(newItems, otherLedgerEntries);
+
+    // Add new row if this is the last item and an item was selected
+    if (index === items.length - 1 && field === 'item_name' && value) {
+      addItem();
+    }
   };
 
   const addItem = () => {
-    const newItem: SalesInvoiceItem = {
+    setItems([...items, {
       id: 'new-' + Date.now().toString(),
       invoice_id: null,
       item_code: '',
@@ -504,8 +519,7 @@ function SalesInvoicesPage() {
       hsn_code: null,
       discount_percent: 0,
       discount_amount: 0,
-    };
-    setItems([...items, newItem]);
+    }]);
   };
 
   const removeItem = (index: number) => {
@@ -521,6 +535,11 @@ function SalesInvoicesPage() {
     newEntries[index] = { ...newEntries[index], [field]: value };
     setOtherLedgerEntries(newEntries);
     calculateInvoiceTotals(items, newEntries);
+
+    // Add new row if this is the last entry and an account was selected
+    if (index === otherLedgerEntries.length - 1 && field === 'account_name' && value) {
+      addOtherLedgerEntry();
+    }
   };
 
   const addOtherLedgerEntry = () => {
@@ -540,12 +559,12 @@ function SalesInvoicesPage() {
   };
 
   const calculateInvoiceTotals = (itemList: SalesInvoiceItem[], otherEntries: OtherLedgerEntry[]) => {
-    const subtotal = itemList.reduce((sum, item) => sum + (item.rate * item.quantity), 0);
+    const grossAmount = itemList.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
     const totalDiscount = itemList.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
+    const taxableValue = itemList.reduce((sum, item) => sum + (item.amount - (item.discount_amount || 0)), 0); // Gross after discount
     const totalTax = itemList.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-    const totalItemsAmountAfterDiscount = itemList.reduce((sum, item) => sum + (item.amount || 0), 0);
 
-    let finalTotalAmount = totalItemsAmountAfterDiscount + totalTax;
+    let finalTotalAmount = taxableValue + totalTax;
 
     otherEntries.forEach(entry => {
       if (entry.isDebit) {
@@ -557,10 +576,11 @@ function SalesInvoicesPage() {
 
     setInvoice(prev => ({
       ...prev,
-      subtotal: subtotal,
+      subtotal: grossAmount, // This is the Gross Amount
       totalDiscount: totalDiscount,
       totalTax: totalTax,
-      totalAmount: finalTotalAmount,
+      totalAmount: finalTotalAmount, // This is the final Invoice Value
+      paidAmount: prev.paidAmount, // Keep paid amount as is
       outstandingAmount: finalTotalAmount - prev.paidAmount,
     }));
   };
@@ -616,7 +636,7 @@ function SalesInvoicesPage() {
       showNotification('Customer is required.', 'error');
       return false;
     }
-    if (items.length === 0 || items.some(item => !item.itemName || item.quantity <= 0 || item.rate < 0)) {
+    if (items.length === 0 || items.some(item => !item.item_name || item.quantity <= 0 || item.rate < 0)) {
       showNotification('All invoice items must have a name, positive quantity, and non-negative rate.', 'error');
       return false;
     }
@@ -651,6 +671,7 @@ function SalesInvoicesPage() {
         paid_amount: invoice.paidAmount,
         outstanding_amount: invoice.outstandingAmount,
         total_discount: invoice.totalDiscount,
+        tax_details: getAggregatedTaxDetails(), // Save aggregated tax details
         other_ledger_entries: otherLedgerEntries,
       };
 
@@ -679,18 +700,18 @@ function SalesInvoicesPage() {
 
         const itemsToSave = items.map(item => ({
           invoice_id: invoiceId,
-          item_code: item.itemCode,
-          item_name: item.itemName,
+          item_code: item.item_code,
+          item_name: item.item_name,
           quantity: item.quantity,
           unit: item.unit,
           rate: item.rate,
           amount: item.amount,
-          tax_rate: item.taxRate,
-          tax_amount: item.taxAmount,
+          tax_rate: item.tax_rate,
+          tax_amount: item.tax_amount,
           line_total: item.line_total,
           hsn_code: item.hsn_code,
-          discount_percent: item.discountPercent,
-          discount_amount: item.discountAmount,
+          discount_percent: item.discount_percent,
+          discount_amount: item.discount_amount,
         }));
         const { error: itemsError } = await supabase.from('sales_invoice_items').insert(itemsToSave);
         if (itemsError) throw itemsError;
@@ -1063,38 +1084,7 @@ function SalesInvoicesPage() {
                   placeholder="e.g., Customer PO, Sales Order"
                   readOnly={viewMode === 'view'}
                 />
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>Status</label>
-                  <select
-                    value={invoice.status}
-                    onChange={(e) => handleInvoiceChange('status', e.target.value)}
-                    className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent ${viewMode === 'view' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}`}
-                    disabled={viewMode === 'view'}
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="paid">Paid</option>
-                    <option value="partially_paid">Partially Paid</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <FormField
-                  label="Terms and Conditions"
-                  value={invoice.termsAndConditions}
-                  onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
-                  placeholder="Payment terms, delivery terms, etc."
-                  className="md:col-span-2"
-                  readOnly={viewMode === 'view'}
-                />
-                <FormField
-                  label="Notes"
-                  value={invoice.notes}
-                  onChange={(val) => handleInvoiceChange('notes', val)}
-                  placeholder="Any additional notes"
-                  className="md:col-span-2"
-                  readOnly={viewMode === 'view'}
-                />
+                {/* Removed Status, Terms and Conditions, Notes fields */}
               </div>
             </div>
           </Card>
@@ -1132,8 +1122,8 @@ function SalesInvoicesPage() {
                             updateItem(index, 'item_name', name);
                             updateItem(index, 'unit', selected.units_of_measure?.name || 'Nos');
                             updateItem(index, 'rate', selected.standard_rate);
-                            updateItem(index, 'taxRate', selected.tax_rate);
-                            updateItem(index, 'hsnCode', selected.hsn_code);
+                            updateItem(index, 'tax_rate', selected.tax_rate);
+                            updateItem(index, 'hsn_code', selected.hsn_code);
                           }}
                           options={availableItems.map(i => ({ id: i.id, name: i.item_name, ...i }))}
                           placeholder="Select or type item name"
@@ -1141,26 +1131,13 @@ function SalesInvoicesPage() {
                           readOnly={viewMode === 'view'}
                           onF2Press={(val) => handleF2Press('Item Name', val, index, 'item')}
                         />
-                        <FormField
-                          label="HSN/SAC"
-                          value={item.hsn_code || ''}
-                          onChange={(val) => updateItem(index, 'hsn_code', val)}
-                          placeholder="8471"
-                          readOnly={viewMode === 'view'}
-                        />
+                        {/* Removed HSN/SAC and Unit fields */}
                         <FormField
                           label="Qty"
                           type="number"
                           value={item.quantity.toString()}
                           onChange={(val) => updateItem(index, 'quantity', parseFloat(val) || 0)}
                           required
-                          readOnly={viewMode === 'view'}
-                        />
-                        <FormField
-                          label="Unit"
-                          value={item.unit}
-                          onChange={(val) => updateItem(index, 'unit', val)}
-                          placeholder="Nos"
                           readOnly={viewMode === 'view'}
                         />
                         <FormField
@@ -1178,15 +1155,23 @@ function SalesInvoicesPage() {
                           onChange={(val) => updateItem(index, 'discount_percent', parseFloat(val) || 0)}
                           readOnly={viewMode === 'view'}
                         />
-                        <MasterSelectField
-                          label="Tax %"
-                          value={item.tax_rate?.toString() || '0'}
-                          onValueChange={(val) => updateItem(index, 'tax_rate', parseFloat(val) || 0)}
-                          onSelect={(id) => updateItem(index, 'tax_rate', parseFloat(id) || 0)}
-                          options={getTaxRatesForDropdown()}
-                          placeholder="Select Tax %"
-                          readOnly={viewMode === 'view'}
-                        />
+                        <div className="flex flex-col">
+                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax %</label>
+                          <select
+                            value={item.tax_rate?.toString() || '0'}
+                            onChange={(e) => updateItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
+                            className={`
+                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              ${theme.inputBg} ${theme.textPrimary}
+                              focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
+                            `}
+                            disabled={viewMode === 'view'}
+                          >
+                            {getTaxRatesForDropdown().map(option => (
+                              <option key={option.id} value={option.id}>{option.name}</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex flex-col">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Gross Amt</label>
                           <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm`}>
@@ -1289,13 +1274,13 @@ function SalesInvoicesPage() {
             </div>
           </Card>
 
-          {/* Tax Summary Section */}
+          {/* Tax Details Section */}
           {getAggregatedTaxDetails().length > 0 && (
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                   <Tag size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                  Tax Summary
+                  Tax Details
                 </h3>
                 <button type="button" onClick={() => setIsTaxSummaryExpanded(!isTaxSummaryExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
                   {isTaxSummaryExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -1303,8 +1288,8 @@ function SalesInvoicesPage() {
               </div>
               <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isTaxSummaryExpanded ? 'max-h-screen' : 'max-h-0'}`}>
                 <div className="space-y-2">
-                  {getAggregatedTaxDetails().map((tax: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm">
+                  {getAggregatedTaxDetails().map((tax: any, idx: number) => (
+                    <div key={idx} className="flex justify-between text-sm">
                       <span className={theme.textMuted}>{tax.tax_type} @ {tax.tax_rate}%:</span>
                       <span className={theme.textPrimary}>{formatCurrency(tax.tax_amount)}</span>
                     </div>
@@ -1314,84 +1299,93 @@ function SalesInvoicesPage() {
             </Card>
           )}
 
-          {/* Invoice Summary */}
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                <Calculator size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Invoice Summary
-              </h3>
-              <button type="button" onClick={() => setIsInvoiceSummaryExpanded(!isInvoiceSummaryExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
-                {isInvoiceSummaryExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </button>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isInvoiceSummaryExpanded ? 'max-h-screen' : 'max-h-0'}`}>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className={theme.textMuted}>Subtotal:</span>
-                  <span className={theme.textPrimary}>{formatCurrency(invoice.subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme.textMuted}>Total Discount:</span>
-                  <span className={theme.textPrimary}>{formatCurrency(invoice.totalDiscount)}</span>
-                </div>
-                {getAggregatedTaxDetails().map((tax: any, index: number) => (
-                  <div key={index} className="flex justify-between">
-                    <span className={theme.textMuted}>Total {tax.tax_type}:</span>
-                    <span className={theme.textPrimary}>{formatCurrency(tax.tax_amount)}</span>
-                  </div>
-                ))}
-                {otherLedgerEntries.length > 0 && (
+          {/* Invoice Summary and Additional Information Layout */}
+          <div className="grid grid-cols-invoice-summary-layout gap-6">
+            {/* Additional Information (Left Side) */}
+            <Card className="p-6">
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h3>
+              <FormField
+                label="Terms and Conditions"
+                value={invoice.termsAndConditions}
+                onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
+                placeholder="Payment terms, delivery terms, etc."
+                readOnly={viewMode === 'view'}
+              />
+              <FormField
+                label="Notes"
+                value={invoice.notes}
+                onChange={(val) => handleInvoiceChange('notes', val)}
+                placeholder="Any additional notes"
+                readOnly={viewMode === 'view'}
+              />
+            </Card>
+
+            {/* Invoice Summary (Right Side) */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
+                  <Calculator size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                  Invoice Summary
+                </h3>
+                <button type="button" onClick={() => setIsInvoiceSummaryExpanded(!isInvoiceSummaryExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
+                  {isInvoiceSummaryExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </button>
+              </div>
+              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isInvoiceSummaryExpanded ? 'max-h-screen' : 'max-h-0'}`}>
+                <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className={theme.textMuted}>Other Adjustments:</span>
-                    <span className={theme.textPrimary}>
-                      {formatCurrency(otherLedgerEntries.reduce((sum, entry) => sum + (entry.isDebit ? entry.amount : -entry.amount), 0))}
-                    </span>
+                    <span className={theme.textMuted}>Gross Amount:</span>
+                    <span className={theme.textPrimary}>{formatCurrency(invoice.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textMuted}>Less: Discount:</span>
+                    <span className={theme.textPrimary}>{formatCurrency(invoice.totalDiscount)}</span>
+                  </div>
+                  <hr className={theme.borderColor} />
+                  <div className="flex justify-between font-semibold">
+                    <span className={theme.textMuted}>Taxable Value:</span>
+                    <span className={theme.textPrimary}>{formatCurrency(invoice.subtotal - invoice.totalDiscount)}</span>
+                  </div>
+                  {getAggregatedTaxDetails().map((tax: any, index: number) => (
+                    <div key={index} className="flex justify-between">
+                      <span className={theme.textMuted}>Add: {tax.tax_type} ({tax.tax_rate}%):</span>
+                      <span className={theme.textPrimary}>{formatCurrency(tax.tax_amount)}</span>
+                    </div>
+                  ))}
+                  {otherLedgerEntries.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className={theme.textMuted}>Other Adjustments:</span>
+                      <span className={theme.textPrimary}>
+                        {formatCurrency(otherLedgerEntries.reduce((sum, entry) => sum + (entry.isDebit ? entry.amount : -entry.amount), 0))}
+                      </span>
+                    </div>
+                  )}
+                  <hr className={theme.borderColor} />
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span className={theme.textPrimary}>Invoice Value:</span>
+                    <span className="text-emerald-600">{formatCurrency(invoice.totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textMuted}>Paid Amount:</span>
+                    <span className={theme.textPrimary}>{formatCurrency(invoice.paidAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span className={theme.textMuted}>Outstanding Amount:</span>
+                    <span className="text-red-600">{formatCurrency(invoice.outstandingAmount)}</span>
+                  </div>
+                </div>
+                {viewMode !== 'view' && (
+                  <div className="mt-4">
+                    <AIButton
+                      variant="calculate"
+                      onSuggest={() => console.log('AI Calculate')}
+                      className="w-full"
+                    />
                   </div>
                 )}
-                <hr className={theme.borderColor} />
-                <div className="flex justify-between text-lg font-semibold">
-                  <span className={theme.textPrimary}>Total Amount:</span>
-                  <span className="text-emerald-600">{formatCurrency(invoice.totalAmount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme.textMuted}>Paid Amount:</span>
-                  <span className={theme.textPrimary}>{formatCurrency(invoice.paidAmount)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold">
-                  <span className={theme.textMuted}>Outstanding Amount:</span>
-                  <span className="text-red-600">{formatCurrency(invoice.outstandingAmount)}</span>
-                </div>
               </div>
-              {viewMode !== 'view' && (
-                <div className="mt-4">
-                  <AIButton
-                    variant="calculate"
-                    onSuggest={() => console.log('AI Calculate')}
-                    className="w-full"
-                  />
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h3>
-            <FormField
-              label="Terms and Conditions"
-              value={invoice.termsAndConditions}
-              onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
-              placeholder="Payment terms, delivery terms, etc."
-              readOnly={viewMode === 'view'}
-            />
-            <FormField
-              label="Notes"
-              value={invoice.notes}
-              onChange={(val) => handleInvoiceChange('notes', val)}
-              placeholder="Any additional notes"
-              readOnly={viewMode === 'view'}
-            />
-          </Card>
+            </Card>
+          </div>
 
           {viewMode !== 'view' && (
             <div className="flex justify-end space-x-2 mt-6">
