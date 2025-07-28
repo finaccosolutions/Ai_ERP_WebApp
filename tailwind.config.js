@@ -130,21 +130,17 @@ export default {
         }
       },
       boxShadow: {
-        // Updated shadows to use the new emerald-400 base
         'theme': '0 10px 25px -3px rgba(52, 211, 153, 0.1), 0 4px 6px -2px rgba(52, 211, 153, 0.05)',
         'theme-lg': '0 20px 25px -5px rgba(52, 211, 153, 0.1), 0 10px 10px -5px rgba(52, 211, 153, 0.04)',
         'theme-xl': '0 25px 50px -12px rgba(52, 211, 153, 0.25)',
       },
       gridTemplateColumns: {
-        // Reverted to original for now, will be removed if not needed
         'invoice-item-row': '2fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 0.2fr',
         'ledger-entry-row': '1.5fr 0.7fr 1.5fr 0.2fr',
-        // NEW: Custom grid for invoice item rows
-        'invoice-item-row-v2': '3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.5fr 1fr 1fr 0.2fr', // ItemName, Qty, Unit, Rate, Discount, TaxRate, GrossAmount, NetAmount, Delete
-        // NEW: Custom grid for invoice item rows with specified proportions
-        'invoice-item-row-v3': '40% 9% 5% 9% 12% 9% 12% 4%', // Item Name, Qty, Rate, Discount, Gross Amount, Tax Rate, Net Amount, Delete
-        'invoice-item-row-custom': '40% 9% 5% 9% 12% 9% 12% 4%', // Item Name, Qty, Rate, Discount, Gross Amount, Tax Rate, Net Amount, Delete
-        'ledger-entry-row-custom': '2fr 0.5fr 0.5fr 0.2fr', // Account Name, Amount, Type, Delete
+        'invoice-item-row-v2': '3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.5fr 1fr 1fr 0.2fr',
+        'invoice-item-row-v3': '40% 9% 5% 9% 12% 9% 12% 4%',
+        'invoice-item-row-custom': '2fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr 0.2fr',
+        'ledger-entry-row-custom': '2fr 0.5fr 0.5fr 0.2fr',
       }
     },
   },
