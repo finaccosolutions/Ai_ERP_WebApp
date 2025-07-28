@@ -1443,4 +1443,4 @@ function SalesInvoicesPage() {
   );
 }
 
-export default SalesInvoicesPage;
+export default SalesInvoicesPage; 
