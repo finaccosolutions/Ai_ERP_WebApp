@@ -38,75 +38,178 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const isAuthUserProcessing = useRef(false);
-  const [isUserProcessingState, setIsUserProcessingState] = useState(false);
-  const [userLoaded, setUserLoaded] = useState(false); // <--- NEW STATE
+  const [loading, setLoading] = useState(true); // Overall auth loading (session check, etc.)
+  const isUserProcessing = useRef(false); // Ref to prevent concurrent profile fetches
+  const [isUserProcessingState, setIsUserProcessingState] = useState(false); // State for external consumers
+  const [userLoaded, setUserLoaded] = useState(false); // Indicates if detailed user data is loaded
 
-  console.log('AuthContext.tsx: AuthProvider mounted. Initial loading state:', loading);
+  console.log('AuthContext.tsx: AuthProvider mounted. Initial loading state:');
 
+  // Effect 1: Listen for Auth State Changes (login, logout, token refresh)
   useEffect(() => {
-    console.log('AuthContext.tsx: useEffect started.');
+    setLoading(true); // Start overall auth loading
+    setUserLoaded(false); // Reset userLoaded on any auth state change
 
-    const handleAuthStateChange = async (event: string, session: any) => {
-      setLoading(true);
-      setUserLoaded(false); // <--- Reset userLoaded on any auth state change
-      console.log('AuthContext.tsx: handleAuthStateChange callback fired. Event:', event, 'Session:', session);
-      try {
-        if (session?.user) {
-          console.log('AuthContext.tsx: handleAuthStateChange: Session user found, calling handleAuthUser.');
-          await handleAuthUser(session.user);
-        } else {
-          console.log('AuthContext.tsx: handleAuthStateChange: No session user, setting states to unauthenticated.');
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        console.error('AuthContext.tsx: handleAuthStateChange: Error during state change processing:', error);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('AuthContext.tsx: onAuthStateChange triggered. Event:', _event, 'Session:', session);
+      if (session?.user) {
+        // Only set the basic user object here. Detailed profile fetch will be in another effect.
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || 'User', // Basic info from auth metadata
+          role: '', // Will be filled by profile fetch
+          role_id: '', // Will be filled by profile fetch
+          permissions: {}, // Will be filled by profile fetch
+          companies: [], // Will be filled by profile fetch
+          avatar: session.user.user_metadata?.avatar_url || undefined,
+          mobile: session.user.user_metadata?.phone || undefined,
+          department: undefined,
+          designation: undefined,
+          employeeId: undefined,
+          preferences: {},
+        });
+        setIsAuthenticated(true);
+      } else {
+        // If no session user, clear user and set states
         setUser(null);
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
+        setUserLoaded(true); // If no user, then user data is "loaded" (as null)
       }
-    };
+      setLoading(false); // Auth state is resolved
+    });
 
-    const initializeAuth = async () => {
-      setLoading(true);
-      setUserLoaded(false); // <--- Reset userLoaded on initialization
-      console.log('AuthContext.tsx: initializeAuth: Starting initial session check.');
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('AuthContext.tsx: initializeAuth: Initial session check completed. Session:', session);
-        if (session?.user) {
-          console.log('AuthContext.tsx: initializeAuth: Session user found. Processing user data.');
-          await handleAuthUser(session.user);
-          console.log('AuthContext.tsx: handleAuthUser completed for initial session.');
-        } else {
-          console.log('AuthContext.tsx: initializeAuth: No initial session found.');
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        console.error('AuthContext.tsx: initializeAuth: Error during initial session check:', error);
+    // Initial session check on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('AuthContext.tsx: Initial getSession result:', session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || 'User',
+          role: '',
+          role_id: '',
+          permissions: {},
+          companies: [],
+          avatar: session.user.user_metadata?.avatar_url || undefined,
+          mobile: session.user.user_metadata?.phone || undefined,
+          department: undefined,
+          designation: undefined,
+          employeeId: undefined,
+          preferences: {},
+        });
+        setIsAuthenticated(true);
+      } else {
         setUser(null);
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
+        setUserLoaded(true); // No user, so no detailed data to load, consider it loaded.
+      }
+      setLoading(false); // Initial loading complete
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Effect 2: Fetch User Profile and Permissions (triggered when user.id changes)
+  const fetchUserProfileAndPermissions = async () => {
+    // Use the ref to prevent concurrent fetches
+    if (!user?.id || isUserProcessing.current) {
+      console.log('AuthContext.tsx: fetchUserProfileAndPermissions: Skipping fetch. User ID:', user?.id, 'Processing:', isUserProcessing.current);
+      return;
+    }
+
+    isUserProcessing.current = true;
+    setIsUserProcessingState(true); // State for external consumers
+    setUserLoaded(false); // Indicate that detailed user data is being loaded
+
+    try {
+      console.log('AuthContext.tsx: fetchUserProfileAndPermissions: Fetching detailed profile for user ID:', user.id);
+      
+      // Fetch user profile
+      const { data: fetchedProfileArray, error: fetchProfileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id);
+
+      if (fetchProfileError) {
+        console.error('AuthContext.tsx: fetchUserProfileAndPermissions: Error fetching user profile:', fetchProfileError);
+        throw fetchProfileError;
+      }
+      const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
+
+      if (!fetchedProfile) {
+        console.warn(`AuthContext.tsx: fetchUserProfileAndPermissions: User profile not found for user ID: ${user.id}.`);
+        // If profile not found, we still mark userLoaded as true, but user object might be incomplete.
+        // This scenario should ideally be handled during user creation/onboarding.
+        setUserLoaded(true);
+        return;
       }
 
-      const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-      console.log('AuthContext.tsx: onAuthStateChange subscription set up.');
+      // Fetch user's company roles and permissions
+      const { data: userCompanies, error: userCompaniesError } = await supabase
+        .from('users_companies')
+        .select(`
+          company_id,
+          role_id,
+          user_roles (
+            name,
+            permissions
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true);
 
-      return () => {
-        console.log('AuthContext.tsx: useEffect cleanup: Unsubscribing from onAuthStateChange.');
-        if (subscription) {
-          subscription.unsubscribe();
-        }
-      };
-    };
+      if (userCompaniesError) {
+        console.error('AuthContext.tsx: fetchUserProfileAndPermissions: Error fetching user companies:', userCompaniesError);
+        throw userCompaniesError;
+      }
 
-    initializeAuth();
+      const userRole = userCompanies?.[0]?.user_roles;
 
+      // Update the user state with detailed information
+      setUser(prevUser => ({
+        ...prevUser!, // Use non-null assertion as this effect only runs if user is not null
+        name: fetchedProfile.full_name || prevUser!.name,
+        role: userRole?.name || 'Standard User',
+        role_id: userCompanies?.[0]?.role_id || '',
+        permissions: userRole?.permissions || {},
+        companies: userCompanies?.map(uc => uc.company_id) || [],
+        avatar: fetchedProfile.avatar_url || prevUser!.avatar,
+        mobile: fetchedProfile.phone || prevUser!.mobile,
+        department: fetchedProfile.department || undefined,
+        designation: fetchedProfile.designation || undefined,
+        employeeId: fetchedProfile.employee_id || undefined,
+        preferences: fetchedProfile.preferences || {},
+      }));
+      setUserLoaded(true); // Detailed user data is loaded
+      console.log('AuthContext.tsx: fetchUserProfileAndPermissions completed. Detailed user data updated.');
+
+    } catch (error: any) {
+      console.error('AuthContext.tsx: fetchUserProfileAndPermissions: Caught an error during user data processing:', error);
+      // On error, detailed data is not loaded, so keep userLoaded as false or handle appropriately
+      setUserLoaded(false);
+    } finally {
+      isUserProcessing.current = false;
+      setIsUserProcessingState(false);
+    }
+  };
+
+  // This useEffect triggers the detailed profile fetch when user.id becomes available or changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfileAndPermissions();
+    } else {
+      // If user becomes null (e.g., logout), reset processing state
+      isUserProcessing.current = false;
+      setIsUserProcessingState(false);
+      setUserLoaded(true); // No user, so no detailed data to load, consider it loaded.
+    }
+  }, [user?.id]); // Dependency on user.id
+
+  // Effect 3: Handle visibility change to refresh session
+  useEffect(() => {
     const handleVisibilityChange = async () => {
       console.log('AuthContext.tsx: handleVisibilityChange triggered. Document visibilityState:', document.visibilityState);
       if (document.visibilityState === 'visible') {
@@ -125,100 +228,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-
   }, []);
-
-  const handleAuthUser = async (supabaseUser: SupabaseUser) => {
-    if (isAuthUserProcessing.current) {
-      console.log('AuthContext.tsx: handleAuthUser: Already processing. Skipping re-fetch.');
-      return;
-    }
-
-    isAuthUserProcessing.current = true;
-    setIsUserProcessingState(true);
-    setUserLoaded(false); // <--- Set to false at the start of processing user data
-
-    try {
-      console.log('AuthContext.tsx: handleAuthUser started for user ID:', supabaseUser.id);
-      let profile: any = null;
-      let userRole: any = null;
-
-      const { data: fetchedProfileArray, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', supabaseUser.id);
-
-      const fetchedProfile = fetchedProfileArray && fetchedProfileArray.length > 0 ? fetchedProfileArray[0] : null;
-
-      if (!fetchedProfile) {
-        console.warn(`AuthContext.tsx: handleAuthUser: User profile not found for user ID: ${supabaseUser.id}. Setting as unauthenticated.`);
-        setUser(null);
-        setIsAuthenticated(false);
-        return;
-      }
-
-      profile = fetchedProfile;
-      console.log('AuthContext.tsx: handleAuthUser: User profile fetched successfully:', profile);
-
-      const { data: userCompanies, error: userCompaniesError } = await supabase
-        .from('users_companies')
-        .select(`
-          company_id,
-          role_id,
-          user_roles (
-            name,
-            permissions
-          )
-        `)
-        .eq('user_id', supabaseUser.id)
-        .eq('is_active', true);
-
-      if (userCompaniesError) {
-        console.error('AuthContext.tsx: handleAuthUser: Error fetching user companies:', userCompaniesError);
-        throw userCompaniesError;
-      }
-      console.log('AuthContext.tsx: handleAuthUser: User companies fetched successfully:', userCompanies);
-
-      if (userCompanies && userCompanies.length > 0) {
-        userRole = userCompanies[0].user_roles;
-      }
-
-      const userData: User = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: profile?.full_name || 'User',
-        role: userRole?.name || 'Standard User',
-        role_id: userCompanies?.[0]?.role_id || '',
-        permissions: userRole?.permissions || {},
-        companies: userCompanies?.map(uc => uc.company_id) || [],
-        avatar: profile?.avatar_url || undefined,
-        mobile: profile?.phone || undefined,
-        department: profile?.department || undefined,
-        designation: profile?.designation || undefined,
-        preferences: profile?.preferences || {},
-      };
-
-      console.log('AuthContext.tsx: handleAuthUser: Setting user and authentication states with userData:', userData);
-      setUser(userData);
-      setIsAuthenticated(true);
-      setUserLoaded(true); // <--- Set to true only after all data is loaded
-      console.log('AuthContext.tsx: handleAuthUser completed. User and isAuthenticated states updated.');
-
-    } catch (error: any) {
-      console.error('AuthContext.tsx: handleAuthUser: Caught an error during user data processing:', error);
-      setUser(null);
-      setIsAuthenticated(false);
-      setUserLoaded(false); // <--- Set to false on error
-    } finally {
-      console.log('AuthContext.tsx: handleAuthUser: Finally block reached.');
-      isAuthUserProcessing.current = false;
-      setIsUserProcessingState(false);
-    }
-  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
-    setUserLoaded(false); // <--- Reset userLoaded on login attempt
+    setUserLoaded(false); // Reset userLoaded on login attempt
     console.log('AuthContext.tsx: login attempt for email:', email);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -231,7 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return false;
       }
-      console.log('AuthContext.tsx: login: Sign-in initiated. Waiting for onAuthStateChange.');
+      console.log('AuthContext.tsx: login: Sign-in initiated. onAuthStateChange will handle state update.');
       return true;
     } catch (error) {
       console.error('AuthContext.tsx: login: Unexpected login error:', error);
@@ -242,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, mobile: string): Promise<boolean> => {
     setLoading(true);
-    setUserLoaded(false); // <--- Reset userLoaded on signup attempt
+    setUserLoaded(false); // Reset userLoaded on signup attempt
     console.log('AuthContext.tsx: signUp: Attempting signup for email:', email);
     try {
       const { error } = await supabase.auth.signUp({
@@ -261,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return false;
       }
-      console.log('AuthContext.tsx: signUp: Sign-up initiated. Waiting for onAuthStateChange.');
+      console.log('AuthContext.tsx: signUp: Sign-up initiated. onAuthStateChange will handle state update.');
       return true;
     } catch (error) {
       console.error('AuthContext.tsx: signUp: Unexpected sign up error:', error);
@@ -273,15 +287,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     console.log('AuthContext.tsx: logout: Attempting to sign out.');
     setLoading(true);
-    setUserLoaded(false); // <--- Reset userLoaded on logout
+    setUserLoaded(false); // Reset userLoaded on logout
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('AuthContext.tsx: logout: Logout error:', error);
       } else {
         console.log('AuthContext.tsx: logout: Signed out successfully.');
-        setUser(null);
-        setIsAuthenticated(false);
+        // State will be cleared by onAuthStateChange listener
       }
     } catch (error) {
       console.error('AuthContext.tsx: logout: Unexpected logout error:', error);
@@ -314,10 +327,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
