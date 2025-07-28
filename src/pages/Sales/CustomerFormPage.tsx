@@ -142,15 +142,6 @@ function CustomerFormPage() {
   // Flag to check if navigated from Sales Invoice Create Page
   const fromSalesInvoiceCreate = location.state?.fromInvoiceCreation === true;
 
-  const tabs = [
-    { id: 'basic-info', label: 'Basic Info', icon: Home },
-    { id: 'billing-address', label: 'Billing Address', icon: BookUser },
-    { id: 'shipping-address', label: 'Shipping Address', icon: Package },
-    { id: 'contact-details', label: 'Contact Details', icon: PhoneCall },
-    { id: 'financial-tax', label: 'Financial & Tax', icon: Landmark },
-    { id: 'other-details', label: 'Other Details', icon: ClipboardList },
-  ];
-
   useEffect(() => {
     if (currentCompany?.id) {
       fetchCustomerGroups();
@@ -195,6 +186,11 @@ function CustomerFormPage() {
         showNotification(`Customer Group "${location.state.createdGroupName}" created and selected!`, 'success');
       }
 
+      // Clear the state to prevent re-triggering on subsequent renders
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.fromInvoiceCreation && location.state?.initialName) {
+      // Handle initialName from SalesInvoiceCreatePage
+      setFormData(prev => ({ ...prev, name: location.state.initialName }));
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -647,7 +643,7 @@ function CustomerFormPage() {
                     flex flex-col items-center px-4 py-2 text-sm font-medium transition-colors duration-300
                     ${isActive
                       ? `bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500 shadow-sm`
-                      : `text-emerald-700 hover:bg-emerald-50` // Modified line
+                      : `text-emerald-700 hover:bg-emerald-50 ${theme.isDark ? 'hover:bg-gray-700' : ''}` // Added dark mode hover
                     }
                   `}
                   disabled={viewOnly} // Disable tab switching in viewOnly mode
@@ -1134,4 +1130,3 @@ function CustomerFormPage() {
 }
 
 export default CustomerFormPage;
-

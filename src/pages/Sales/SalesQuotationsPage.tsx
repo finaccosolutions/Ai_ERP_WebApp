@@ -666,7 +666,7 @@ function SalesQuotationsPage() {
                 <div className="space-y-4">
                   {items.map((item, index) => (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-invoice-item-row gap-4 items-center"> {/* Modified grid */}
+                      <div className="grid grid-cols-invoice-item-row-custom gap-4 items-center"> {/* Modified grid */}
                         <div className="col-span-2"> {/* Item Name takes 2 columns */}
                           <MasterSelectField
                             label="Item Name"
@@ -903,4 +903,3 @@ function SalesQuotationsPage() {
 }
 
 export default SalesQuotationsPage;
-

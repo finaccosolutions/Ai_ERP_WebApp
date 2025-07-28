@@ -21,6 +21,7 @@ interface MasterSelectFieldProps {
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   fieldIndex?: number; // Optional index for identifying which item/ledger row this field belongs to
   masterType?: string; // Optional type for the master (e.g., 'item', 'customer', 'account')
+  onF2Press?: (value: string, fieldIndex?: number, masterType?: string) => void; // NEW: Callback for F2 press
 }
 
 export interface MasterSelectFieldRef {
@@ -49,6 +50,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   onBlur,
   fieldIndex, // Receive fieldIndex
   masterType, // Receive masterType
+  onF2Press, // NEW: Receive onF2Press
 }, ref) => {
   const { theme } = useTheme();
 
@@ -106,23 +108,21 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
       onKeyDown(e);
     }
 
-    if (allowCreation && onNewValueConfirmed) {
-      if (e.key === 'F2') {
+    if (e.key === 'F2') { // NEW: Handle F2 key press
+      e.preventDefault();
+      if (onF2Press) {
+        onF2Press(searchTerm.trim(), fieldIndex, masterType);
+      }
+      setIsOpen(false);
+    } else if (e.key === 'Enter' && allowCreation && onNewValueConfirmed) {
+      const exactMatch = options.find(option => option.name.toLowerCase() === searchTerm.trim().toLowerCase());
+      if (!exactMatch && searchTerm.trim() !== '') {
         e.preventDefault();
-        // F2 always prompts for creation if text is present or not
-        onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType); // Pass fieldIndex and masterType
+        onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType);
         setIsOpen(false);
-      } else if (e.key === 'Enter') {
-        // Enter prompts for creation only if no exact match is found
-        const exactMatch = options.find(option => option.name.toLowerCase() === searchTerm.trim().toLowerCase());
-        if (!exactMatch && searchTerm.trim() !== '') {
-          e.preventDefault();
-          onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType); // Pass fieldIndex and masterType
-          setIsOpen(false);
-        } else if (exactMatch) {
-          e.preventDefault();
-          handleOptionClick(exactMatch); // Select the exact match
-        }
+      } else if (exactMatch) {
+        e.preventDefault();
+        handleOptionClick(exactMatch);
       }
     }
   };
@@ -190,7 +190,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
 
       {isOpen && filteredOptions.length > 0 && (
         <div className={`
-          absolute z-50 w-full mt-1 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} border ${theme.borderColor}
+          absolute z-50 w-full mt-1 ${theme.isDark ? 'bg-gray-700' : 'bg-blue-50'} border ${theme.borderColor}
           ${theme.borderRadius} ${theme.shadowLevel} max-h-60 overflow-y-auto
         `}>
           {filteredOptions.map(option => (
@@ -201,7 +201,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
               onClick={() => handleOptionClick(option)}
               className={`
                 w-full text-left px-4 py-2 text-sm
-                ${theme.textPrimary} ${theme.isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}
+                ${theme.textPrimary} ${theme.isDark ? 'hover:bg-gray-60' : 'hover:bg-blue-200'}
                 flex items-center justify-between
               `}
             >

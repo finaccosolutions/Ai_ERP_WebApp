@@ -61,6 +61,10 @@ function LedgerFormPage() {
       } else {
         resetForm();
         await generateAccountCode(currentCompany?.id as string, 'USR-'); // Generate for user-created
+        // Handle initialName from SalesInvoiceCreatePage
+        if (location.state?.fromInvoiceCreation && location.state?.initialName) {
+          setFormData(prev => ({ ...prev, accountName: location.state.initialName }));
+        }
       }
       setLoading(false);
     };
@@ -68,7 +72,7 @@ function LedgerFormPage() {
     if (currentCompany?.id) {
       initializeForm();
     }
-  }, [currentCompany?.id, id, isEditMode]);
+  }, [currentCompany?.id, id, isEditMode, location.state]); // Added location.state to dependencies
 
   const fetchGroups = async () => {
     if (!currentCompany?.id) return;

@@ -1,58 +1,70 @@
 // src/pages/Sales/SalesInvoicesPage.tsx
-import React, { useState, useEffect, useRef } from 'react'; // Import useRef
-import { Plus, FileText, Search, Calendar, Users, DollarSign, List, Save, Send, Trash2, Calculator, ArrowLeft, AlertTriangle, Percent } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, FileText, Search, RefreshCw, Eye, Edit, Trash2, Send, Download, Filter, Calendar, Users, ArrowLeft, Calculator, Save, Info } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
-import MasterSelectField from '../../components/UI/MasterSelectField';
+import MasterSelectField, { MasterSelectFieldRef } from '../../components/UI/MasterSelectField';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAI } from '../../contexts/AIContext';
-import { useCompany } from '../../contexts/CompanyContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { COUNTRIES, getCountryByCode, getStateByCode } from '../../constants/geoData';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
+import SalesInvoiceFilterModal from '../../components/Modals/SalesInvoiceFilterModal';
+import { COUNTRIES } from '../../constants/geoData';
 
-// Interface for Invoice Items
-interface InvoiceItem {
+interface SalesInvoiceItem {
   id: string;
-  itemId: string; // Stores the UUID of the selected item from the 'items' table
   itemCode: string;
   itemName: string;
-  description: string;
+  description: string | null;
   quantity: number;
-  unit: string; // Display unit next to Qty
+  unit: string;
   rate: number;
-  discountValue: number; // Single field for discount
-  discountType: 'percentage' | 'amount'; // Type of discount (used for calculation, not stored directly)
-  amount: number; // Amount after discount, before tax
-  taxRate: number;
-  taxAmount: number;
-  lineTotal: number; // Total after discount and tax
+  amount: number; // Gross Amount
+  taxRate: number | null;
+  taxAmount: number | null;
+  lineTotal: number; // Net Amount
+  hsnCode: string | null;
+  discountPercent: number | null; // NEW
+  discountAmount: number | null; // NEW
 }
 
-// Interface for Ledger Entries (for Other Ledger Entries)
-interface LedgerEntry {
-  id: string;
-  accountId: string; // Stores the UUID of the selected account from 'chart_of_accounts'
-  accountName: string;
-  amount: number; // Positive for debit, negative for credit
-  notes: string;
-}
-
-// Interface for Tax Rows
-interface TaxRow {
+interface OtherLedgerEntry {
   id: string;
   accountId: string;
   accountName: string;
-  percentage: number;
   amount: number;
+  isDebit: boolean;
+  notes: string;
 }
 
-// Define Item type for MasterSelectField options
+interface SalesInvoice {
+  id: string;
+  invoice_no: string;
+  customer_id: string | null;
+  invoice_date: string;
+  due_date: string | null;
+  status: string;
+  reference_no: string | null;
+  terms_and_conditions: string | null;
+  notes: string | null;
+  subtotal: number | null;
+  total_tax: number | null;
+  total_amount: number | null;
+  paid_amount: number | null;
+  outstanding_amount: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  customers: { name: string } | null;
+  tax_details: any | null;
+  other_ledger_entries: any | null;
+  total_discount: number | null; // NEW
+}
+
 interface ItemOption {
   id: string;
   name: string;
@@ -62,21 +74,7 @@ interface ItemOption {
   tax_rate: number;
   hsn_code: string;
   description: string;
-  units_of_measure: { name: string } | null; // Nested unit name
-}
-
-interface CustomerOption {
-  id: string;
-  name: string;
-  billing_address: {
-    street1?: string;
-    street2?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-  } | null;
-  gstin?: string;
+  units_of_measure: { name: string } | null;
 }
 
 interface AccountOption {
@@ -85,220 +83,266 @@ interface AccountOption {
   account_code: string;
   account_name: string;
   account_type: string;
-  account_group: string;
-  tax_rate?: number;
+  balance_type: string;
 }
 
 function SalesInvoicesPage() {
   const { theme } = useTheme();
-  const { suggestWithAI, createVoucherFromText } = useAI();
   const { currentCompany } = useCompany();
-  const { user } = useAuth();
   const { showNotification } = useNotification();
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const location = useLocation();
+
+  const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [loading, setLoading] = useState(false); // Set to false initially
+  const [totalInvoicesCount, setTotalInvoicesCount] = useState(0);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [invoiceToDeleteId, setInvoiceToDeleteId] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit' | 'view'>(id ? 'edit' : 'list');
 
   const [invoice, setInvoice] = useState({
     id: '',
     invoiceNo: '',
     customerId: '',
     customerName: '',
-    customerGSTIN: '',
+    orderId: '',
     invoiceDate: new Date().toISOString().split('T')[0],
-    dueDate: '', // Made optional
-    placeOfSupply: '', // Full state name
+    dueDate: '',
     referenceNo: '',
     termsAndConditions: '',
     notes: '',
-    status: 'draft', // draft, sent, paid, partially_paid, overdue, cancelled
+    status: 'draft',
     subtotal: 0,
     totalTax: 0,
     totalAmount: 0,
     paidAmount: 0,
     outstandingAmount: 0,
+    totalDiscount: 0, // NEW
   });
 
-  const [items, setItems] = useState<InvoiceItem[]>([
+  const [items, setItems] = useState<SalesInvoiceItem[]>([
     {
-      id: 'item-1',
-      itemId: '',
+      id: '1',
       itemCode: '',
       itemName: '',
-      description: '',
+      description: null,
       quantity: 1,
       unit: 'Nos',
       rate: 0,
-      discountValue: 0, // Initial value for the single discount field
-      discountType: 'percentage', // Default discount type
       amount: 0,
-      taxRate: 18,
+      taxRate: 0,
       taxAmount: 0,
       lineTotal: 0,
+      hsnCode: null,
+      discountPercent: 0, // NEW
+      discountAmount: 0, // NEW
     }
   ]);
 
-  const [additionalLedgerEntries, setAdditionalLedgerEntries] = useState<LedgerEntry[]>([
-    { id: 'add-ledger-1', accountId: '', accountName: '', amount: 0, notes: '' }
-  ]);
+  const [otherLedgerEntries, setOtherLedgerEntries] = useState<OtherLedgerEntry[]>([]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [availableCustomers, setAvailableCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [availableItems, setAvailableItems] = useState<ItemOption[]>([]);
+  const [availableAccounts, setAvailableAccounts] = useState<AccountOption[]>([]); // For Other Ledger Entries
 
-  // Master data for dropdowns
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [stockItems, setStockItems] = useState<ItemOption[]>([]);
-  const [chartOfAccounts, setChartOfAccounts] = useState<AccountOption[]>([]);
-  const [taxLedgers, setTaxLedgers] = useState<AccountOption[]>([]);
-  const [otherLedgers, setOtherLedgers] = useState<AccountOption[]>([]);
-  const [availableUnits, setAvailableUnits] = useState<{ id: string; name: string }[]>([]);
+  // Filter state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    customerName: '',
+    minAmount: '',
+    maxAmount: '',
+    invoiceNo: '',
+    status: 'all',
+    startDate: '',
+    endDate: '',
+    numResults: '10',
+    sortBy: 'invoice_date',
+    sortOrder: 'desc',
+    referenceNo: '',
+    createdBy: '',
+  });
 
-  const [companyDetails, setCompanyDetails] = useState<any | null>(null);
-  const [customerDetails, setCustomerDetails] = useState<CustomerOption | null>(null);
+  // F2 Confirmation Modal states
+  const [showF2ConfirmModal, setShowF2ConfirmModal] = useState(false);
+  const [f2ConfirmData, setF2ConfirmData] = useState<{ field: string; value: string; index?: number; masterType?: string; existingId?: string; } | null>(null);
 
-  const [taxRows, setTaxRows] = useState<TaxRow[]>([]);
+  // Refs for MasterSelectFields to trigger F2 confirmation
+  const itemMasterSelectRefs = useRef<(MasterSelectFieldRef | null)[]>([]);
+  const accountMasterSelectRefs = useRef<(MasterSelectFieldRef | null)[]>([]);
+  const customerMasterSelectRef = useRef<MasterSelectFieldRef>(null); // Ref for Customer Name
 
-  const isEditMode = !!id;
-  const isViewMode = location.pathname.includes('/view/');
-
-  // State for confirmation modal for master creation
-  const [showMasterConfirmModal, setShowMasterConfirmModal] = useState(false);
-  const [pendingMasterCreation, setPendingMasterCreation] = useState<{ type: 'customer' | 'item' | 'account'; value: string; fieldIndex?: number; } | null>(null);
+  // Flag to check if navigated from Sales Invoice Create Page
+  const fromSalesInvoiceCreate = location.state?.fromInvoiceCreation === true;
 
   useEffect(() => {
     if (currentCompany?.id) {
-      fetchMasterData(currentCompany.id);
-      if (isEditMode) {
-        fetchInvoiceData(id as string);
-      } else {
+      fetchMastersData(currentCompany.id);
+      if (id) {
+        fetchInvoiceData(id);
+        if (location.pathname.includes('/view')) {
+          setViewMode('view');
+        } else {
+          setViewMode('edit');
+        }
+      } else if (location.pathname.includes('/create')) {
+        setViewMode('create');
         resetForm();
+        generateInvoiceNo(currentCompany.id);
+      } else {
+        setViewMode('list');
+        fetchSalesInvoices();
       }
     }
-  }, [currentCompany?.id, id, isEditMode]);
+  }, [currentCompany?.id, id, location.pathname, filterCriteria]);
 
+  // Handle return from master creation/alteration pages
   useEffect(() => {
-    // Handle return from master creation pages
-    if (location.state?.fromInvoiceCreation) {
-      const { createdId, createdName, masterType, fieldIndex } = location.state;
-      // Restore form state from session storage
-      const savedFormState = sessionStorage.getItem('invoiceFormState');
-      if (savedFormState) {
-        const { invoice: savedInvoice, items: savedItems, additionalLedgerEntries: savedAdditionalLedgerEntries } = JSON.parse(savedFormState);
-        setInvoice(savedInvoice);
-        setItems(savedItems);
-        setAdditionalLedgerEntries(savedAdditionalLedgerEntries);
-        sessionStorage.removeItem('invoiceFormState');
-      }
+    if (location.state?.fromInvoiceCreation && location.state?.createdId) {
+      const { createdId, createdName, masterType } = location.state;
 
-      if (createdId && createdName && masterType) {
-        if (masterType === 'customer') {
-          // Find the newly created customer in the updated list
-          const newCustomer = customers.find(c => c.id === createdId);
-          if (newCustomer) {
-            handleCustomerSelect(newCustomer.id, newCustomer.name, newCustomer);
-            showNotification(`Customer "${newCustomer.name}" created and selected!`, 'success');
-          }
-        } else if (masterType === 'item' && fieldIndex !== undefined) {
-          const newItemOption = stockItems.find(item => item.id === createdId);
-          if (newItemOption) {
-            updateItem(fieldIndex, 'itemId', createdId);
-            updateItem(fieldIndex, 'itemName', createdName);
-            updateItem(fieldIndex, 'itemCode', newItemOption.item_code);
-            updateItem(fieldIndex, 'description', newItemOption.description);
-            updateItem(fieldIndex, 'quantity', 1);
-            updateItem(fieldIndex, 'unit', newItemOption.units_of_measure?.name || 'Nos');
-            updateItem(fieldIndex, 'rate', newItemOption.standard_rate);
-            updateItem(fieldIndex, 'taxRate', newItemOption.tax_rate);
-            showNotification(`Item "${newItemOption.item_name}" created and selected!`, 'success');
-          }
-        } else if (masterType === 'account' && fieldIndex !== undefined) {
-          const newAccountOption = chartOfAccounts.find(acc => acc.id === createdId);
-          if (newAccountOption) {
-            updateAdditionalLedgerEntry(fieldIndex, 'accountId', createdId);
-            updateAdditionalLedgerEntry(fieldIndex, 'accountName', createdName);
-            showNotification(`Account "${newAccountOption.account_name}" created and selected!`, 'success');
-          }
-        }
+      switch (masterType) {
+        case 'customer':
+          setInvoice(prev => ({ ...prev, customerId: createdId, customerName: createdName }));
+          customerMasterSelectRef.current?.selectOption(createdId);
+          break;
+        case 'item':
+          // This is more complex as it needs to update a specific item row.
+          // For simplicity, if an item is created, we might just refresh available items
+          // and let the user select it, or if we know which row triggered it, update that row.
+          // For now, just refresh available items.
+          fetchMastersData(currentCompany?.id || '');
+          showNotification(`Item "${createdName}" created and available for selection.`, 'info');
+          break;
+        case 'account':
+          // Similar to item, refresh available accounts.
+          fetchMastersData(currentCompany?.id || '');
+          showNotification(`Account "${createdName}" created and available for selection.`, 'info');
+          break;
+        default:
+          break;
       }
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, customers, stockItems, chartOfAccounts]); // Add dependencies for master data
+  }, [location.state]);
 
-  useEffect(() => {
-    calculateInvoiceTotals(items);
-  }, [items, additionalLedgerEntries, taxRows]);
 
-  useEffect(() => {
-    calculateTaxRows();
-  }, [items, customerDetails, companyDetails]);
-
-  const fetchMasterData = async (companyId: string) => {
-    setLoading(true);
+  const fetchMastersData = async (companyId: string) => {
     try {
-      const { data: compData, error: compError } = await supabase
-        .from('companies')
-        .select('id, name, country, tax_config, address')
-        .eq('id', companyId)
-        .single();
-      if (compError) throw compError;
-      setCompanyDetails(compData);
-
       const { data: customersData, error: customersError } = await supabase
         .from('customers')
-        .select('id, name, gstin, billing_address')
-        .eq('company_id', companyId);
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
       if (customersError) throw customersError;
-      setCustomers(customersData);
+      setAvailableCustomers(customersData || []);
 
       const { data: itemsData, error: itemsError } = await supabase
         .from('items')
         .select(`
-          id, item_code, item_name, description, standard_rate, tax_rate, hsn_code,
+          id,
+          item_code,
+          item_name,
+          standard_rate,
+          tax_rate,
+          hsn_code,
+          description,
           units_of_measure ( name )
         `)
         .eq('company_id', companyId)
         .eq('is_active', true);
       if (itemsError) throw itemsError;
-      setStockItems(itemsData.map(item => ({
+      setAvailableItems(itemsData.map(item => ({
         id: item.id,
         name: item.item_name,
         item_code: item.item_code,
-        description: item.description,
         standard_rate: item.standard_rate,
+        unit_id: item.units_of_measure?.name || 'Nos',
         tax_rate: item.tax_rate,
         hsn_code: item.hsn_code,
-        unit_id: item.units_of_measure?.name || 'Nos'
+        description: item.description,
+        units_of_measure: item.units_of_measure,
       })));
-
-      const { data: unitsData, error: unitsError } = await supabase
-        .from('units_of_measure')
-        .select('id, name')
-        .or(`company_id.eq.${companyId},is_system_defined.eq.true`);
-      if (unitsError) throw unitsError;
-      setAvailableUnits(unitsData);
 
       const { data: accountsData, error: accountsError } = await supabase
         .from('chart_of_accounts')
-        .select('id, account_code, account_name, account_type, account_group, tax_rate')
-        .eq('company_id', companyId);
+        .select('id, account_code, account_name, account_type, balance_type')
+        .eq('company_id', companyId)
+        .eq('is_group', false) // Only non-group accounts (ledgers)
+        .order('account_name', { ascending: true });
       if (accountsError) throw accountsError;
-      setChartOfAccounts(accountsData);
+      setAvailableAccounts(accountsData.map(acc => ({
+        id: acc.id,
+        name: acc.account_name,
+        account_code: acc.account_code,
+        account_name: acc.account_name,
+        account_type: acc.account_type,
+        balance_type: acc.balance_type,
+      })));
 
-      const filteredTaxLedgers = accountsData.filter(acc =>
-        acc.account_group === 'Duties & Taxes Payable' || acc.account_name.toLowerCase().includes('gst') || acc.account_name.toLowerCase().includes('vat')
-      );
-      setTaxLedgers(filteredTaxLedgers);
+    } catch (error) {
+      console.error('Error fetching master data:', error);
+      showNotification('Failed to load customers, items, or accounts.', 'error');
+    }
+  };
 
-      const filteredOtherLedgers = accountsData.filter(acc =>
-        !['Income', 'Expenses', 'Duties & Taxes Payable'].includes(acc.account_group) && !acc.is_group
-      );
-      setOtherLedgers(filteredOtherLedgers);
+  const fetchSalesInvoices = async () => {
+    if (!currentCompany?.id) return;
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('sales_invoices')
+        .select(`
+          id, invoice_no, invoice_date, due_date, status, total_amount, paid_amount, outstanding_amount, created_at,
+          customers ( name ), tax_details, other_ledger_entries, total_discount
+        `, { count: 'exact' })
+        .eq('company_id', currentCompany.id);
 
+      if (filterCriteria.invoiceNo) {
+        query = query.ilike('invoice_no', `%${filterCriteria.invoiceNo}%`);
+      }
+      if (filterCriteria.status !== 'all') {
+        query = query.eq('status', filterCriteria.status);
+      }
+      if (filterCriteria.startDate) {
+        query = query.gte('invoice_date', filterCriteria.startDate);
+      }
+      if (filterCriteria.endDate) {
+        query = query.lte('invoice_date', filterCriteria.endDate);
+      }
+      if (filterCriteria.customerName) {
+        query = query.ilike('customers.name', `%${filterCriteria.customerName}%`);
+      }
+      if (filterCriteria.minAmount) {
+        query = query.gte('total_amount', parseFloat(filterCriteria.minAmount));
+      }
+      if (filterCriteria.maxAmount) {
+        query = query.lte('total_amount', parseFloat(filterCriteria.maxAmount));
+      }
+      if (filterCriteria.referenceNo) {
+        query = query.ilike('reference_no', `%${filterCriteria.referenceNo}%`);
+      }
+
+      query = query.order(filterCriteria.sortBy, { ascending: filterCriteria.sortOrder === 'asc' });
+
+      if (filterCriteria.numResults !== 'all') {
+        query = query.limit(parseInt(filterCriteria.numResults));
+      }
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('SalesInvoicesListPage: Error fetching sales invoices:', error);
+        throw error;
+      }
+      setInvoices(data || []);
+      setTotalInvoicesCount(count || 0);
     } catch (err: any) {
-      console.error('Error fetching master data:', err);
-      setError(`Error fetching master data: ${err.message}`);
+      showNotification(`Error fetching sales invoices: ${err.message}`, 'error');
+      console.error('SalesInvoicesListPage: Caught error fetching sales invoices:', err);
     } finally {
       setLoading(false);
     }
@@ -307,192 +351,81 @@ function SalesInvoicesPage() {
   const fetchInvoiceData = async (invoiceId: string) => {
     setLoading(true);
     try {
-      const { data: invoiceData, error: invoiceError } = await supabase
+      const { data, error } = await supabase
         .from('sales_invoices')
         .select(`
           *,
-          customers ( name, gstin, billing_address )
+          sales_invoice_items (*),
+          customers ( name )
         `)
         .eq('id', invoiceId)
+        .eq('company_id', currentCompany?.id)
         .single();
 
-      if (invoiceError) throw invoiceError;
+      if (error) throw error;
 
-      setInvoice({
-        id: invoiceData.id,
-        invoiceNo: invoiceData.invoice_no,
-        customerId: invoiceData.customer_id,
-        customerName: invoiceData.customers?.name || '',
-        customerGSTIN: invoiceData.customers?.gstin || '',
-        invoiceDate: invoiceData.invoice_date,
-        dueDate: invoiceData.due_date || '',
-        placeOfSupply: invoiceData.customers?.billing_address?.state ? getStateByCode(invoiceData.customers.billing_address.country || '', invoiceData.customers.billing_address.state)?.name || '' : '',
-        referenceNo: invoiceData.reference_no || '',
-        termsAndConditions: invoiceData.terms_and_conditions || '',
-        notes: invoiceData.notes || '',
-        status: invoiceData.status,
-        subtotal: invoiceData.subtotal,
-        totalTax: invoiceData.total_tax,
-        totalAmount: invoiceData.total_amount,
-        paidAmount: invoiceData.paid_amount || 0,
-        outstandingAmount: invoiceData.outstanding_amount || 0,
-      });
-
-      setCustomerDetails(invoiceData.customers);
-
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('sales_invoice_items')
-        .select('*')
-        .eq('invoice_id', invoiceId);
-
-      if (itemsError) throw itemsError;
-
-      if (itemsData && itemsData.length > 0) {
-        setItems(itemsData.map(item => ({
+      if (data) {
+        setInvoice({
+          id: data.id,
+          invoiceNo: data.invoice_no,
+          customerId: data.customer_id || '',
+          customerName: data.customers?.name || '',
+          orderId: data.order_id || '',
+          invoiceDate: data.invoice_date,
+          dueDate: data.due_date || '',
+          referenceNo: data.reference_no || '',
+          termsAndConditions: data.terms_and_conditions || '',
+          notes: data.notes || '',
+          status: data.status,
+          subtotal: data.subtotal || 0,
+          totalTax: data.total_tax || 0,
+          totalAmount: data.total_amount || 0,
+          paidAmount: data.paid_amount || 0,
+          outstandingAmount: data.outstanding_amount || 0,
+          totalDiscount: data.total_discount || 0, // NEW
+        });
+        setItems(data.sales_invoice_items.map((item: any) => ({
           id: item.id,
-          itemId: item.item_id || '',
           itemCode: item.item_code,
           itemName: item.item_name,
-          description: item.description || '',
+          description: item.description,
           quantity: item.quantity,
           unit: item.unit,
           rate: item.rate,
-          discountValue: item.discount_amount || 0, // Populate discountValue from discount_amount
-          discountType: 'amount', // Assume 'amount' type when loading from DB
           amount: item.amount,
-          taxRate: item.tax_rate || 0,
-          taxAmount: item.tax_amount || 0,
+          taxRate: item.tax_rate,
+          taxAmount: item.tax_amount,
           lineTotal: item.line_total,
+          hsnCode: item.hsn_code,
+          discountPercent: item.discount_percent, // NEW
+          discountAmount: item.discount_amount, // NEW
         })));
-      } else {
-        setItems([
-          {
-            id: 'item-1', itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-            discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
-          }
-        ]);
+        setOtherLedgerEntries(data.other_ledger_entries || []);
       }
-
-      if (invoiceData.tax_details) {
-        setTaxRows(invoiceData.tax_details);
-      }
-      if (invoiceData.other_ledger_entries) {
-        setAdditionalLedgerEntries(invoiceData.other_ledger_entries);
-      }
-
     } catch (err: any) {
-      showNotification(`Error fetching invoice: ${err.message}`, 'error');
-      console.error('Error fetching invoice:', err);
+      showNotification(`Error loading invoice: ${err.message}`, 'error');
+      console.error('Error loading invoice:', err);
       navigate('/sales/invoices');
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setInvoice({
-      id: '', invoiceNo: '', customerId: '', customerName: '', customerGSTIN: '',
-      invoiceDate: new Date().toISOString().split('T')[0], dueDate: '', placeOfSupply: '',
-      referenceNo: '', termsAndConditions: '', notes: '', status: 'draft',
-      subtotal: 0, totalTax: 0, totalAmount: 0, paidAmount: 0, outstandingAmount: 0,
-    });
-    setItems([
-      {
-        id: 'item-1', itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-        discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
-      }
-    ]);
-    setAdditionalLedgerEntries([
-      { id: 'add-ledger-1', accountId: '', accountName: '', amount: 0, notes: '' }
-    ]);
-    setError(null);
-    setSuccessMessage(null);
-    setCustomerDetails(null);
-    setTaxRows([]);
-  };
+  const generateInvoiceNo = async (companyId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('sales_invoices')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId);
 
-  const calculateItemTotals = (item: InvoiceItem) => {
-    const grossAmount = item.quantity * item.rate;
-    let amountAfterDiscount = grossAmount;
-    let discountAmount = 0;
+      if (error) throw error;
 
-    // Assuming discountValue is always a percentage for now
-    discountAmount = (grossAmount * item.discountValue) / 100;
-    amountAfterDiscount = grossAmount - discountAmount;
-    
-    const taxAmount = (amountAfterDiscount * item.taxRate) / 100;
-    const lineTotal = amountAfterDiscount + taxAmount;
-    
-    return {
-      ...item,
-      amount: isNaN(amountAfterDiscount) ? 0 : amountAfterDiscount,
-      taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
-      lineTotal: isNaN(lineTotal) ? 0 : lineTotal,
-    };
-  };
-
-  const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    
-    // Recalculate totals for this item
-    newItems[index] = calculateItemTotals(newItems[index]);
-    
-    setItems(newItems);
-
-    if (index === newItems.length - 1 && (newItems[index].itemName || newItems[index].quantity > 0 || newItems[index].rate > 0 || newItems[index].discountValue > 0) && !isViewMode) {
-      addItem();
-    }
-  };
-
-  const addItem = () => {
-    setItems(prev => [...prev, {
-      id: `item-${Date.now()}`, itemId: '', itemCode: '', itemName: '', description: '', quantity: 1, unit: 'Nos', rate: 0,
-      discountValue: 0, discountType: 'percentage', amount: 0, taxRate: 18, taxAmount: 0, lineTotal: 0,
-    }]);
-  };
-
-  const removeItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const calculateInvoiceTotals = (itemList: InvoiceItem[]) => {
-    const subtotal = itemList.reduce((sum, item) => sum + item.amount, 0);
-    const totalTax = taxRows.reduce((sum, row) => sum + row.amount, 0);
-    const otherLedgerTotal = additionalLedgerEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    const totalAmount = subtotal + totalTax + otherLedgerTotal;
-    
-    setInvoice(prev => ({
-      ...prev,
-      subtotal,
-      totalTax,
-      totalAmount,
-      outstandingAmount: totalAmount - prev.paidAmount
-    }));
-  };
-
-  const updateAdditionalLedgerEntry = (index: number, field: keyof LedgerEntry, value: any) => {
-    const newAdditionalLedgerEntries = [...additionalLedgerEntries];
-    newAdditionalLedgerEntries[index] = { ...newAdditionalLedgerEntries[index], [field]: value };
-
-    setAdditionalLedgerEntries(newAdditionalLedgerEntries);
-
-    if (index === newAdditionalLedgerEntries.length - 1 && (newAdditionalLedgerEntries[index].accountName || newAdditionalLedgerEntries[index].amount !== 0) && !isViewMode) {
-      addAdditionalLedgerEntry();
-    }
-  };
-
-  const addAdditionalLedgerEntry = () => {
-    setAdditionalLedgerEntries(prev => [...prev, {
-      id: `add-ledger-${Date.now()}`, accountId: '', accountName: '', amount: 0, notes: ''
-    }]);
-  };
-
-  const removeAdditionalLedgerEntry = (index: number) => {
-    if (additionalLedgerEntries.length > 1) {
-      setAdditionalLedgerEntries(prev => prev.filter((_, i) => i !== index));
+      const nextNumber = (count || 0) + 1;
+      const newInvoiceNo = `INV-${String(nextNumber).padStart(4, '0')}`;
+      setInvoice(prev => ({ ...prev, invoiceNo: newInvoiceNo }));
+    } catch (err) {
+      console.error('Error generating invoice number:', err);
+      showNotification('Failed to generate invoice number. Please enter manually.', 'error');
     }
   };
 
@@ -500,11 +433,172 @@ function SalesInvoicesPage() {
     setInvoice(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveInvoice = async (e: React.FormEvent, status: 'draft' | 'sent' | 'paid') => {
+  const calculateItemTotals = (item: SalesInvoiceItem) => {
+    const amount = item.quantity * item.rate;
+    const discountAmount = (amount * (item.discountPercent || 0)) / 100;
+    const grossAmountAfterDiscount = amount - discountAmount;
+    const taxAmount = (grossAmountAfterDiscount * (item.taxRate || 0)) / 100;
+    const lineTotal = grossAmountAfterDiscount + taxAmount;
+
+    return {
+      ...item,
+      amount: grossAmountAfterDiscount, // This is now Gross Amount after discount
+      discountAmount: discountAmount,
+      taxAmount: taxAmount,
+      lineTotal: lineTotal,
+    };
+  };
+
+  const updateItem = (index: number, field: keyof SalesInvoiceItem, value: any) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    newItems[index] = calculateItemTotals(newItems[index]);
+
+    setItems(newItems);
+    calculateInvoiceTotals(newItems, otherLedgerEntries);
+  };
+
+  const addItem = () => {
+    const newItem: SalesInvoiceItem = {
+      id: 'new-' + Date.now().toString(), // Unique ID for new items
+      itemCode: '',
+      itemName: '',
+      description: null,
+      quantity: 1,
+      unit: 'Nos',
+      rate: 0,
+      amount: 0,
+      taxRate: 0,
+      taxAmount: 0,
+      lineTotal: 0,
+      hsnCode: null,
+      discountPercent: 0,
+      discountAmount: 0,
+    };
+    setItems([...items, newItem]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      const newItems = items.filter((_, i) => i !== index);
+      setItems(newItems);
+      calculateInvoiceTotals(newItems, otherLedgerEntries);
+    }
+  };
+
+  const handleOtherLedgerEntryChange = (index: number, field: keyof OtherLedgerEntry, value: any) => {
+    const newEntries = [...otherLedgerEntries];
+    newEntries[index] = { ...newEntries[index], [field]: value };
+    setOtherLedgerEntries(newEntries);
+    calculateInvoiceTotals(items, newEntries);
+  };
+
+  const addOtherLedgerEntry = () => {
+    setOtherLedgerEntries(prev => [...prev, {
+      id: Date.now().toString(),
+      accountId: '',
+      accountName: '',
+      amount: 0,
+      isDebit: true,
+      notes: '',
+    }]);
+  };
+
+  const removeOtherLedgerEntry = (index: number) => {
+    setOtherLedgerEntries(prev => prev.filter((_, i) => i !== index));
+    calculateInvoiceTotals(items, otherLedgerEntries.filter((_, i) => i !== index));
+  };
+
+  const calculateInvoiceTotals = (itemList: SalesInvoiceItem[], otherEntries: OtherLedgerEntry[]) => {
+    const subtotal = itemList.reduce((sum, item) => sum + (item.rate * item.quantity), 0); // Original subtotal before discount
+    const totalDiscount = itemList.reduce((sum, item) => sum + (item.discountAmount || 0), 0);
+    const totalTax = itemList.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
+    const totalItemsAmountAfterDiscount = itemList.reduce((sum, item) => sum + (item.amount || 0), 0); // Sum of item.amount (Gross after discount)
+
+    let finalTotalAmount = totalItemsAmountAfterDiscount + totalTax;
+
+    // Add/subtract other ledger entries
+    otherEntries.forEach(entry => {
+      if (entry.isDebit) {
+        finalTotalAmount += entry.amount;
+      } else {
+        finalTotalAmount -= entry.amount;
+      }
+    });
+
+    setInvoice(prev => ({
+      ...prev,
+      subtotal: subtotal, // This is the original subtotal
+      totalDiscount: totalDiscount, // NEW
+      totalTax: totalTax,
+      totalAmount: finalTotalAmount,
+      outstandingAmount: finalTotalAmount - prev.paidAmount,
+    }));
+  };
+
+  const resetForm = () => {
+    setInvoice({
+      id: '',
+      invoiceNo: '',
+      customerId: '',
+      customerName: '',
+      orderId: '',
+      invoiceDate: new Date().toISOString().split('T')[0],
+      dueDate: '',
+      referenceNo: '',
+      termsAndConditions: '',
+      notes: '',
+      status: 'draft',
+      subtotal: 0,
+      totalTax: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      outstandingAmount: 0,
+      totalDiscount: 0,
+    });
+    setItems([
+      {
+        id: '1',
+        itemCode: '',
+        itemName: '',
+        description: null,
+        quantity: 1,
+        unit: 'Nos',
+        rate: 0,
+        amount: 0,
+        taxRate: 0,
+        taxAmount: 0,
+        lineTotal: 0,
+        hsnCode: null,
+        discountPercent: 0,
+        discountAmount: 0,
+      }
+    ]);
+    setOtherLedgerEntries([]);
+  };
+
+  const validateForm = () => {
+    if (!invoice.invoiceNo.trim()) {
+      showNotification('Invoice Number is required.', 'error');
+      return false;
+    }
+    if (!invoice.customerId) {
+      showNotification('Customer is required.', 'error');
+      return false;
+    }
+    if (items.length === 0 || items.some(item => !item.itemName || item.quantity <= 0 || item.rate < 0)) {
+      showNotification('All invoice items must have a name, positive quantity, and non-negative rate.', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentCompany?.id || !user?.id) {
-      showNotification('Company or user information is missing. Please log in and select a company.', 'error');
-      setLoading(false);
+    if (!validateForm()) return;
+    if (!currentCompany?.id) {
+      showNotification('Company information is missing. Please log in and select a company.', 'error');
       return;
     }
 
@@ -512,66 +606,83 @@ function SalesInvoicesPage() {
     try {
       const invoiceToSave = {
         company_id: currentCompany.id,
+        created_by: currentCompany.id, // This should be user.id from AuthContext
         invoice_no: invoice.invoiceNo,
         customer_id: invoice.customerId,
+        order_id: invoice.orderId || null,
         invoice_date: invoice.invoiceDate,
-        due_date: invoice.dueDate || null, // Due date is now optional
-        status: status,
-        reference_no: invoice.referenceNo,
-        terms_and_conditions: invoice.termsAndConditions,
-        notes: invoice.notes,
+        due_date: invoice.dueDate || null,
+        status: invoice.status,
+        reference_no: invoice.referenceNo || null,
+        terms_and_conditions: invoice.termsAndConditions || null,
+        notes: invoice.notes || null,
         subtotal: invoice.subtotal,
         total_tax: invoice.totalTax,
         total_amount: invoice.totalAmount,
-        paid_amount: status === 'paid' ? invoice.totalAmount : 0,
-        outstanding_amount: status === 'paid' ? 0 : invoice.totalAmount,
-        created_by: user.id,
-        tax_details: taxRows,
-        other_ledger_entries: additionalLedgerEntries,
+        paid_amount: invoice.paidAmount,
+        outstanding_amount: invoice.outstandingAmount,
+        total_discount: invoice.totalDiscount, // NEW
+        other_ledger_entries: otherLedgerEntries,
       };
 
-      let salesInvoiceId = invoice.id;
+      let invoiceId = invoice.id;
+
       if (invoice.id) {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('sales_invoices')
           .update(invoiceToSave)
-          .eq('id', invoice.id)
-          .select();
+          .eq('id', invoice.id);
         if (error) throw error;
-        salesInvoiceId = data[0].id;
         showNotification('Invoice updated successfully!', 'success');
       } else {
         const { data, error } = await supabase
           .from('sales_invoices')
           .insert(invoiceToSave)
-          .select();
+          .select('id')
+          .single();
         if (error) throw error;
-        salesInvoiceId = data[0].id;
+        invoiceId = data.id;
         showNotification('Invoice created successfully!', 'success');
       }
 
-      if (salesInvoiceId) {
-        await supabase.from('sales_invoice_items').delete().eq('invoice_id', salesInvoiceId);
+      if (invoiceId) {
+        await supabase.from('sales_invoice_items').delete().eq('invoice_id', invoiceId);
 
-        const itemsToSave = items.filter(item => item.itemName).map(item => ({
-          ...item,
-          invoice_id: salesInvoiceId,
-          item_id: item.itemId,
+        const itemsToSave = items.map(item => ({
+          invoice_id: invoiceId,
           item_code: item.itemCode,
           item_name: item.itemName,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          rate: item.rate,
+          amount: item.amount,
           tax_rate: item.taxRate,
           tax_amount: item.taxAmount,
           line_total: item.lineTotal,
-          discount_amount: item.discountType === 'amount' ? item.discountValue : (item.quantity * item.rate * item.discountValue / 100), // Save calculated discount amount
+          hsn_code: item.hsnCode,
+          discount_percent: item.discountPercent, // NEW
+          discount_amount: item.discountAmount, // NEW
         }));
         const { error: itemsError } = await supabase.from('sales_invoice_items').insert(itemsToSave);
         if (itemsError) throw itemsError;
       }
 
+      if (fromSalesInvoiceCreate) {
+        navigate(location.state.returnPath, {
+          replace: true,
+          state: {
+            fromInvoiceCreation: true,
+            createdId: invoiceId,
+            createdName: invoice.invoiceNo,
+            masterType: 'invoice'
+          }
+        });
+      } else {
+        navigate('/sales/invoices');
+      }
       resetForm();
-      navigate('/sales/invoices');
     } catch (err: any) {
-      setError(`Failed to save invoice: ${err.message}`);
       showNotification(`Failed to save invoice: ${err.message}`, 'error');
       console.error('Save invoice error:', err);
     } finally {
@@ -579,612 +690,648 @@ function SalesInvoicesPage() {
     }
   };
 
-  const handleCustomerSelect = (id: string, name: string, additionalData: CustomerOption) => {
-    setInvoice(prev => ({
-      ...prev,
-      customerId: id,
-      customerName: name,
-      customerGSTIN: additionalData?.gstin || '',
-      placeOfSupply: additionalData?.billing_address?.state ? getStateByCode(additionalData.billing_address.country || '', additionalData.billing_address.state)?.name || '' : '',
-    }));
-    setCustomerDetails(additionalData);
+  const handleDeleteInvoice = (invoiceId: string) => {
+    setInvoiceToDeleteId(invoiceId);
+    setShowDeleteConfirm(true);
   };
 
-  const handleItemSelect = (index: number, id: string, name: string, additionalData: ItemOption) => {
-    const newItems = [...items];
-    newItems[index] = {
-      ...newItems[index],
-      itemId: id,
-      itemName: name,
-      itemCode: additionalData?.item_code || '',
-      description: additionalData?.description || '',
-      rate: additionalData?.standard_rate || 0,
-      taxRate: additionalData?.tax_rate || 0,
-      unit: additionalData?.units_of_measure?.name || 'Nos',
-    };
-    setItems(newItems);
-  };
+  const confirmDeleteInvoice = async () => {
+    if (!invoiceToDeleteId) return;
 
-  const handleLedgerSelect = (index: number, id: string, name: string, additionalData: AccountOption, isAdditional: boolean = false) => {
-    if (isAdditional) {
-      const newAdditionalLedgerEntries = [...additionalLedgerEntries];
-      newAdditionalLedgerEntries[index] = {
-        ...newAdditionalLedgerEntries[index],
-        accountId: id,
-        accountName: name,
-        notes: '',
-        amount: 0,
-      };
-      setAdditionalLedgerEntries(newAdditionalLedgerEntries);
-    }
-  };
-
-  const handleVoiceToInvoice = async () => {
+    setShowDeleteConfirm(false);
+    setLoading(true);
     try {
-      const mockVoiceInput = "Create invoice for 5 units of Product A to ABC Corp for 12000 on 2024-07-20";
-      const result = await createVoucherFromText(mockVoiceInput);
+      await supabase.from('sales_invoice_items').delete().eq('invoice_id', invoiceToDeleteId);
 
-      if (result) {
-        setInvoice(prev => ({
-          ...prev,
-          customerName: result.party || prev.customerName,
-          totalAmount: result.amount || prev.totalAmount,
-          invoiceDate: result.date || prev.invoiceDate,
-          notes: result.narration || prev.notes,
-        }));
-        showNotification('Invoice data populated from voice command!', 'info');
-      }
-    } catch (error) {
-      showNotification('Failed to process voice command for invoice.', 'error');
-      console.error('Voice to invoice error:', error);
+      const { error } = await supabase
+        .from('sales_invoices')
+        .delete()
+        .eq('id', invoiceToDeleteId);
+
+      if (error) throw error;
+      showNotification('Invoice deleted successfully!', 'success');
+      fetchSalesInvoices();
+    } catch (err: any) {
+      showNotification(`Error deleting invoice: ${err.message}`, 'error');
+      console.error('Error deleting invoice:', err);
+    } finally {
+      setLoading(false);
+      setInvoiceToDeleteId(null);
     }
   };
 
-  const calculateTaxRows = () => {
-    if (!companyDetails || !customerDetails || !chartOfAccounts.length) {
-      setTaxRows([]);
-      return;
-    }
-
-    const totalTaxableAmount = items.reduce((sum, item) => sum + item.amount, 0);
-    const companyStateCode = companyDetails.address?.state;
-    const customerStateCode = customerDetails.billing_address?.state;
-    const taxConfigType = companyDetails.tax_config?.type;
-
-    let newTaxRows: TaxRow[] = [];
-
-    if (taxConfigType === 'GST' && companyStateCode && customerStateCode) {
-      const taxRatesMap = new Map<number, number>();
-      items.forEach(item => {
-        if (item.taxRate && item.taxAmount) {
-          taxRatesMap.set(item.taxRate, (taxRatesMap.get(item.taxRate) || 0) + item.taxAmount);
-        }
-      });
-
-      taxRatesMap.forEach((totalTaxAmountForRate, rate) => {
-        if (companyStateCode === customerStateCode) {
-          const cgstAccount = taxLedgers.find(acc => acc.account_name.toLowerCase().includes('cgst'));
-          const sgstAccount = taxLedgers.find(acc => acc.account_name.toLowerCase().includes('sgst'));
-
-          if (cgstAccount) {
-            newTaxRows.push({
-              id: `cgst-${cgstAccount.id}-${rate}`,
-              accountId: cgstAccount.id,
-              accountName: cgstAccount.account_name,
-              percentage: rate / 2,
-              amount: totalTaxAmountForRate / 2,
-            });
-          }
-          if (sgstAccount) {
-            newTaxRows.push({
-              id: `sgst-${sgstAccount.id}-${rate}`,
-              accountId: sgstAccount.id,
-              accountName: sgstAccount.account_name,
-              percentage: rate / 2,
-              amount: totalTaxAmountForRate / 2,
-            });
-          }
-        } else {
-          const igstAccount = taxLedgers.find(acc => acc.account_name.toLowerCase().includes('igst'));
-
-          if (igstAccount) {
-            newTaxRows.push({
-              id: `igst-${igstAccount.id}-${rate}`,
-              accountId: igstAccount.id,
-              accountName: igstAccount.account_name,
-              percentage: rate,
-              amount: totalTaxAmountForRate,
-            });
-          }
-        }
-      });
-    } else if (taxConfigType === 'VAT' || taxConfigType === 'Sales Tax') {
-      const defaultTaxRate = companyDetails.tax_config?.rates?.[0] || 5;
-      const taxAmount = (totalTaxableAmount * defaultTaxRate) / 100;
-      const salesTaxAccount = taxLedgers.find(acc => acc.account_name.toLowerCase().includes('sales tax') || acc.account_name.toLowerCase().includes('vat'));
-
-      if (salesTaxAccount) {
-        newTaxRows.push({
-          id: `vat_sales_tax-${salesTaxAccount.id}`,
-          accountId: salesTaxAccount.id,
-          accountName: salesTaxAccount.account_name,
-          percentage: defaultTaxRate,
-          amount: taxAmount,
-        });
-      }
-    }
-    setTaxRows(newTaxRows);
+  const handleApplyFilters = (newFilters: typeof filterCriteria) => {
+    setFilterCriteria(newFilters);
+    setShowFilterModal(false);
   };
 
-  const updateTaxRow = (index: number, field: keyof TaxRow, value: any) => {
-    const newTaxRows = [...taxRows];
-    newTaxRows[index] = { ...newTaxRows[index], [field]: value };
-    if (field === 'percentage') {
-      const totalTaxableAmount = items.reduce((sum, item) => sum + item.amount, 0);
-      newTaxRows[index].amount = (totalTaxableAmount * newTaxRows[index].percentage) / 100;
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'sent': return 'bg-blue-100 text-blue-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'partially_paid': return 'bg-yellow-100 text-yellow-800';
+      case 'overdue': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-purple-100 text-purple-800';
+      case 'credit_note': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    setTaxRows(newTaxRows);
   };
 
-  const getStatesForCountry = (countryCode: string) => {
-    const country = COUNTRIES.find(c => c.code === countryCode);
-    return country ? country.states.map(s => ({ id: s.code, name: s.name })) : [];
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null) return '₹0.00';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currentCompany?.currency || 'INR'
+    }).format(amount);
   };
 
-  const handleNewMasterCreation = (newValue: string, masterType: 'customer' | 'item' | 'account', fieldIndex?: number) => {
-    // Store current form state in session storage before navigating
-    sessionStorage.setItem('invoiceFormState', JSON.stringify({ invoice, items, additionalLedgerEntries }));
-
+  // F2 Confirmation Logic
+  const handleF2Press = (field: string, value: string, index?: number, masterType?: string) => {
+    let existingMaster: any = null;
     let navigatePath = '';
-    switch (masterType) {
-      case 'customer': navigatePath = '/sales/customers/new'; break;
-      case 'item': navigatePath = '/inventory/masters/items/new'; break;
-      case 'account': navigatePath = '/accounting/masters/ledgers/new'; break;
-      default: showNotification('Unknown master type for creation.', 'error'); return;
+    let confirmMessage = '';
+    let confirmBtnText = '';
+
+    if (value.trim() === '') {
+      confirmMessage = `Do you want to create a new ${masterType}?`;
+      confirmBtnText = `Yes, Create ${masterType}`;
+      switch (masterType) {
+        case 'customer': navigatePath = '/sales/customers/new'; break;
+        case 'item': navigatePath = '/inventory/masters/items/new'; break;
+        case 'account': navigatePath = '/accounting/masters/ledgers/new'; break;
+        default: break;
+      }
+    } else {
+      switch (masterType) {
+        case 'customer':
+          existingMaster = availableCustomers.find(c => c.name.toLowerCase() === value.toLowerCase());
+          navigatePath = existingMaster ? `/sales/customers/edit/${existingMaster.id}` : `/sales/customers/new`;
+          confirmMessage = existingMaster ? `Do you want to alter customer "${value}"?` : `Do you want to create a new customer named "${value}"?`;
+          confirmBtnText = existingMaster ? `Yes, Alter Customer` : `Yes, Create Customer`;
+          break;
+        case 'item':
+          existingMaster = availableItems.find(i => i.name.toLowerCase() === value.toLowerCase());
+          navigatePath = existingMaster ? `/inventory/masters/items/edit/${existingMaster.id}` : `/inventory/masters/items/new`;
+          confirmMessage = existingMaster ? `Do you want to alter item "${value}"?` : `Do you want to create a new item named "${value}"?`;
+          confirmBtnText = existingMaster ? `Yes, Alter Item` : `Yes, Create Item`;
+          break;
+        case 'account':
+          existingMaster = availableAccounts.find(a => a.name.toLowerCase() === value.toLowerCase());
+          navigatePath = existingMaster ? `/accounting/masters/ledgers/edit/${existingMaster.id}` : `/accounting/masters/ledgers/new`;
+          confirmMessage = existingMaster ? `Do you want to alter account "${value}"?` : `Do you want to create a new account named "${value}"?`;
+          confirmBtnText = existingMaster ? `Yes, Alter Account` : `Yes, Create Account`;
+          break;
+        default:
+          break;
+      }
     }
 
-    navigate(navigatePath, {
+    setF2ConfirmData({ field, value, index, masterType, existingId: existingMaster?.id });
+    setShowF2ConfirmModal(true);
+  };
+
+  const confirmF2Action = () => {
+    if (!f2ConfirmData) return;
+
+    const { value, masterType, existingId } = f2ConfirmData;
+    let targetPath = '';
+    let initialName = value.trim();
+
+    if (existingId) {
+      // Alter existing master
+      switch (masterType) {
+        case 'customer': targetPath = `/sales/customers/edit/${existingId}`; break;
+        case 'item': targetPath = `/inventory/masters/items/edit/${existingId}`; break;
+        case 'account': targetPath = `/accounting/masters/ledgers/edit/${existingId}`; break;
+        default: break;
+      }
+    } else {
+      // Create new master
+      switch (masterType) {
+        case 'customer': targetPath = '/sales/customers/new'; break;
+        case 'item': targetPath = '/inventory/masters/items/new'; break;
+        case 'account': targetPath = '/accounting/masters/ledgers/new'; break;
+        default: break;
+      }
+    }
+
+    setShowF2ConfirmModal(false);
+    setF2ConfirmData(null);
+
+    navigate(targetPath, {
       state: {
-        initialName: newValue,
-        returnPath: location.pathname,
         fromInvoiceCreation: true,
-        masterType: masterType,
-        fieldIndex: fieldIndex // Pass index for item/account
+        initialName: initialName, // Pass initial name for new creation
+        returnPath: location.pathname, // Pass current path to return to
       }
     });
   };
 
-  const handleConfirmMasterCreation = () => {
-    if (pendingMasterCreation) {
-      handleNewMasterCreation(pendingMasterCreation.value, pendingMasterCreation.type, pendingMasterCreation.fieldIndex);
-      setShowMasterConfirmModal(false);
-      setPendingMasterCreation(null);
+  const getTaxLabels = () => {
+    const countryConfig = COUNTRIES.find(c => c.code === currentCompany?.country);
+    if (countryConfig?.taxConfig?.type === 'GST') {
+      return {
+        type: 'GST',
+        rates: countryConfig.taxConfig.rates,
+        cgst: 'CGST',
+        sgst: 'SGST',
+        igst: 'IGST',
+      };
+    } else if (countryConfig?.taxConfig?.type === 'VAT') {
+      return {
+        type: 'VAT',
+        rates: countryConfig.taxConfig.rates,
+        vat: 'VAT',
+      };
+    } else if (countryConfig?.taxConfig?.type === 'Sales Tax') {
+      return {
+        type: 'Sales Tax',
+        rates: countryConfig.taxConfig.rates,
+        salesTax: 'Sales Tax',
+      };
     }
+    return { type: 'Other', rates: [], otherTax: `${currentCompany?.country || 'Other'} Tax` };
   };
 
-  const handleMasterSelectFieldNewValue = (newValue: string, masterType: 'customer' | 'item' | 'account', fieldIndex?: number) => {
-    setPendingMasterCreation({ type: masterType, value: newValue, fieldIndex: fieldIndex });
-    setShowMasterConfirmModal(true);
-  };
+  const taxLabels = getTaxLabels();
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            {isViewMode ? 'View Sales Invoice' : (isEditMode ? 'Edit Sales Invoice' : 'Create Sales Invoice')}
-          </h1>
-          <p className={theme.textSecondary}>
-            {isViewMode ? 'Review invoice details.' : (isEditMode ? 'Update invoice information.' : 'Generate a new sales invoice.')}
-          </p>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Sales Invoices</h1>
+          <p className={theme.textSecondary}>Manage your sales invoices, track payments, and generate reports.</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/sales/invoices')} icon={<ArrowLeft size={16} />}>
-          Back to Invoices List
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+            Back
+          </Button>
+          <AIButton variant="suggest" onSuggest={() => console.log('AI Invoice Suggestions')} />
+          <Button
+            icon={<Plus size={16} />}
+            onClick={() => navigate('/sales/invoices/create')}
+          >
+            Create New Invoice
+          </Button>
+        </div>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> {error}</span>
-        </div>
-      )}
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Success!</strong>
-          <span className="block sm:inline"> {successMessage}</span>
-        </div>
-      )}
-
-      <Card className="p-6">
-        {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
-              <p className="ml-4 text-gray-500">Loading form data...</p>
+      {viewMode === 'list' ? (
+        <Card className="p-6">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Sales Invoices List</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+            <div className="relative flex-grow">
+              <p className={`text-sm ${theme.textMuted}`}>
+                Showing {invoices.length} of {totalInvoicesCount} invoices.
+              </p>
             </div>
-          ) : ( 
-            <>
-                <div className="flex justify-end items-center mb-4">
-                  <div className="flex space-x-2">
-                    <AIButton variant="voice" onSuggest={handleVoiceToInvoice} />
-                    <AIButton variant="suggest" onSuggest={() => console.log('AI Invoice Suggestions')} />
-                  </div>
+            <div className="flex items-center space-x-2">
+              <Button onClick={() => setShowFilterModal(true)} icon={<Filter size={16} />}>
+                Filter
+              </Button>
+              <Button onClick={fetchSalesInvoices} disabled={loading} icon={<RefreshCw size={16} />}>
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
+                <p>No sales invoices found. Create a new invoice to get started.</p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No.</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outstanding</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {invoices.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{inv.invoice_no}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{inv.customers?.name || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{inv.invoice_date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{inv.due_date || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(inv.total_amount)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(inv.outstanding_amount)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(inv.status)}`}>
+                          {inv.status.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/invoices/edit/${inv.id}`)} title="Edit">
+                          <Edit size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/invoices/view/${inv.id}`)} title="View">
+                          <Eye size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(inv.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                          <Trash2 size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Send">
+                          <Send size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Download">
+                          <Download size={16} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <AIButton variant="predict" onSuggest={() => console.log('AI Payment Prediction')} className="w-full" />
+          </div>
+        </Card>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className="p-6">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Invoice Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                label="Invoice Number"
+                value={invoice.invoiceNo}
+                onChange={(val) => handleInvoiceChange('invoiceNo', val)}
+                placeholder="Auto-generated or manual"
+                required
+                readOnly={viewMode === 'view'}
+              />
+              <FormField
+                label="Invoice Date"
+                type="date"
+                value={invoice.invoiceDate}
+                onChange={(val) => handleInvoiceChange('invoiceDate', val)}
+                required
+                readOnly={viewMode === 'view'}
+              />
+              <FormField
+                label="Due Date"
+                type="date"
+                value={invoice.dueDate}
+                onChange={(val) => handleInvoiceChange('dueDate', val)}
+                readOnly={viewMode === 'view'}
+              />
+              <FormField
+                label="Reference No."
+                value={invoice.referenceNo}
+                onChange={(val) => handleInvoiceChange('referenceNo', val)}
+                placeholder="Customer PO, etc."
+                readOnly={viewMode === 'view'}
+              />
+              <MasterSelectField
+                ref={customerMasterSelectRef} // Attach ref here
+                label="Customer Name"
+                value={invoice.customerName}
+                onValueChange={(val) => handleInvoiceChange('customerName', val)}
+                onSelect={(id, name) => {
+                  handleInvoiceChange('customerId', id);
+                  handleInvoiceChange('customerName', name);
+                }}
+                options={availableCustomers}
+                placeholder="Select Customer"
+                required
+                readOnly={viewMode === 'view'}
+                onF2Press={(val) => handleF2Press('Customer Name', val, undefined, 'customer')}
+              />
+              <FormField
+                label="Sales Order ID (Optional)"
+                value={invoice.orderId}
+                onChange={(val) => handleInvoiceChange('orderId', val)}
+                placeholder="Link to a sales order"
+                readOnly={viewMode === 'view'}
+              />
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${theme.textPrimary}`}>Status</label>
+                <select
+                  value={invoice.status}
+                  onChange={(e) => handleInvoiceChange('status', e.target.value)}
+                  className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent ${viewMode === 'view' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}`}
+                  disabled={viewMode === 'view'}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="paid">Paid</option>
+                  <option value="partially_paid">Partially Paid</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="credit_note">Credit Note</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Invoice Items</h3>
+              {viewMode !== 'view' && (
+                <div className="flex space-x-2">
+                  <AIButton variant="suggest" onSuggest={() => console.log('AI Item Suggestions')} size="sm" />
+                  <Button size="sm" icon={<Plus size={16} />} onClick={addItem}>Add Item</Button>
                 </div>
+              )}
+            </div>
 
-                <form onSubmit={(e) => handleSaveInvoice(e, invoice.status as 'draft' | 'sent' | 'paid')} className="space-y-6">
-                  {/* Basic Information */}
-                  <Card className="p-6">
-                    <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Basic Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        label="Invoice Number"
-                        value={invoice.invoiceNo}
-                        onChange={(value) => handleInvoiceChange('invoiceNo', value)}
-                        placeholder="Auto-generated or manual"
-                        required
-                        readOnly={isViewMode}
-                      />
-                      <FormField
-                        label="Invoice Date"
-                        type="date"
-                        value={invoice.invoiceDate}
-                        onChange={(value) => handleInvoiceChange('invoiceDate', value)}
-                        required
-                        readOnly={isViewMode}
-                      />
-                      <FormField
-                        label="Due Date"
-                        type="date"
-                        value={invoice.dueDate}
-                        onChange={(value) => handleInvoiceChange('dueDate', value)}
-                        // Removed required attribute
-                        readOnly={isViewMode}
-                      />
-                      <FormField
-                        label="Reference No."
-                        value={invoice.referenceNo}
-                        onChange={(value) => handleInvoiceChange('referenceNo', value)}
-                        placeholder="PO Number, etc."
-                        readOnly={isViewMode}
-                      />
-                    </div>
-                  </Card>
-
-                  {/* Customer Information */}
-                  <Card className="p-6">
-                    <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Customer Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <MasterSelectField
-                        label="Customer Name"
-                        value={invoice.customerName}
-                        onValueChange={(val) => handleInvoiceChange('customerName', val)}
-                        onSelect={handleCustomerSelect}
-                        options={customers}
-                        placeholder="Start typing customer name..."
-                        required
-                        aiHelper={true}
-                        context="sales_invoice_customer_selection"
-                        readOnly={isViewMode}
-                        allowCreation={true}
-                        onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'customer')}
-                      />
-                      <FormField
-                        label="Customer GSTIN"
-                        value={invoice.customerGSTIN}
-                        onChange={(value) => handleInvoiceChange('customerGSTIN', value)}
-                        placeholder="22AAAAA0000A1Z5"
-                        readOnly
-                      />
-                      <MasterSelectField
-                        label="Place of Supply (State)"
-                        value={invoice.placeOfSupply}
-                        onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
-                        onSelect={(id, name) => handleInvoiceChange('placeOfSupply', name)}
-                        options={getStatesForCountry(customerDetails?.billing_address?.country || currentCompany?.country || 'IN')}
-                        placeholder="Select State"
-                        required
-                        readOnly={isViewMode}
-                      />
-                      <FormField
-                        label="Sales Order ID (Optional)"
-                        value={invoice.referenceNo} // Using referenceNo for sales order ID
-                        onChange={(val) => handleInvoiceChange('referenceNo', val)}
-                        placeholder="Link to a sales order"
-                        readOnly={isViewMode}
-                      />
-                    </div>
-                  </Card>
-
-                  {/* Invoice Items Section */}
-                  <Card className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Invoice Items</h4>
-                      {!isViewMode && (
-                        <div className="flex space-x-2">
-                          <AIButton variant="suggest" onSuggest={() => console.log('AI Item Suggestions')} size="sm" />
-                          <Button size="sm" icon={<Plus size={16} />} onClick={addItem}>Add Item</Button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {items.map((item, index) => (
-                        <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                          <div className="grid grid-cols-invoice-item-row-v2 gap-x-0 items-center"> {/* Adjusted grid */}
-                            <div className="col-span-3"> {/* Item Name */}
-                              <MasterSelectField
-                                label="Item Name"
-                                value={item.itemName}
-                                onValueChange={(val) => updateItem(index, 'itemName', val)}
-                                onSelect={(id, name, data) => handleItemSelect(index, id, name, data)}
-                                options={stockItems}
-                                placeholder="Product/Service name"
-                                required
-                                readOnly={isViewMode}
-                                allowCreation={true}
-                                onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'item', index)}
-                                fieldIndex={index}
-                              />
-                            </div>
-                            <div className="col-span-1"> {/* Qty */}
-                              <FormField
-                                label="Qty"
-                                type="number"
-                                value={item.quantity.toString()}
-                                onChange={(val) => updateItem(index, 'quantity', parseFloat(val) || 0)}
-                                required
-                                readOnly={isViewMode}
-                              />
-                            </div>
-                            <div className="col-span-1"> {/* Unit (display only) */}
-                              {/* Removed label, displaying unit directly */}
-                              <p className={`text-sm font-medium ${theme.textPrimary} mb-2`}>Unit</p>
-                              <div className={`px-3 py-2.5 border ${theme.inputBorder} ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary} text-sm`}>
-                                {item.unit}
-                              </div>
-                            </div>
-                            <div className="col-span-1"> {/* Rate */}
-                              <FormField
-                                label="Rate"
-                                type="number"
-                                value={item.rate.toString()}
-                                onChange={(val) => updateItem(index, 'rate', parseFloat(val) || 0)}
-                                required
-                                readOnly={isViewMode}
-                              />
-                            </div>
-                            <div className="col-span-1"> {/* Discount */}
-                              <FormField
-                                label="Discount (%)"
-                                type="number"
-                                value={item.discountValue.toString()}
-                                onChange={(val) => updateItem(index, 'discountValue', parseFloat(val) || 0)}
-                                readOnly={isViewMode}
-                              />
-                            </div>
-                            <div className="col-span-1"> {/* Tax Rate */}
-                              <FormField
-                                label="Tax Rate (%)"
-                                type="number"
-                                value={item.taxRate.toString()}
-                                onChange={(val) => updateItem(index, 'taxRate', parseFloat(val) || 0)}
-                                readOnly={isViewMode}
-                              />
-                            </div>
-                            <div className="col-span-1"> {/* Gross Amount */}
-                              <label className={`block text-sm font-medium ${theme.textPrimary} whitespace-nowrap`}>Gross Amount</label>
-                              <div className={`px-3 py-2.5 border ${theme.inputBorder} ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary} text-sm`}>
-                                ₹{item.amount.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="col-span-1"> {/* Net Amount */}
-                              <label className={`block text-sm font-medium ${theme.textPrimary} whitespace-nowrap`}>Net Amount</label>
-                              <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 ${theme.borderRadius} font-semibold text-sm`}>
-                                ₹{item.lineTotal.toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center h-full"> {/* Aligned delete button */}
-                              {!isViewMode && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  icon={<Trash2 size={16} />}
-                                  onClick={() => removeItem(index)}
-                                  disabled={items.length === 1}
-                                  className="text-red-600 hover:text-red-800"
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-
-                  {/* Other Ledger Entries Section */}
-                  <Card className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className={`text-md font-semibold ${theme.textPrimary}`}>Other Ledger Entries</h4>
-                      {!isViewMode && (
-                        <Button size="sm" icon={<Plus size={16} />} onClick={addAdditionalLedgerEntry}>Add Ledger</Button>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {additionalLedgerEntries.map((entry, index) => (
-                        <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-2 items-center"> {/* Adjusted gap */}
-                            <div className="col-span-2">
-                              <MasterSelectField
-                                label="Account Name"
-                                value={entry.accountName}
-                                onValueChange={(val) => updateAdditionalLedgerEntry(index, 'accountName', val)}
-                                onSelect={(id, name, data) => handleLedgerSelect(index, id, name, data, true)}
-                                options={otherLedgers}
-                                placeholder="Select account"
-                                required
-                                readOnly={isViewMode}
-                                allowCreation={true}
-                                onNewValueConfirmed={(val) => handleMasterSelectFieldNewValue(val, 'account', index)}
-                                fieldIndex={index}
-                              />
-                            </div>
-                            <div className="col-span-1">
-                              <FormField
-                                label="Amount"
-                                type="number"
-                                value={entry.amount.toString()}
-                                onChange={(val) => updateAdditionalLedgerEntry(index, 'amount', parseFloat(val) || 0)}
-                                readOnly={isViewMode}
-                              />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-end h-full"> {/* Aligned delete button */}
-                              <FormField
-                                label="Notes"
-                                value={entry.notes}
-                                onChange={(val) => updateAdditionalLedgerEntry(index, 'notes', val)}
-                                placeholder="Entry notes"
-                                readOnly={isViewMode}
-                              />
-                              {!isViewMode && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  icon={<Trash2 size={16} />}
-                                  onClick={() => removeAdditionalLedgerEntry(index)}
-                                  disabled={additionalLedgerEntries.length === 1}
-                                  className="text-red-600 hover:text-red-800 ml-2"
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-
-                  {/* Tax Details Section */}
-                  <Card className="p-6">
-                    <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Tax Details</h4>
-                    <div className="space-y-4">
-                      {taxRows.length === 0 && !isViewMode ? (
-                        <div className="text-center text-gray-500 py-4">
-                          No tax details generated. Select customer and items to calculate tax.
-                        </div>
-                      ) : taxRows.map((row, index) => (
-                        <div key={row.id} className={`p-4 border ${theme.borderColor} rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-center`}>
-                          <FormField
-                            label="Tax Name"
-                            value={row.accountName}
-                            readOnly
-                          />
-                          <FormField
-                            label="Percentage (%)"
-                            type="number"
-                            value={row.percentage.toString()}
-                            readOnly={isViewMode}
-                            onChange={(val) => updateTaxRow(index, 'percentage', parseFloat(val) || 0)}
-                          />
-                          <FormField
-                            label="Amount"
-                            type="number"
-                            value={row.amount.toString()}
-                            readOnly
-                          />
-                          {!isViewMode && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={<Trash2 size={16} />}
-                              onClick={() => setTaxRows(prev => prev.filter((_, i) => i !== index))}
-                              className="text-red-600 hover:text-red-800"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-
-                  {/* Invoice Totals & Notes - Layout Adjusted */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="p-6">
-                      <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h4>
-                      <FormField
-                        label="Terms and Conditions"
-                        value={invoice.termsAndConditions}
-                        onChange={(value) => handleInvoiceChange('termsAndConditions', value)}
-                        placeholder="Payment terms, delivery terms, etc."
-                        readOnly={isViewMode}
-                      />
-                      <FormField
-                        label="Notes"
-                        value={invoice.notes}
-                        onChange={(value) => handleInvoiceChange('notes', value)}
-                        placeholder="Any additional notes"
-                        readOnly={isViewMode}
-                      />
-                    </Card>
-
-                    <Card className="p-6">
-                      <h4 className={`text-md font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                        <Calculator size={20} className="mr-2" />
-                        Invoice Summary
-                      </h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className={theme.textMuted}>Subtotal:</span>
-                          <span className={theme.textPrimary}>₹{invoice.subtotal.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={theme.textMuted}>Total Tax:</span>
-                          <span className={theme.textPrimary}>₹{invoice.totalTax.toLocaleString()}</span>
-                        </div>
-                        <hr className={theme.borderColor} />
-                        <div className="flex justify-between text-lg font-semibold">
-                          <span className={theme.textPrimary}>Grand Total:</span>
-                          <span className="text-emerald-600">₹{invoice.totalAmount.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <AIButton 
-                          variant="calculate" 
-                          onSuggest={() => console.log('AI Calculate')}
-                          className="w-full"
+            <div className="space-y-4">
+              {items.map((item, index) => {
+                const selectedItem = availableItems.find(i => i.id === item.itemCode);
+                return (
+                  <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                    <div className="grid grid-cols-invoice-item-row-custom gap-2 items-center">
+                      <div className="col-span-1">
+                        <MasterSelectField
+                          ref={el => itemMasterSelectRefs.current[index] = el}
+                          label="Item Name"
+                          value={item.itemName}
+                          onValueChange={(val) => updateItem(index, 'itemName', val)}
+                          onSelect={(id, name, data) => {
+                            const selected = data as ItemOption;
+                            updateItem(index, 'itemCode', id);
+                            updateItem(index, 'itemName', name);
+                            updateItem(index, 'description', selected.description);
+                            updateItem(index, 'unit', selected.units_of_measure?.name || 'Nos');
+                            updateItem(index, 'rate', selected.standard_rate);
+                            updateItem(index, 'taxRate', selected.tax_rate);
+                            updateItem(index, 'hsnCode', selected.hsn_code);
+                          }}
+                          options={availableItems.map(i => ({ id: i.id, name: i.item_name, ...i }))}
+                          placeholder="Select Item"
+                          required
+                          readOnly={viewMode === 'view'}
+                          onF2Press={(val) => handleF2Press('Item Name', val, index, 'item')}
                         />
                       </div>
-                    </Card>
-                  </div>
-
-                  {!isViewMode && (
-                    <div className="flex justify-end space-x-2 mt-6">
-                      <Button type="button" variant="outline" onClick={() => navigate('/sales/invoices')}>Cancel</Button>
-                      <Button type="button" variant="outline" onClick={(e) => handleSaveInvoice(e, 'draft')}>
-                        Save as Draft
-                      </Button>
-                      <Button type="submit" disabled={loading} icon={<Save size={16} />}>
-                        {loading ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Save Invoice')}
-                      </Button>
-                      {!invoice.id && (
-                        <Button type="button" icon={<Send size={16} />}>Send Invoice</Button>
+                      <FormField
+                        label="Qty"
+                        type="number"
+                        value={item.quantity.toString()}
+                        onChange={(val) => updateItem(index, 'quantity', parseFloat(val) || 0)}
+                        required
+                        readOnly={viewMode === 'view'}
+                      />
+                      <FormField
+                        label="Rate"
+                        type="number"
+                        value={item.rate.toString()}
+                        onChange={(val) => updateItem(index, 'rate', parseFloat(val) || 0)}
+                        required
+                        readOnly={viewMode === 'view'}
+                      />
+                      <FormField
+                        label="Disc (%)"
+                        type="number"
+                        value={item.discountPercent?.toString() || '0'}
+                        onChange={(val) => updateItem(index, 'discountPercent', parseFloat(val) || 0)}
+                        readOnly={viewMode === 'view'}
+                      />
+                      <div className="flex flex-col">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>Gross Amt</label>
+                        <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm`}>
+                          ₹{(item.quantity * item.rate).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax %</label>
+                        <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm`}>
+                          {item.taxRate?.toLocaleString() || '0'}%
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <label className={`block text-sm font-medium ${theme.textPrimary}`}>Net Amt</label>
+                        <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm`}>
+                          ₹{item.lineTotal.toLocaleString()}
+                        </div>
+                      </div>
+                      {viewMode !== 'view' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<Trash2 size={16} />}
+                          onClick={() => removeItem(index)}
+                          disabled={items.length === 1}
+                          className="text-red-600 hover:text-red-800"
+                        />
                       )}
                     </div>
-                  )}
-                </form>
-              </>
-            ) 
-         }
-        </Card>
-        {/* Confirmation Modal for Master Creation */}
-        <ConfirmationModal
-          isOpen={showMasterConfirmModal}
-          onClose={() => setShowMasterConfirmModal(false)}
-          onConfirm={handleConfirmMasterCreation}
-          title={`Create New ${pendingMasterCreation?.type === 'customer' ? 'Customer' : pendingMasterCreation?.type === 'item' ? 'Item' : 'Account'}?`}
-          message={`The ${pendingMasterCreation?.type} "${pendingMasterCreation?.value}" does not exist. Do you want to create it?`}
-          confirmText={`Yes, Create ${pendingMasterCreation?.type === 'customer' ? 'Customer' : pendingMasterCreation?.type === 'item' ? 'Item' : 'Account'}`}
-        />
+                    <FormField
+                      label="Description"
+                      value={item.description || ''}
+                      onChange={(val) => updateItem(index, 'description', val)}
+                      placeholder="Item description"
+                      className="mt-2"
+                      readOnly={viewMode === 'view'}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Other Ledger Entries</h3>
+              {viewMode !== 'view' && (
+                <Button size="sm" icon={<Plus size={16} />} onClick={addOtherLedgerEntry}>Add Ledger</Button>
+              )}
+            </div>
+            <div className="space-y-4">
+              {otherLedgerEntries.map((entry, index) => (
+                <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                  <div className="grid grid-cols-ledger-entry-row-custom gap-2 items-center">
+                    <MasterSelectField
+                      ref={el => accountMasterSelectRefs.current[index] = el}
+                      label="Account Name"
+                      value={entry.accountName}
+                      onValueChange={(val) => handleOtherLedgerEntryChange(index, 'accountName', val)}
+                      onSelect={(id, name) => {
+                        handleOtherLedgerEntryChange(index, 'accountId', id);
+                        handleOtherLedgerEntryChange(index, 'accountName', name);
+                      }}
+                      options={availableAccounts.map(acc => ({ id: acc.id, name: acc.account_name }))}
+                      placeholder="Select Account"
+                      required
+                      readOnly={viewMode === 'view'}
+                      onF2Press={(val) => handleF2Press('Account Name', val, index, 'account')}
+                    />
+                    <FormField
+                      label="Amount"
+                      type="number"
+                      value={entry.amount.toString()}
+                      onChange={(val) => handleOtherLedgerEntryChange(index, 'amount', parseFloat(val) || 0)}
+                      required
+                      readOnly={viewMode === 'view'}
+                    />
+                    <div className="space-y-2">
+                      <label className={`block text-sm font-medium ${theme.textPrimary}`}>Type</label>
+                      <select
+                        value={entry.isDebit ? 'debit' : 'credit'}
+                        onChange={(e) => handleOtherLedgerEntryChange(index, 'isDebit', e.target.value === 'debit')}
+                        className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent ${viewMode === 'view' ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}`}
+                        disabled={viewMode === 'view'}
+                      >
+                        <option value="debit">Debit</option>
+                        <option value="credit">Credit</option>
+                      </select>
+                    </div>
+                    {viewMode !== 'view' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Trash2 size={16} />}
+                        onClick={() => removeOtherLedgerEntry(index)}
+                        className="text-red-600 hover:text-red-800"
+                      />
+                    )}
+                  </div>
+                  <FormField
+                    label="Notes"
+                    value={entry.notes}
+                    onChange={(val) => handleOtherLedgerEntryChange(index, 'notes', val)}
+                    placeholder="Notes for this entry"
+                    className="mt-2"
+                    readOnly={viewMode === 'view'}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+              <Calculator size={20} className="mr-2" />
+              Invoice Summary
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className={theme.textMuted}>Gross Amount:</span>
+                <span className={theme.textPrimary}>₹{invoice.subtotal?.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className={theme.textMuted}>Less: Discount:</span>
+                <span className={theme.textPrimary}>₹{invoice.totalDiscount?.toLocaleString()}</span>
+              </div>
+              {taxLabels.type === 'GST' && currentCompany?.country === 'IN' ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className={theme.textMuted}>Add: {taxLabels.cgst} @ {currentCompany?.taxConfig?.rates[0] || 0}%:</span>
+                    <span className={theme.textPrimary}>₹{(invoice.totalTax / 2)?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={theme.textMuted}>Add: {taxLabels.sgst} @ {currentCompany?.taxConfig?.rates[0] || 0}%:</span>
+                    <span className={theme.textPrimary}>₹{(invoice.totalTax / 2)?.toLocaleString()}</span>
+                  </div>
+                </>
+              ) : (taxLabels.type === 'VAT' || taxLabels.type === 'Sales Tax' || taxLabels.type === 'Other') && (
+                <div className="flex justify-between">
+                  <span className={theme.textMuted}>Add: {taxLabels.type === 'VAT' ? taxLabels.vat : taxLabels.type === 'Sales Tax' ? taxLabels.salesTax : `${currentCompany?.country || 'Other'} Tax`} @ {currentCompany?.taxConfig?.rates[0] || 0}%:</span>
+                  <span className={theme.textPrimary}>₹{invoice.totalTax?.toLocaleString()}</span>
+                </div>
+              )}
+              {otherLedgerEntries.length > 0 && (
+                <div className="flex justify-between">
+                  <span className={theme.textMuted}>Other Adjustments:</span>
+                  <span className={theme.textPrimary}>
+                    ₹{otherLedgerEntries.reduce((sum, entry) => sum + (entry.isDebit ? entry.amount : -entry.amount), 0).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              <hr className={theme.borderColor} />
+              <div className="flex justify-between text-lg font-semibold">
+                <span className={theme.textPrimary}>Net Amount:</span>
+                <span className="text-emerald-600">₹{invoice.totalAmount?.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <AIButton
+                variant="calculate"
+                onSuggest={() => console.log('AI Calculate')}
+                className="w-full"
+              />
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h3>
+            <FormField
+              label="Terms and Conditions"
+              value={invoice.termsAndConditions}
+              onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
+              placeholder="Payment terms, delivery terms, etc."
+              readOnly={viewMode === 'view'}
+            />
+            <FormField
+              label="Notes"
+              value={invoice.notes}
+              onChange={(val) => handleInvoiceChange('notes', val)}
+              placeholder="Any additional notes"
+              readOnly={viewMode === 'view'}
+            />
+          </Card>
+
+          {viewMode !== 'view' && (
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button type="button" variant="outline" onClick={() => navigate('/sales/invoices')}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} icon={<Save size={16} />}>
+                {loading ? 'Saving...' : 'Save Invoice'}
+              </Button>
+              {!invoice.id && (
+                <Button type="button" icon={<Send size={16} />}>Send Invoice</Button>
+              )}
+            </div>
+          )}
+        </form>
+      )}
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteInvoice}
+        title="Confirm Invoice Deletion"
+        message="Are you sure you want to delete this invoice? This action cannot be undone and will also delete all associated items."
+        confirmText="Yes, Delete Invoice"
+      />
+
+      <ConfirmationModal
+        isOpen={showF2ConfirmModal}
+        onClose={() => setShowF2ConfirmModal(false)}
+        onConfirm={confirmF2Action}
+        title={f2ConfirmData?.existingId ? `Alter ${f2ConfirmData?.masterType}` : `Create New ${f2ConfirmData?.masterType}`}
+        message={f2ConfirmData?.value.trim() === ''
+          ? `Do you want to create a new ${f2ConfirmData?.masterType}?`
+          : f2ConfirmData?.existingId
+            ? `Do you want to alter ${f2ConfirmData?.masterType} "${f2ConfirmData?.value}"?`
+            : `Do you want to create a new ${f2ConfirmData?.masterType} named "${f2ConfirmData?.value}"?`
+        }
+        confirmText={f2ConfirmData?.existingId ? `Yes, Alter ${f2ConfirmData?.masterType}` : `Yes, Create ${f2ConfirmData?.masterType}`}
+      />
+
+      <SalesInvoiceFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onApplyFilters={handleApplyFilters}
+        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+      />
     </div>
   );
 }
 
-export default SalesInvoicesPage; 
+export default SalesInvoicesPage;

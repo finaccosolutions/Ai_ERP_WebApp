@@ -113,6 +113,10 @@ function ItemMasterFormPage() {
         } else {
           resetForm(); // Resets form data
           await generateItemCode(currentCompany.id); // Generates code
+          // Handle initialName from SalesInvoiceCreatePage
+          if (location.state?.fromInvoiceCreation && location.state?.initialName) {
+            setFormData(prev => ({ ...prev, itemName: location.state.initialName }));
+          }
           setLoading(false); // Explicitly set loading to false for create mode after setup
         }
       } catch (error) {
@@ -125,7 +129,7 @@ function ItemMasterFormPage() {
     if (currentCompany?.id) {
       initializeForm();
     }
-  }, [currentCompany?.id, id, isEditMode]);
+  }, [currentCompany?.id, id, isEditMode, location.state]); // Added location.state to dependencies
 
   const fetchMastersData = async (companyId: string) => {
     try {
@@ -379,7 +383,7 @@ function ItemMasterFormPage() {
         purchase_rate: formData.purchaseRate,
         min_order_qty: formData.minOrderQty,
         reorder_level: formData.reorderLevel,
-        max_level: formData.maxLevel,
+        max_level: formData.max_level,
         lead_time_days: formData.leadTimeDays,
         weight: formData.weight,
         weight_unit: formData.weightUnit,
