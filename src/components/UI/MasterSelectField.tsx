@@ -14,11 +14,13 @@ interface MasterSelectFieldProps {
   error?: string;
   className?: string;
   disabled?: boolean;
+  readOnly?: boolean; // NEW: Add readOnly prop
   allowCreation?: boolean; // New prop to allow creation
-  onNewValueConfirmed?: (value: string, fieldIndex?: number) => void; // Callback for new value creation confirmed by F2/Enter
+  onNewValueConfirmed?: (value: string, fieldIndex?: number, masterType?: string) => void; // Callback for new value creation confirmed by F2/Enter
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // New prop for keydown events
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   fieldIndex?: number; // Optional index for identifying which item/ledger row this field belongs to
+  masterType?: string; // Optional type for the master (e.g., 'item', 'customer', 'account')
 }
 
 export interface MasterSelectFieldRef {
@@ -40,11 +42,13 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   error,
   className = '',
   disabled = false,
+  readOnly = false, // NEW: Default readOnly to false
   allowCreation = false,
   onNewValueConfirmed,
   onKeyDown,
   onBlur,
   fieldIndex, // Receive fieldIndex
+  masterType, // Receive masterType
 }, ref) => {
   const { theme } = useTheme();
 
@@ -105,17 +109,15 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
     if (allowCreation && onNewValueConfirmed) {
       if (e.key === 'F2') {
         e.preventDefault();
-        if (searchTerm.trim() !== '') {
-          // F2 always prompts for creation if text is present
-          onNewValueConfirmed(searchTerm.trim(), fieldIndex); // Pass fieldIndex
-          setIsOpen(false);
-        }
+        // F2 always prompts for creation if text is present or not
+        onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType); // Pass fieldIndex and masterType
+        setIsOpen(false);
       } else if (e.key === 'Enter') {
         // Enter prompts for creation only if no exact match is found
         const exactMatch = options.find(option => option.name.toLowerCase() === searchTerm.trim().toLowerCase());
         if (!exactMatch && searchTerm.trim() !== '') {
           e.preventDefault();
-          onNewValueConfirmed(searchTerm.trim(), fieldIndex); // Pass fieldIndex
+          onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType); // Pass fieldIndex and masterType
           setIsOpen(false);
         } else if (exactMatch) {
           e.preventDefault();
@@ -164,6 +166,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           placeholder={placeholder}
           required={required}
           disabled={disabled}
+          readOnly={readOnly} // NEW: Apply readOnly prop
           className={`
             w-full pl-10 pr-3 py-2.5 border ${theme.inputBorder}
             ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
@@ -171,6 +174,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
             transition-all duration-300 hover:border-[${theme.hoverAccent}]
             placeholder:${theme.textMuted}
             ${error ? 'border-red-500 ring-2 ring-2 ring-red-200' : ''}
+            ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
           `}
         />
         <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -178,7 +182,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-transform"
-          disabled={disabled}
+          disabled={disabled || readOnly} // NEW: Disable button if readOnly
         >
           <ChevronDown size={18} className={`${isOpen ? 'rotate-180' : ''}`} />
         </button>
@@ -186,7 +190,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
 
       {isOpen && filteredOptions.length > 0 && (
         <div className={`
-          absolute z-50 w-full mt-1 ${theme.cardBg} border ${theme.borderColor}
+          absolute z-50 w-full mt-1 ${theme.isDark ? 'bg-gray-700' : 'bg-white'} border ${theme.borderColor}
           ${theme.borderRadius} ${theme.shadowLevel} max-h-60 overflow-y-auto
         `}>
           {filteredOptions.map(option => (
@@ -197,7 +201,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
               onClick={() => handleOptionClick(option)}
               className={`
                 w-full text-left px-4 py-2 text-sm
-                ${theme.textPrimary} hover:bg-[${theme.hoverAccent}]/10
+                ${theme.textPrimary} ${theme.isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}
                 flex items-center justify-between
               `}
             >

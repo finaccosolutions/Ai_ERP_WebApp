@@ -110,6 +110,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'Sales Tax ID',
         secondary: 'EIN',
+        tertiary: '', // No tertiary for US example
       },
     },
     complianceModules: {
@@ -171,6 +172,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'VAT No.',
         secondary: 'Company Reg. No.',
+        tertiary: '', // No tertiary for UK example
       },
     },
     complianceModules: {
@@ -218,6 +220,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'GST/HST No.',
         secondary: 'Business No.',
+        tertiary: '', // No tertiary for CA example
       },
     },
     complianceModules: {
@@ -267,6 +270,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'ABN',
         secondary: 'ACN',
+        tertiary: '', // No tertiary for AU example
       },
     },
     complianceModules: {
@@ -313,6 +317,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'VAT ID',
         secondary: 'Tax No.',
+        tertiary: '', // No tertiary for DE example
       },
     },
     complianceModules: {
@@ -366,6 +371,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'VAT No.',
         secondary: 'SIREN/SIRET',
+        tertiary: '', // No tertiary for FR example
       },
     },
     complianceModules: {
@@ -417,6 +423,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'Consumption Tax No.',
         secondary: 'Corporate No.',
+        tertiary: '', // No tertiary for JP example
       },
     },
     complianceModules: {
@@ -463,6 +470,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'GST Reg. No.',
         secondary: 'UEN',
+        tertiary: '', // No tertiary for SG example
       },
     },
     complianceModules: {
@@ -507,6 +515,7 @@ export const COUNTRIES = [
       registrationLabels: {
         main: 'TRN',
         secondary: 'Trade License No.',
+        tertiary: '', // No tertiary for AE example
       },
     },
     complianceModules: {
@@ -572,3 +581,4 @@ export const getPhoneCountryCodes = () => {
     dialCode: country.dialCode, // Keep dialCode for selection
   }));
 };
+

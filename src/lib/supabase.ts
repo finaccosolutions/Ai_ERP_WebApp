@@ -282,6 +282,8 @@ export interface Database {
           line_total: number;
           created_at: string;
           hsn_code: string | null; // Added hsn_code
+          discount_percent: number | null; // NEW
+          discount_amount: number | null; // NEW
         };
         Insert: {
           id?: string;
@@ -298,6 +300,8 @@ export interface Database {
           line_total?: number;
           created_at?: string;
           hsn_code?: string | null; // Added hsn_code
+          discount_percent?: number | null; // NEW
+          discount_amount?: number | null; // NEW
         };
         Update: {
           id?: string;
@@ -314,6 +318,8 @@ export interface Database {
           line_total?: number;
           created_at?: string;
           hsn_code?: string | null; // Added hsn_code
+          discount_percent?: number | null; // NEW
+          discount_amount?: number | null; // NEW
         };
       };
       customers: {
