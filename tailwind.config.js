@@ -135,12 +135,14 @@ export default {
         'theme-xl': '0 25px 50px -12px rgba(52, 211, 153, 0.25)',
       },
       gridTemplateColumns: {
-        'invoice-item-row': '2fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 0.2fr',
+        'invoice-item-row': '2fr 0.7fr 0.7fr 0.7fr 1fr 0.2fr',
         'ledger-entry-row': '1.5fr 0.7fr 1.5fr 0.2fr',
         'invoice-item-row-v2': '3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.5fr 1fr 1fr 0.2fr',
         'invoice-item-row-v3': '40% 9% 5% 9% 12% 9% 12% 4%',
         'invoice-item-row-custom': '2fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr 0.2fr',
         'ledger-entry-row-custom': '2fr 0.5fr 0.5fr 0.2fr',
+        'invoice-item-row-v4': '4fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 1fr auto', // NEW: Optimized grid for item rows
+        'invoice-summary-layout': '2fr 1fr', // NEW: Grid for invoice summary and additional info
       }
     },
   },

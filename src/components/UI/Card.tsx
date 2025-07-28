@@ -1,3 +1,4 @@
+// src/components/UI/Card.tsx
 import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -6,9 +7,10 @@ interface CardProps {
   className?: string;
   gradient?: boolean;
   hover?: boolean;
+  overflowVisible?: boolean; // NEW: Add this prop
 }
 
-function Card({ children, className = '', gradient = false, hover = false }: CardProps) {
+function Card({ children, className = '', gradient = false, hover = false, overflowVisible = false }: CardProps) {
   const { theme } = useTheme();
 
   return (
@@ -20,6 +22,7 @@ function Card({ children, className = '', gradient = false, hover = false }: Car
       ${theme.borderRadius} ${theme.shadowLevel} 
       ${hover ? `hover:${theme.shadowHover} transform hover:-translate-y-1 transition-all duration-300 cursor-pointer` : ''} 
       ${hover && !gradient ? `hover:border-[#6AC8A3] hover:shadow-[#6AC8A3]/10` : ''}
+      ${!overflowVisible ? 'overflow-hidden' : ''} // MODIFIED: Conditionally apply overflow-hidden
       ${className}
     `}>
       {children}

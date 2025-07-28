@@ -1,6 +1,6 @@
 // src/pages/Sales/SalesInvoicesPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, FileText, Search, RefreshCw, Eye, Edit, Trash2, Send, Download, Filter, Calendar, Users, ArrowLeft, Calculator, Save, Info, ChevronDown, ChevronUp, Tag, List } from 'lucide-react'; // ADDED 'List' here
+import { Plus, FileText, Search, RefreshCw, Eye, Edit, Trash2, Send, Download, Filter, Calendar, Users, ArrowLeft, Calculator, Save, Info, ChevronDown, ChevronUp, Tag, List } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -1027,7 +1027,7 @@ function SalesInvoicesPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Invoice Details */}
-          <Card className="p-6">
+          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                 <FileText size={20} className="mr-2 text-[${theme.hoverAccent}]" />
@@ -1090,7 +1090,7 @@ function SalesInvoicesPage() {
           </Card>
 
           {/* Invoice Items */}
-          <Card className="p-6">
+          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                 <List size={20} className="mr-2 text-[${theme.hoverAccent}]" />
@@ -1110,7 +1110,7 @@ function SalesInvoicesPage() {
                 {items.map((item, index) => {
                   return (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-invoice-item-row-custom gap-x-2 gap-y-4 items-center">
+                      <div className="grid grid-cols-invoice-item-row-v4 gap-x-2 gap-y-4 items-center"> {/* MODIFIED: Changed grid-cols class */}
                         <MasterSelectField
                           ref={el => itemMasterSelectRefs.current[index] = el}
                           label="Item Name"
@@ -1130,8 +1130,8 @@ function SalesInvoicesPage() {
                           required
                           readOnly={viewMode === 'view'}
                           onF2Press={(val) => handleF2Press('Item Name', val, index, 'item')}
+                          // Removed col-span-2 as it's now handled by the grid definition
                         />
-                        {/* Removed HSN/SAC and Unit fields */}
                         <FormField
                           label="Qty"
                           type="number"
@@ -1185,7 +1185,7 @@ function SalesInvoicesPage() {
                           </div>
                         </div>
                         {viewMode !== 'view' && (
-                          <div className="flex items-center justify-center h-full self-center">
+                          <div className="flex items-center justify-center h-full self-center"> {/* MODIFIED: Delete button column */}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1205,7 +1205,7 @@ function SalesInvoicesPage() {
           </Card>
 
           {/* Other Ledger Entries */}
-          <Card className="p-6">
+          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
                 <Users size={20} className="mr-2 text-[${theme.hoverAccent}]" />
@@ -1300,7 +1300,7 @@ function SalesInvoicesPage() {
           )}
 
           {/* Invoice Summary and Additional Information Layout */}
-          <div className="grid grid-cols-invoice-summary-layout gap-6">
+          <div className="grid grid-cols-invoice-summary-layout gap-6"> {/* MODIFIED: Applied new grid */}
             {/* Additional Information (Left Side) */}
             <Card className="p-6">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h3>
@@ -1352,27 +1352,12 @@ function SalesInvoicesPage() {
                       <span className={theme.textPrimary}>{formatCurrency(tax.tax_amount)}</span>
                     </div>
                   ))}
-                  {otherLedgerEntries.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className={theme.textMuted}>Other Adjustments:</span>
-                      <span className={theme.textPrimary}>
-                        {formatCurrency(otherLedgerEntries.reduce((sum, entry) => sum + (entry.isDebit ? entry.amount : -entry.amount), 0))}
-                      </span>
-                    </div>
-                  )}
                   <hr className={theme.borderColor} />
                   <div className="flex justify-between text-lg font-semibold">
                     <span className={theme.textPrimary}>Invoice Value:</span>
                     <span className="text-emerald-600">{formatCurrency(invoice.totalAmount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className={theme.textMuted}>Paid Amount:</span>
-                    <span className={theme.textPrimary}>{formatCurrency(invoice.paidAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span className={theme.textMuted}>Outstanding Amount:</span>
-                    <span className="text-red-600">{formatCurrency(invoice.outstandingAmount)}</span>
-                  </div>
+                  {/* REMOVED: Paid Amount, Outstanding Amount, Other Adjustments */}
                 </div>
                 {viewMode !== 'view' && (
                   <div className="mt-4">
@@ -1437,4 +1422,4 @@ function SalesInvoicesPage() {
   );
 }
 
-export default SalesInvoicesPage; 
+export default SalesInvoicesPage;
