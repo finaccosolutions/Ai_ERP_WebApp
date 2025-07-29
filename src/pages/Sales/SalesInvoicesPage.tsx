@@ -13,7 +13,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import SalesInvoiceFilterModal from '../../components/Modals/SalesInvoiceFilterModal';
-import { COUNTRIES } from '../../constants/geoData';
+import { COUNTRIES, getCountryByCode } from '../../constants/geoData';
 import { useAI } from '../../contexts/AIContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -66,6 +66,7 @@ interface SalesInvoice {
   tax_details: any | null; // JSONB to store dynamic tax rows
   other_ledger_entries: any | null; // JSONB to store other ledger entries
   total_discount: number | null; // Total discount of all items
+  place_of_supply: string | null; // NEW: Place of Supply
 }
 
 interface ItemOption {
@@ -84,7 +85,14 @@ interface CustomerOption {
   id: string;
   name: string;
   customer_code: string;
-  billing_address: any;
+  billing_address: {
+    street1?: string;
+    street2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+  };
   shipping_address: any;
 }
 
@@ -127,6 +135,7 @@ function SalesInvoicesPage() {
     referenceNo: '',
     termsAndConditions: '',
     notes: '',
+    narration: '', // NEW: Narration field
     status: 'draft',
     subtotal: 0, // Gross Amount of all items
     totalTax: 0,
@@ -134,6 +143,7 @@ function SalesInvoicesPage() {
     paidAmount: 0,
     outstandingAmount: 0,
     totalDiscount: 0, // Total discount of all items
+    placeOfSupply: '', // NEW: Place of Supply
   });
 
   const [items, setItems] = useState<SalesInvoiceItem[]>([
@@ -158,9 +168,10 @@ function SalesInvoicesPage() {
 
   const [otherLedgerEntries, setOtherLedgerEntries] = useState<OtherLedgerEntry[]>([]);
 
-  const [availableCustomers, setAvailableCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>([]); // Changed to CustomerOption
   const [availableItems, setAvailableItems] = useState<ItemOption[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountOption[]>([]);
+  const [availableStates, setAvailableStates] = useState<{ id: string; name: string }[]>([]); // NEW: For Place of Supply
 
   // State for collapsible sections
   const [isInvoiceDetailsExpanded, setIsInvoiceDetailsExpanded] = useState(true);
@@ -225,6 +236,17 @@ function SalesInvoicesPage() {
         case 'customer':
           setInvoice(prev => ({ ...prev, customerId: createdId, customerName: createdName }));
           customerMasterSelectRef.current?.selectOption(createdId);
+          // Auto-select place of supply for new customer
+          const newCustomer = availableCustomers.find(c => c.id === createdId);
+          if (newCustomer?.billing_address?.country) {
+            const countryData = getCountryByCode(newCustomer.billing_address.country);
+            if (countryData) {
+              setAvailableStates(countryData.states.map(s => ({ id: s.code, name: s.name })));
+              if (newCustomer.billing_address.state) {
+                setInvoice(prev => ({ ...prev, placeOfSupply: newCustomer.billing_address.state }));
+              }
+            }
+          }
           break;
         case 'item':
           fetchMastersData(currentCompany?.id || '').then(() => {
@@ -234,7 +256,7 @@ function SalesInvoicesPage() {
               const emptyItemIndex = items.findIndex(item => !item.item_name);
               const targetIndex = emptyItemIndex !== -1 ? emptyItemIndex : items.length -1; // If no empty, use last row
 
-              updateItem(targetIndex, 'item_code', newItem.item_code);
+              updateItem(targetIndex, 'item_code', newItem.id); // Store item ID in item_code
               updateItem(targetIndex, 'item_name', newItem.name);
               updateItem(targetIndex, 'unit', newItem.units_of_measure?.name || 'Nos');
               updateItem(targetIndex, 'rate', newItem.standard_rate);
@@ -270,7 +292,7 @@ function SalesInvoicesPage() {
     try {
       const { data: customersData, error: customersError } = await supabase
         .from('customers')
-        .select('id, name')
+        .select('id, name, billing_address') // Fetch billing_address
         .eq('company_id', companyId)
         .eq('is_active', true);
       if (customersError) throw customersError;
@@ -335,7 +357,7 @@ function SalesInvoicesPage() {
         .from('sales_invoices')
         .select(`
           id, invoice_no, invoice_date, due_date, status, total_amount, paid_amount, outstanding_amount, created_at,
-          customers ( name ), tax_details, other_ledger_entries, total_discount
+          customers ( name ), tax_details, other_ledger_entries, total_discount, place_of_supply
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -394,7 +416,7 @@ function SalesInvoicesPage() {
         .select(`
           *,
           sales_invoice_items (*),
-          customers ( name )
+          customers ( id, name, billing_address )
         `)
         .eq('id', invoiceId)
         .eq('company_id', currentCompany?.id)
@@ -414,6 +436,7 @@ function SalesInvoicesPage() {
           referenceNo: data.reference_no || '',
           termsAndConditions: data.terms_and_conditions || '',
           notes: data.notes || '',
+          narration: data.notes || '', // Assuming notes can be used for narration
           status: data.status,
           subtotal: data.subtotal || 0,
           totalTax: data.total_tax || 0,
@@ -421,9 +444,11 @@ function SalesInvoicesPage() {
           paidAmount: data.paid_amount || 0,
           outstandingAmount: data.outstanding_amount || 0,
           totalDiscount: data.total_discount || 0,
+          placeOfSupply: data.place_of_supply || '', // Load place of supply
         });
         setItems(data.sales_invoice_items.map((item: any) => ({
           id: item.id,
+          invoice_id: item.invoice_id,
           item_code: item.item_code,
           item_name: item.item_name,
           quantity: item.quantity,
@@ -439,6 +464,14 @@ function SalesInvoicesPage() {
           discount_amount: item.discount_amount,
         })));
         setOtherLedgerEntries(data.other_ledger_entries || []);
+
+        // Set available states for Place of Supply
+        if (data.customers?.billing_address?.country) {
+          const countryData = getCountryByCode(data.customers.billing_address.country);
+          if (countryData) {
+            setAvailableStates(countryData.states.map(s => ({ id: s.code, name: s.name })));
+          }
+        }
       }
     } catch (err: any) {
       showNotification(`Error loading invoice: ${err.message}`, 'error');
@@ -469,6 +502,25 @@ function SalesInvoicesPage() {
 
   const handleInvoiceChange = (field: keyof typeof invoice, value: any) => {
     setInvoice(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomerSelect = (id: string, name: string, data: CustomerOption) => {
+    setInvoice(prev => ({ ...prev, customerId: id, customerName: name }));
+    // Auto-select place of supply based on customer's billing address state
+    if (data?.billing_address?.country) {
+      const countryData = getCountryByCode(data.billing_address.country);
+      if (countryData) {
+        setAvailableStates(countryData.states.map(s => ({ id: s.code, name: s.name })));
+        if (data.billing_address.state) {
+          setInvoice(prev => ({ ...prev, placeOfSupply: data.billing_address.state }));
+        } else {
+          setInvoice(prev => ({ ...prev, placeOfSupply: '' })); // Clear if no state
+        }
+      }
+    } else {
+      setAvailableStates([]); // Clear states if no country
+      setInvoice(prev => ({ ...prev, placeOfSupply: '' })); // Clear place of supply
+    }
   };
 
   const calculateItemTotals = (item: SalesInvoiceItem) => {
@@ -597,6 +649,7 @@ function SalesInvoicesPage() {
       referenceNo: '',
       termsAndConditions: '',
       notes: '',
+      narration: '', // NEW: Reset narration
       status: 'draft',
       subtotal: 0,
       totalTax: 0,
@@ -604,6 +657,7 @@ function SalesInvoicesPage() {
       paidAmount: 0,
       outstandingAmount: 0,
       totalDiscount: 0,
+      placeOfSupply: '', // NEW: Reset place of supply
     });
     setItems([
       {
@@ -665,6 +719,7 @@ function SalesInvoicesPage() {
         reference_no: invoice.referenceNo || null,
         terms_and_conditions: invoice.termsAndConditions || null,
         notes: invoice.notes || null,
+        narration: invoice.narration || null, // NEW: Save narration
         subtotal: invoice.subtotal,
         total_tax: invoice.totalTax,
         total_amount: invoice.totalAmount,
@@ -673,6 +728,7 @@ function SalesInvoicesPage() {
         total_discount: invoice.totalDiscount,
         tax_details: getAggregatedTaxDetails(), // Save aggregated tax details
         other_ledger_entries: otherLedgerEntries,
+        place_of_supply: invoice.placeOfSupply || null, // NEW: Save place of supply
       };
 
       let invoiceId = invoice.id;
@@ -814,19 +870,19 @@ function SalesInvoicesPage() {
     } else {
       switch (masterType) {
         case 'customer':
-          existingMaster = availableCustomers.find(c => c.name.toLowerCase() === value.toLowerCase());
+          existingMaster = availableCustomers.find(c => c.id === value || c.name.toLowerCase() === value.toLowerCase());
           navigatePath = existingMaster ? `/sales/customers/edit/${existingMaster.id}` : `/sales/customers/new`;
           confirmMessage = existingMaster ? `Do you want to alter customer "${value}"?` : `Do you want to create a new customer named "${value}"?`;
           confirmBtnText = existingMaster ? `Yes, Alter Customer` : `Yes, Create Customer`;
           break;
         case 'item':
-          existingMaster = availableItems.find(i => i.name.toLowerCase() === value.toLowerCase());
+          existingMaster = availableItems.find(i => i.id === value || i.name.toLowerCase() === value.toLowerCase());
           navigatePath = existingMaster ? `/inventory/masters/items/edit/${existingMaster.id}` : `/inventory/masters/items/new`;
           confirmMessage = existingMaster ? `Do you want to alter item "${value}"?` : `Do you want to create a new item named "${value}"?`;
           confirmBtnText = existingMaster ? `Yes, Alter Item` : `Yes, Create Item`;
           break;
         case 'account':
-          existingMaster = availableAccounts.find(a => a.name.toLowerCase() === value.toLowerCase());
+          existingMaster = availableAccounts.find(a => a.id === value || a.name.toLowerCase() === value.toLowerCase());
           navigatePath = existingMaster ? `/accounting/masters/ledgers/edit/${existingMaster.id}` : `/accounting/masters/ledgers/new`;
           confirmMessage = existingMaster ? `Do you want to alter account "${value}"?` : `Do you want to create a new account named "${value}"?`;
           confirmBtnText = existingMaster ? `Yes, Alter Account` : `Yes, Create Account`;
@@ -1027,10 +1083,10 @@ function SalesInvoicesPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Invoice Details */}
-          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
+          <Card className="p-6" overflowVisible={true}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                <FileText size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-sky-600`}>
+                <FileText size={20} className="mr-2 text-sky-600" />
                 Invoice Details
               </h3>
               <button type="button" onClick={() => setIsInvoiceDetailsExpanded(!isInvoiceDetailsExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
@@ -1052,11 +1108,8 @@ function SalesInvoicesPage() {
                   label="Customer Name"
                   value={invoice.customerName}
                   onValueChange={(val) => handleInvoiceChange('customerName', val)}
-                  onSelect={(id, name) => {
-                    handleInvoiceChange('customerId', id);
-                    handleInvoiceChange('customerName', name);
-                  }}
-                  options={availableCustomers}
+                  onSelect={(id, name, data) => handleCustomerSelect(id, name, data as CustomerOption)}
+                  options={availableCustomers.map(c => ({ id: c.id, name: c.name, ...c }))}
                   placeholder="Select or type customer name"
                   required
                   readOnly={viewMode === 'view'}
@@ -1084,16 +1137,25 @@ function SalesInvoicesPage() {
                   placeholder="e.g., Customer PO, Sales Order"
                   readOnly={viewMode === 'view'}
                 />
-                {/* Removed Status, Terms and Conditions, Notes fields */}
+                <MasterSelectField
+                  label="Place of Supply"
+                  value={availableStates.find(s => s.id === invoice.placeOfSupply)?.name || ''}
+                  onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
+                  onSelect={(id) => handleInvoiceChange('placeOfSupply', id)}
+                  options={availableStates}
+                  placeholder="Select Place of Supply"
+                  readOnly={viewMode === 'view'}
+                  disabled={!invoice.customerId}
+                />
               </div>
             </div>
           </Card>
 
           {/* Invoice Items */}
-          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
+          <Card className="p-6" overflowVisible={true}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                <List size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-purple-600`}>
+                <List size={20} className="mr-2 text-purple-600" />
                 Invoice Items
               </h3>
               <button type="button" onClick={() => setIsInvoiceItemsExpanded(!isInvoiceItemsExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
@@ -1110,7 +1172,7 @@ function SalesInvoicesPage() {
                 {items.map((item, index) => {
                   return (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-invoice-item-row-v4 gap-x-2 gap-y-4 items-center"> {/* MODIFIED: Changed grid-cols class */}
+                      <div className="grid grid-cols-invoice-item-row-v4 gap-x-0 gap-y-4 items-center">
                         <MasterSelectField
                           ref={el => itemMasterSelectRefs.current[index] = el}
                           label="Item Name"
@@ -1118,7 +1180,7 @@ function SalesInvoicesPage() {
                           onValueChange={(val) => updateItem(index, 'item_name', val)}
                           onSelect={(id, name, data) => {
                             const selected = data as ItemOption;
-                            updateItem(index, 'item_code', id); // Store item ID as item_code
+                            updateItem(index, 'item_code', id);
                             updateItem(index, 'item_name', name);
                             updateItem(index, 'unit', selected.units_of_measure?.name || 'Nos');
                             updateItem(index, 'rate', selected.standard_rate);
@@ -1130,7 +1192,6 @@ function SalesInvoicesPage() {
                           required
                           readOnly={viewMode === 'view'}
                           onF2Press={(val) => handleF2Press('Item Name', val, index, 'item')}
-                          // Removed col-span-2 as it's now handled by the grid definition
                         />
                         <FormField
                           label="Qty"
@@ -1155,13 +1216,13 @@ function SalesInvoicesPage() {
                           onChange={(val) => updateItem(index, 'discount_percent', parseFloat(val) || 0)}
                           readOnly={viewMode === 'view'}
                         />
-                        <div className="flex flex-col">
+                        <div className="flex flex-col h-full">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax %</label>
                           <select
                             value={item.tax_rate?.toString() || '0'}
                             onChange={(e) => updateItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                             className={`
-                              w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                              w-full px-3 py-2.5 border ${theme.inputBorder} rounded-lg h-full
                               ${theme.inputBg} ${theme.textPrimary}
                               focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                             `}
@@ -1172,20 +1233,20 @@ function SalesInvoicesPage() {
                             ))}
                           </select>
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col h-full">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Gross Amt</label>
-                          <div className={`px-3 py-2 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm`}>
+                          <div className={`px-3 py-2.5 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm h-full flex items-center`}>
                             {formatCurrency(item.quantity * item.rate)}
                           </div>
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col h-full">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Net Amt</label>
-                          <div className={`px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm`}>
+                          <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm h-full flex items-center`}>
                             {formatCurrency(item.line_total)}
                           </div>
                         </div>
                         {viewMode !== 'view' && (
-                          <div className="flex items-center justify-center h-full self-center"> {/* MODIFIED: Delete button column */}
+                          <div className="flex items-center justify-center h-full self-center">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1205,10 +1266,10 @@ function SalesInvoicesPage() {
           </Card>
 
           {/* Other Ledger Entries */}
-          <Card className="p-6" overflowVisible={true}> {/* MODIFIED: Added overflowVisible */}
+          <Card className="p-6" overflowVisible={true}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                <Users size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-orange-600`}>
+                <Users size={20} className="mr-2 text-orange-600" />
                 Other Ledger Entries
               </h3>
               <button type="button" onClick={() => setIsOtherLedgerEntriesExpanded(!isOtherLedgerEntriesExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
@@ -1278,8 +1339,8 @@ function SalesInvoicesPage() {
           {getAggregatedTaxDetails().length > 0 && (
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                  <Tag size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-teal-600`}>
+                  <Tag size={20} className="mr-2 text-teal-600" />
                   Tax Details
                 </h3>
                 <button type="button" onClick={() => setIsTaxSummaryExpanded(!isTaxSummaryExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
@@ -1300,31 +1361,42 @@ function SalesInvoicesPage() {
           )}
 
           {/* Invoice Summary and Additional Information Layout */}
-          <div className="grid grid-cols-invoice-summary-layout gap-6"> {/* MODIFIED: Applied new grid */}
+          <div className="grid grid-cols-invoice-summary-layout gap-6">
             {/* Additional Information (Left Side) */}
             <Card className="p-6">
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Additional Information</h3>
-              <FormField
-                label="Terms and Conditions"
-                value={invoice.termsAndConditions}
-                onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
-                placeholder="Payment terms, delivery terms, etc."
-                readOnly={viewMode === 'view'}
-              />
-              <FormField
-                label="Notes"
-                value={invoice.notes}
-                onChange={(val) => handleInvoiceChange('notes', val)}
-                placeholder="Any additional notes"
-                readOnly={viewMode === 'view'}
-              />
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 text-indigo-600`}>
+                Additional Information
+              </h3>
+              <div className="space-y-4"> {/* Added space-y for proper spacing */}
+                <FormField
+                  label="Terms and Conditions"
+                  value={invoice.termsAndConditions}
+                  onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
+                  placeholder="Payment terms, delivery terms, etc."
+                  readOnly={viewMode === 'view'}
+                />
+                <FormField
+                  label="Notes"
+                  value={invoice.notes}
+                  onChange={(val) => handleInvoiceChange('notes', val)}
+                  placeholder="Any additional notes"
+                  readOnly={viewMode === 'view'}
+                />
+                <FormField
+                  label="Narration"
+                  value={invoice.narration}
+                  onChange={(val) => handleInvoiceChange('narration', val)}
+                  placeholder="Brief description of the transaction for accounting purposes"
+                  readOnly={viewMode === 'view'}
+                />
+              </div>
             </Card>
 
             {/* Invoice Summary (Right Side) */}
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center`}>
-                  <Calculator size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-pink-600`}>
+                  <Calculator size={20} className="mr-2 text-pink-600" />
                   Invoice Summary
                 </h3>
                 <button type="button" onClick={() => setIsInvoiceSummaryExpanded(!isInvoiceSummaryExpanded)} className={`${theme.textMuted} hover:${theme.textPrimary}`}>
@@ -1357,7 +1429,6 @@ function SalesInvoicesPage() {
                     <span className={theme.textPrimary}>Invoice Value:</span>
                     <span className="text-emerald-600">{formatCurrency(invoice.totalAmount)}</span>
                   </div>
-                  {/* REMOVED: Paid Amount, Outstanding Amount, Other Adjustments */}
                 </div>
                 {viewMode !== 'view' && (
                   <div className="mt-4">

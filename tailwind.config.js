@@ -141,10 +141,12 @@ export default {
         'invoice-item-row-v3': '40% 9% 5% 9% 12% 9% 12% 4%',
         'invoice-item-row-custom': '2fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr 0.2fr',
         'ledger-entry-row-custom': '2fr 0.5fr 0.5fr 0.2fr',
-        'invoice-item-row-v4': '4fr 0.7fr 0.7fr 0.7fr 0.7fr 1fr 1fr auto', // NEW: Optimized grid for item rows
-        'invoice-summary-layout': '2fr 1fr', // NEW: Grid for invoice summary and additional info
+        // MODIFIED: Adjusted for tight packing and consistent height
+        'invoice-item-row-v4': '2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr auto',
+        'invoice-summary-layout': '1fr 1fr', // MODIFIED: Equal width for summary and additional info
       }
     },
   },
   plugins: [],
 };
+
