@@ -20,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 interface SalesInvoiceItem {
   id: string;
   invoice_id: string | null;
-  item_code: string;
+  item_id: string; // Changed from item_code to item_id
   item_name: string;
   quantity: number;
   unit: string;
@@ -55,6 +55,7 @@ interface SalesInvoice {
   reference_no: string | null;
   terms_and_conditions: string | null;
   notes: string | null;
+  narration: string; // NEW: Narration field
   subtotal: number | null; // Gross Amount of all items
   total_tax: number | null;
   total_amount: number | null; // Final Invoice Value
@@ -151,19 +152,19 @@ function SalesInvoicesPage() {
     {
       id: '1',
       invoice_id: null,
-      item_code: '',
+      item_id: '', // Changed from item_code to item_id
       item_name: '',
       quantity: 1,
       unit: 'Nos',
       rate: 0,
-      amount: 0, // Gross Amount for the line (qty * rate)
+      amount: 0,
       tax_rate: 0,
       tax_amount: 0,
       line_total: 0,
       created_at: '',
       hsn_code: null,
       discount_percent: 0,
-      discount_amount: 0, // Calculated discount amount for the line
+      discount_amount: 0,
     }
   ]);
 
@@ -257,7 +258,7 @@ function SalesInvoicesPage() {
               const emptyItemIndex = items.findIndex(item => !item.item_name);
               const targetIndex = emptyItemIndex !== -1 ? emptyItemIndex : items.length -1;
 
-              updateItem(targetIndex, 'item_code', newItem.id); // Store item ID in item_code
+              updateItem(targetIndex, 'item_id', newItem.id); // Store item ID in item_id
               updateItem(targetIndex, 'item_name', newItem.name);
               updateItem(targetIndex, 'unit', newItem.units_of_measure?.name || 'Nos');
               updateItem(targetIndex, 'rate', newItem.standard_rate);
@@ -450,7 +451,7 @@ function SalesInvoicesPage() {
         setItems(data.sales_invoice_items.map((item: any) => ({
           id: item.id,
           invoice_id: item.invoice_id,
-          item_code: item.item_code,
+          item_id: item.item_id, // Changed from item_code to item_id
           item_name: item.item_name,
           quantity: item.quantity,
           unit: item.unit,
@@ -559,7 +560,7 @@ function SalesInvoicesPage() {
     setItems([...items, {
       id: 'new-' + Date.now().toString(),
       invoice_id: null,
-      item_code: '',
+      item_id: '', // Changed from item_code to item_id
       item_name: '',
       quantity: 1,
       unit: 'Nos',
@@ -664,7 +665,7 @@ function SalesInvoicesPage() {
       {
         id: '1',
         invoice_id: null,
-        item_code: '',
+        item_id: '', // Changed from item_code to item_id
         item_name: '',
         quantity: 1,
         unit: 'Nos',
@@ -757,7 +758,7 @@ function SalesInvoicesPage() {
 
         const itemsToSave = items.map(item => ({
           invoice_id: invoiceId,
-          item_code: item.item_code,
+          item_id: item.item_id, // Changed from item_code to item_id
           item_name: item.item_name,
           quantity: item.quantity,
           unit: item.unit,
@@ -1142,7 +1143,7 @@ function SalesInvoicesPage() {
                   label="Place of Supply"
                   value={invoice.placeOfSupply}
                   onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
-                  onSelect={(id, name) => handleInvoiceChange('placeOfSupply', name)}
+                  onSelect={(id) => handleInvoiceChange('placeOfSupply', id)}
                   options={availableStates}
                   placeholder="Select Place of Supply"
                   required
@@ -1178,11 +1179,11 @@ function SalesInvoicesPage() {
                         <MasterSelectField
                           ref={el => itemMasterSelectRefs.current[index] = el}
                           label="Item Name"
-                          value={item.item_name}
-                          onValueChange={(val) => updateItem(index, 'item_name', val)}
+                          value={item.item_id}
+                          onValueChange={(val) => updateItem(index, 'item_id', val)}
                           onSelect={(id, name, data) => {
                             const selected = data as ItemOption;
-                            updateItem(index, 'item_code', id);
+                            updateItem(index, 'item_id', id);
                             updateItem(index, 'item_name', name);
                             updateItem(index, 'unit', selected.units_of_measure?.name || 'Nos');
                             updateItem(index, 'rate', selected.standard_rate);
@@ -1218,13 +1219,13 @@ function SalesInvoicesPage() {
                           onChange={(val) => updateItem(index, 'discount_percent', parseFloat(val) || 0)}
                           readOnly={viewMode === 'view'}
                         />
-                        <div className="flex flex-col h-full">
+                        <div className="flex flex-col">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax %</label>
                           <select
                             value={item.tax_rate?.toString() || '0'}
                             onChange={(e) => updateItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                             className={`
-                              w-full px-3 py-2.5 border ${theme.inputBorder} rounded-lg h-full
+                              w-full px-3 py-2.5 border ${theme.inputBorder} rounded-lg
                               ${theme.inputBg} ${theme.textPrimary}
                               focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                             `}
@@ -1235,20 +1236,20 @@ function SalesInvoicesPage() {
                             ))}
                           </select>
                         </div>
-                        <div className="flex flex-col h-full">
+                        <div className="flex flex-col">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Gross Amt</label>
-                          <div className={`px-3 py-2.5 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm h-full flex items-center`}>
+                          <div className={`px-3 py-2.5 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm flex items-center`}>
                             {formatCurrency(item.quantity * item.rate)}
                           </div>
                         </div>
-                        <div className="flex flex-col h-full">
+                        <div className="flex flex-col">
                           <label className={`block text-sm font-medium ${theme.textPrimary}`}>Net Amt</label>
-                          <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm h-full flex items-center`}>
+                          <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm flex items-center`}>
                             {formatCurrency(item.line_total)}
                           </div>
                         </div>
                         {viewMode !== 'view' && (
-                          <div className="flex items-center justify-center h-full self-center">
+                          <div className="flex items-center justify-center self-center">
                             <Button
                               variant="ghost"
                               size="sm"
