@@ -342,7 +342,7 @@ function LedgerFormPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="p-6">
+          <Card className="p-6 overflow-visible">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
               <BookOpen size={20} className="mr-2 text-[${theme.hoverAccent}]" />
               General Information

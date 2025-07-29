@@ -81,10 +81,11 @@ interface ItemOption {
   units_of_measure: { name: string } | null;
 }
 
+// NEW: CustomerOption interface
 interface CustomerOption {
   id: string;
   name: string;
-  customer_code: string;
+  customer_code?: string;
   billing_address: {
     street1?: string;
     street2?: string;
@@ -93,7 +94,7 @@ interface CustomerOption {
     country?: string;
     zipCode?: string;
   };
-  shipping_address: any;
+  shipping_address?: any; // Assuming it can be any type or similar to billing_address
 }
 
 interface AccountOption {
@@ -158,7 +159,7 @@ function SalesInvoicesPage() {
       amount: 0, // Gross Amount for the line (qty * rate)
       tax_rate: 0,
       tax_amount: 0,
-      line_total: 0, // Net Amount for the line (taxableValue + tax_amount)
+      line_total: 0,
       created_at: '',
       hsn_code: null,
       discount_percent: 0,
@@ -1083,7 +1084,7 @@ function SalesInvoicesPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Invoice Details */}
-          <Card className="p-6" overflowVisible={true}>
+          <Card className="p-6 overflow-visible">
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-sky-600`}>
                 <FileText size={20} className="mr-2 text-sky-600" />
@@ -1141,9 +1142,10 @@ function SalesInvoicesPage() {
                   label="Place of Supply"
                   value={availableStates.find(s => s.id === invoice.placeOfSupply)?.name || ''}
                   onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
-                  onSelect={(id) => handleInvoiceChange('placeOfSupply', id)}
+                  onSelect={(id, name) => handleInvoiceChange('placeOfSupply', name)}
                   options={availableStates}
                   placeholder="Select Place of Supply"
+                  required
                   readOnly={viewMode === 'view'}
                   disabled={!invoice.customerId}
                 />
@@ -1152,7 +1154,7 @@ function SalesInvoicesPage() {
           </Card>
 
           {/* Invoice Items */}
-          <Card className="p-6" overflowVisible={true}>
+          <Card className="p-6 overflow-visible">
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.textPrimary} flex items-center text-purple-600`}>
                 <List size={20} className="mr-2 text-purple-600" />
