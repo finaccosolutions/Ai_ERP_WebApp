@@ -255,7 +255,7 @@ function SalesInvoicesPage() {
             if (newItem) {
               // Find the first empty item row or add a new one
               const emptyItemIndex = items.findIndex(item => !item.item_name);
-              const targetIndex = emptyItemIndex !== -1 ? emptyItemIndex : items.length -1; // If no empty, use last row
+              const targetIndex = emptyItemIndex !== -1 ? emptyItemIndex : items.length -1;
 
               updateItem(targetIndex, 'item_code', newItem.id); // Store item ID in item_code
               updateItem(targetIndex, 'item_name', newItem.name);
@@ -725,7 +725,7 @@ function SalesInvoicesPage() {
         total_tax: invoice.totalTax,
         total_amount: invoice.totalAmount,
         paid_amount: invoice.paidAmount,
-        outstanding_amount: invoice.outstandingAmount,
+        outstanding_amount: invoice.totalAmount - invoice.paidAmount, // Recalculate outstanding
         total_discount: invoice.totalDiscount,
         tax_details: getAggregatedTaxDetails(), // Save aggregated tax details
         other_ledger_entries: otherLedgerEntries,
@@ -1140,7 +1140,7 @@ function SalesInvoicesPage() {
                 />
                 <MasterSelectField
                   label="Place of Supply"
-                  value={availableStates.find(s => s.id === invoice.placeOfSupply)?.name || ''}
+                  value={invoice.placeOfSupply}
                   onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
                   onSelect={(id, name) => handleInvoiceChange('placeOfSupply', name)}
                   options={availableStates}

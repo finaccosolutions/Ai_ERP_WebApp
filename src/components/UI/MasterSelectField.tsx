@@ -1,4 +1,3 @@
-// src/components/UI/MasterSelectField.tsx
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -6,8 +5,8 @@ import DropdownPortal from './DropdownPortal';
 
 interface MasterSelectFieldProps {
   label: string;
-  value: string;
-  onValueChange: (value: string) => void;
+  value: string; // This is now the selected ID
+  onValueChange: (value: string) => void; // This updates the parent's state with the selected ID
   onSelect: (selectedId: string, selectedName: string, additionalData?: any) => void;
   options: { id: string; name: string; [key: string]: any }[];
   placeholder?: string;
@@ -35,11 +34,11 @@ export interface MasterSelectFieldRef {
 
 const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProps>(({
   label,
-  value,
-  onValueChange,
+  value, // This `value` is the ID of the selected option from the parent
+  onValueChange, // This `onValueChange` is expected to update the parent's state with the ID
   onSelect,
   options,
-  placeholder,
+  placeholder = '',
   required = false,
   error,
   className = '',
@@ -55,61 +54,65 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
 }, ref) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(value || '');
+  const [internalSearchTerm, setInternalSearchTerm] = useState(''); // Internal state for the input field's text
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Effect to synchronize internalSearchTerm with the `name` of the `value` prop (ID)
+  // This ensures the input field displays the name corresponding to the selected ID
   useEffect(() => {
-    setSearchTerm(value || '');
-  }, [value]);
+    const selectedOption = options.find(option => option.id === value);
+    if (selectedOption) {
+      setInternalSearchTerm(selectedOption.name);
+    } else if (value === '') {
+      // If value is cleared by parent, clear internal search term
+      setInternalSearchTerm('');
+    }
+    // If value is a string that doesn't match an ID, it means it's a typed value
+    // In this case, internalSearchTerm should already reflect the typed value from handleInputChange
+  }, [value, options]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredOptions = options.filter(option =>
-    option && (option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+  // Expose methods via ref
   useImperativeHandle(ref, () => ({
-    getSearchTerm: () => searchTerm,
+    getSearchTerm: () => internalSearchTerm,
     getFilteredOptions: () => filteredOptions,
     openDropdown: () => setIsOpen(true),
     closeDropdown: () => setIsOpen(false),
     selectOption: (id: string) => {
       const option = options.find(opt => opt.id === id);
       if (option) {
-        setSearchTerm(option.name);
-        onSelect(option.id, option.name, option);
+        setInternalSearchTerm(option.name); // Update internal text
+        onValueChange(option.id); // Update parent's ID state
+        onSelect(option.id, option.name, option); // Trigger onSelect callback
         setIsOpen(false);
       }
     },
   }));
 
+  const filteredOptions = options.filter(option =>
+    option && (option.name || '').toLowerCase().includes(internalSearchTerm.toLowerCase())
+  );
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    onValueChange(e.target.value);
-    setIsOpen(true);
+    setInternalSearchTerm(e.target.value); // Update internal text state
+    // Do NOT call onValueChange here with e.target.value directly, as it expects an ID.
+    // The parent's state (value) will only be updated when an option is selected.
+    setIsOpen(true); // Open dropdown on typing
   };
 
   const handleInternalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (onKeyDown) onKeyDown(e);
     if (e.key === 'F2' && onF2Press) {
       e.preventDefault();
-      onF2Press(searchTerm.trim(), fieldIndex, masterType);
+      // Pass the current text in the input field, not the selected ID
+      onF2Press(internalSearchTerm.trim(), fieldIndex, masterType);
       setIsOpen(false);
     } else if (e.key === 'Enter' && allowCreation && onNewValueConfirmed) {
-      const exactMatch = options.find(opt => opt.name.toLowerCase() === searchTerm.trim().toLowerCase());
-      if (!exactMatch && searchTerm.trim()) {
+      const exactMatch = options.find(opt => opt.name.toLowerCase() === internalSearchTerm.trim().toLowerCase());
+      if (!exactMatch && internalSearchTerm.trim()) {
         e.preventDefault();
-        onNewValueConfirmed(searchTerm.trim(), fieldIndex, masterType);
+        onNewValueConfirmed(internalSearchTerm.trim(), fieldIndex, masterType);
         setIsOpen(false);
       } else if (exactMatch) {
         e.preventDefault();
@@ -119,15 +122,29 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
   };
 
   const handleOptionClick = (option: { id: string; name: string; [key: string]: any }) => {
-    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
-    setSearchTerm(option.name);
-    onSelect(option.id, option.name, option);
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current); // Clear timeout if an option is clicked
+    setInternalSearchTerm(option.name); // Update internal text
+    onValueChange(option.id); // Update parent's ID state
+    onSelect(option.id, option.name, option); // Trigger onSelect callback
     setIsOpen(false);
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Set a timeout to allow handleOptionClick to fire before closing
     blurTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
+      // If the input value doesn't match any option after blur, clear the parent's value
+      const selectedOption = options.find(opt => opt.id === value);
+      if (!selectedOption && value !== '') {
+        // If the current value (ID) in parent state doesn't correspond to a name
+        // and the input text doesn't match a name, clear the parent's value.
+        // This handles cases where user types something and clicks away without selecting.
+        const typedTextMatchesOption = options.some(opt => opt.name.toLowerCase() === internalSearchTerm.toLowerCase());
+        if (!typedTextMatchesOption) {
+          onValueChange(''); // Clear the parent's ID state
+          setInternalSearchTerm(''); // Clear internal text
+        }
+      }
       if (onBlur) onBlur(e);
     }, 150);
   };
@@ -154,7 +171,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
         <input
           ref={inputRef}
           type="text"
-          value={searchTerm}
+          value={internalSearchTerm} // Controlled by internalSearchTerm
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleInternalKeyDown}
@@ -192,7 +209,7 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
               <button
                 key={option.id}
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()} // Prevent blur from closing popover immediately
                 onClick={() => handleOptionClick(option)}
                 className={`w-full text-left px-4 py-2 text-sm ${theme.textPrimary}
                   ${theme.isDark ? 'hover:bg-gray-60' : 'hover:bg-blue-200'}
@@ -214,5 +231,5 @@ const MasterSelectField = forwardRef<MasterSelectFieldRef, MasterSelectFieldProp
     </div>
   );
 });
-
+ 
 export default MasterSelectField;
