@@ -30,276 +30,24 @@ import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
 
-// --- ALL STATIC DATA DEFINED HERE, ABOVE THE COMPONENT FUNCTION ---
-const countries = [
-  {
-    id: 'IN',
-    name: 'India',
-    flag: '🇮🇳',
-    currency: 'INR',
-    taxType: 'GST',
-    timezone: 'Asia/Kolkata',
-    dialCode: '+91',
-    fiscalYearStartMonth: 3, // April (0-indexed)
-    states: [
-      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
-      'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-      'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-      'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
-      'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh'
-    ]
-  },
-  {
-    id: 'US',
-    name: 'United States',
-    flag: '🇺🇸',
-    currency: 'USD',
-    taxType: 'VAT', // Using VAT for generic sales tax/custom tax
-    timezone: 'America/New_York',
-    dialCode: '+1',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
-      'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
-      'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
-      'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
-      'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
-      'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
-      'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
-      'Wisconsin', 'Wyoming'
-    ]
-  },
-  {
-    id: 'AE',
-    name: 'United Arab Emirates',
-    flag: '🇦🇪',
-    currency: 'AED',
-    taxType: 'VAT',
-    timezone: 'Asia/Dubai',
-    dialCode: '+971',
-    fiscalYearStartMonth: 0, // January
-    states: ['Abu Dhabi', 'Ajman', 'Dubai', 'Fujairah', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain']
-  },
-  {
-    id: 'SA',
-    name: 'Saudi Arabia',
-    flag: '🇸🇦',
-    currency: 'SAR',
-    taxType: 'VAT',
-    timezone: 'Asia/Riyadh',
-    dialCode: '+966',
-    fiscalYearStartMonth: 0, // January
-    states: [] // Add specific regions if needed
-  },
-  {
-    id: 'QA',
-    name: 'Qatar',
-    flag: '🇶🇦',
-    currency: 'QAR',
-    taxType: 'VAT',
-    timezone: 'Asia/Qatar',
-    dialCode: '+974',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'KW',
-    name: 'Kuwait',
-    flag: '🇰🇼',
-    currency: 'KWD',
-    taxType: 'VAT',
-    timezone: 'Asia/Kuwait',
-    dialCode: '+965',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'BH',
-    name: 'Bahrain',
-    flag: '🇧🇭',
-    currency: 'BHD',
-    taxType: 'VAT',
-    timezone: 'Asia/Bahrain',
-    dialCode: '+973',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'OM',
-    name: 'Oman',
-    flag: '🇴🇲',
-    currency: 'OMR',
-    taxType: 'VAT',
-    timezone: 'Asia/Muscat',
-    dialCode: '+968',
-    fiscalYearStartMonth: 0, // January
-    states: []
-  },
-  {
-    id: 'GB',
-    name: 'United Kingdom',
-    flag: '🇬🇧',
-    currency: 'GBP',
-    taxType: 'VAT',
-    timezone: 'Europe/London',
-    dialCode: '+44',
-    fiscalYearStartMonth: 3, // April
-    states: ['England', 'Scotland', 'Wales', 'Northern Ireland']
-  },
-  {
-    id: 'CA',
-    name: 'Canada',
-    flag: '🇨🇦',
-    currency: 'CAD',
-    taxType: 'VAT', // Using VAT for generic sales tax/custom tax
-    timezone: 'America/Toronto',
-    dialCode: '+1',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
-      'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
-      'Quebec', 'Saskatchewan', 'Yukon'
-    ]
-  },
-  {
-    id: 'AU',
-    name: 'Australia',
-    flag: '🇦🇺',
-    currency: 'AUD',
-    taxType: 'GST',
-    timezone: 'Australia/Sydney',
-    dialCode: '+61',
-    fiscalYearStartMonth: 6, // July
-    states: [
-      'New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia',
-      'Tasmania', 'Australian Capital Territory', 'Northern Territory'
-    ]
-  },
-  {
-    id: 'DE',
-    name: 'Germany',
-    flag: '🇩🇪',
-    currency: 'EUR',
-    taxType: 'VAT',
-    timezone: 'Europe/Berlin',
-    dialCode: '+49',
-    fiscalYearStartMonth: 0, // January
-    states: [
-      'Baden-Württemberg', 'Bavaria', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg',
-      'Hesse', 'Lower Saxony', 'Mecklenburg-Vorpommern', 'North Rhine-Westphalia',
-      'Rhineland-Palatinate', 'Saarland', 'Saxony', 'Saxony-Anhalt', 'Schleswig-Holstein',
-      'Thuringia'
-    ]
-  }
-];
-
-const currencies = [
-  { id: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { id: 'USD', name: 'US Dollar', symbol: '$' },
-  { id: 'EUR', name: 'Euro', symbol: '€' },
-  { id: 'GBP', name: 'British Pound', symbol: '£' },
-  { id: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
-  { id: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { id: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
-  { id: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
-  { id: 'QAR', name: 'Qatari Riyal', symbol: '﷼' },
-  { id: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك' },
-  { id: 'BHD', name: 'Bahraini Dinar', symbol: '.د.ب' },
-  { id: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.' },
-  { id: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { id: 'SGD', name: 'Singapore Dollar', symbol: '$' },
-];
-
-const languages = [
-  { id: 'en', name: 'English' },
-  { id: 'hi', name: 'Hindi' },
-  { id: 'es', name: 'Spanish' },
-  { id: 'fr', name: 'French' },
-  { id: 'de', name: 'German' },
-  { id: 'ar', name: 'Arabic' },
-];
-
-const companyTypes = [
-  { id: 'private_limited', name: 'Private Limited Company' },
-  { id: 'public_limited', name: 'Public Limited Company' },
-  { id: 'partnership', name: 'Partnership' },
-  { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
-  { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
-  { id: 'opc', name: 'One Person Company (OPC)' },
-  { id: 'non_profit', name: 'Non-Profit Organization' },
-  { id: 'other', name: 'Other' }
-];
-
-const industries = [
-  { id: 'technology', name: 'Technology' },
-  { id: 'manufacturing', name: 'Manufacturing' },
-  { id: 'retail', name: 'Retail' },
-  { id: 'healthcare', name: 'Healthcare' },
-  { id: 'finance', name: 'Finance' },
-  { id: 'education', name: 'Education' },
-  { id: 'real_estate', name: 'Real Estate' },
-  { id: 'construction', name: 'Construction' },
-  { id: 'transportation', name: 'Transportation' },
-  { id: 'food_beverage', name: 'Food & Beverage' },
-  { id: 'professional_services', name: 'Professional Services' },
-  { id: 'media_entertainment', name: 'Media & Entertainment' },
-  { id: 'agriculture', name: 'Agriculture' },
-  { id: 'other', name: 'Other' }
-];
-
-const employeeCounts = [
-  { id: '1-10', name: '1-10' },
-  { id: '11-50', name: '11-50' },
-  { id: '51-200', name: '51-200' },
-  { id: '201-500', name: '201-500' },
-  { id: '501-1000', name: '501-1000' },
-  { id: '1000+', name: '1000+' }
-];
-
-const revenueRanges = [
-  { id: 'under_100k', name: 'Under $100K' },
-  { id: '100k-500k', name: '$100K - $500K' },
-  { id: '500k-1m', name: '$500K - $1M' },
-  { id: '1m-5m', name: '$1M - $5M' },
-  { id: '5m-10m', name: '$5M - $10M' },
-  { id: 'over_10m', name: 'Over $10M' }
-];
-
-const gstRegistrationTypes = [
-  { id: 'regular', name: 'Regular' },
-  { id: 'composition', name: 'Composition' },
-  { id: 'unregistered', name: 'Unregistered' },
-];
-
-const filingFrequencies = [
-  { id: 'monthly', name: 'Monthly' },
-  { id: 'quarterly', name: 'Quarterly' },
-];
-
-const vatRegistrationTypes = [
-  { id: 'standard', name: 'Standard' },
-  { id: 'exempt', name: 'Exempt' },
-];
-
-const filingCycles = [
-  { id: 'monthly', name: 'Monthly' },
-  { id: 'quarterly', name: 'Quarterly' },
-  { id: 'annually', name: 'Annually' },
-];
-
-const decimalPlacesOptions = [
-  { id: '0', name: '0 (1,234)' },
-  { id: '1', name: '1 (1,234.5)' },
-  { id: '2', name: '2 (1,234.56)' },
-  { id: '3', name: '3 (1,234.567)' },
-  { id: '4', name: '4 (1,234.5678)' },
-];
-
-const dateFormats = [
-  { id: 'DD-MM-YYYY', name: 'DD-MM-YYYY' },
-  { id: 'MM/DD/YYYY', name: 'MM/DD/YYYY' },
-  { id: 'YYYY-MM-DD', name: 'YYYY-MM-DD' },
-];
+// --- IMPORT STATIC DATA FROM geoData.ts ---
+import {
+  COUNTRIES,
+  CURRENCIES,
+  LANGUAGES,
+  COMPANY_TYPES,
+  INDUSTRIES,
+  EMPLOYEE_COUNTS,
+  REVENUE_RANGES,
+  GST_REGISTRATION_TYPES,
+  FILING_FREQUENCIES,
+  VAT_REGISTRATION_TYPES,
+  FILING_CYCLES,
+  DECIMAL_PLACES_OPTIONS,
+  DATE_FORMATS,
+  getCountryByCode,
+  getPhoneCountryCodes
+} from '../../constants/geoData';
 
 
 function CompanySettings() {
@@ -353,7 +101,7 @@ function CompanySettings() {
     filingFrequency: '',
     tdsApplicable: false,
     tcsApplicable: false,
-    trnVatNumber: '',
+trnVatNumber: '',
     vatRegistrationType: '',
     filingCycle: '',
 
@@ -365,7 +113,6 @@ function CompanySettings() {
     multiCurrencySupport: false,
     autoRounding: false,
 
-    defaultLanguage: '', // Redundant, will map to languagePreference
     dateFormat: '',
     enableBatchTracking: false,
     enableCostCenterAllocation: false,
@@ -389,27 +136,27 @@ function CompanySettings() {
       setFormData({
         companyName: currentCompany.name || '',
         legalName: currentCompany.settings?.legalName || '',
-        industry: currentCompany.settings?.industry || industries[0].id,
-        businessType: currentCompany.settings?.businessType || companyTypes[0].id,
+        industry: currentCompany.settings?.industry || INDUSTRIES[0].id,
+        businessType: currentCompany.settings?.businessType || COMPANY_TYPES[0].id,
         registrationNo: currentCompany.settings?.registrationNo || '',
-        country: currentCompany.country || countries[0].id,
+        country: currentCompany.country || COUNTRIES[0].code,
         state: currentCompany.address?.state || '',
         city: currentCompany.address?.city || '',
         addressLine1: currentCompany.address?.street1 || '',
         addressLine2: currentCompany.address?.street2 || '',
         zipCode: currentCompany.address?.zipCode || '',
-        languagePreference: currentCompany.settings?.languagePreference || languages[0].id,
+        languagePreference: currentCompany.settings?.languagePreference || LANGUAGES[0].id,
         companyLogo: currentCompany.logo || null, // This will be the URL
-        timezone: currentCompany.timezone || countries[0].timezone,
+        timezone: currentCompany.timezone || COUNTRIES[0].timezone,
 
         contactPersonName: currentCompany.contactInfo?.contactPersonName || '',
         designation: currentCompany.contactInfo?.designation || '',
         email: currentCompany.contactInfo?.email || '',
         mobile: currentCompany.contactInfo?.mobile || '',
-        phoneCountry: currentCompany.contactInfo?.phoneCountry || currentCompany.country || countries[0].id,
+        phoneCountry: currentCompany.contactInfo?.phoneCountry || currentCompany.country || COUNTRIES[0].code,
         alternateContactNumber: currentCompany.contactInfo?.alternatePhone || '',
 
-        taxSystem: currentCompany.taxConfig?.type || countries[0].taxType,
+        taxSystem: currentCompany.taxConfig?.type || COUNTRIES[0].taxConfig.type,
         taxConfig: {
           enabled: currentCompany.taxConfig?.enabled ?? true,
           rates: currentCompany.taxConfig?.rates || [],
@@ -417,23 +164,23 @@ function CompanySettings() {
         gstin: currentCompany.taxConfig?.gstDetails?.registrationNumber || '',
         pan: currentCompany.taxConfig?.gstDetails?.pan || '',
         tan: currentCompany.taxConfig?.gstDetails?.tan || '',
-        gstRegistrationType: currentCompany.taxConfig?.gstDetails?.registrationType || gstRegistrationTypes[0].id,
-        filingFrequency: currentCompany.taxConfig?.gstDetails?.filingFrequency || filingFrequencies[0].id,
+        gstRegistrationType: currentCompany.taxConfig?.gstDetails?.registrationType || GST_REGISTRATION_TYPES[0].id,
+        filingFrequency: currentCompany.taxConfig?.gstDetails?.filingFrequency || FILING_FREQUENCIES[0].id,
         tdsApplicable: currentCompany.taxConfig?.gstDetails?.tdsApplicable ?? false,
         tcsApplicable: currentCompany.taxConfig?.gstDetails?.tcsApplicable ?? false,
         trnVatNumber: currentCompany.taxConfig?.vatDetails?.registrationNumber || '',
-        vatRegistrationType: currentCompany.taxConfig?.vatDetails?.registrationType || vatRegistrationTypes[0].id,
-        filingCycle: currentCompany.taxConfig?.vatDetails?.filingCycle || filingCycles[0].id,
+        vatRegistrationType: currentCompany.taxConfig?.vatDetails?.registrationType || VAT_REGISTRATION_TYPES[0].id,
+        filingCycle: currentCompany.taxConfig?.vatDetails?.filingCycle || FILING_CYCLES[0].id,
 
         booksStartDate: currentCompany.fiscal_year_start || '', // Editable, defaults to fiscal year start
         fiscalYearStartDate: currentCompany.fiscal_year_start || '',
         fiscalYearEndDate: currentCompany.fiscal_year_end || '', // Auto-calculated, not directly editable
-        defaultCurrency: currentCompany.currency || currencies[0].id,
+        defaultCurrency: currentCompany.currency || CURRENCIES[0].id,
         decimalPlaces: currentCompany.settings?.decimalPlaces ?? 2,
         multiCurrencySupport: currentCompany.settings?.multiCurrencySupport ?? false,
         autoRounding: currentCompany.settings?.autoRounding ?? false,
 
-        dateFormat: currentCompany.settings?.dateFormat || dateFormats[0].id,
+        dateFormat: currentCompany.settings?.dateFormat || DATE_FORMATS[0].id,
         enableBatchTracking: currentCompany.settings?.batchTracking ?? false,
         enableCostCenterAllocation: currentCompany.settings?.costCenterAllocation ?? false,
         enableMultiUserAccess: currentCompany.settings?.multiUserAccess ?? false,
@@ -444,9 +191,9 @@ function CompanySettings() {
         enableBarcodeSupport: currentCompany.settings?.barcodeSupport ?? false,
         allowAutoVoucherCreationAI: currentCompany.settings?.autoVoucherCreationAI ?? true,
 
-        companyType: currentCompany.settings?.companyType || companyTypes[0].id,
-        employeeCount: currentCompany.settings?.employeeCount || employeeCounts[0].id,
-        annualRevenue: currentCompany.settings?.annualRevenue || revenueRanges[0].id,
+        companyType: currentCompany.settings?.companyType || COMPANY_TYPES[0].id,
+        employeeCount: currentCompany.settings?.employeeCount || EMPLOYEE_COUNTS[0].id,
+        annualRevenue: currentCompany.settings?.annualRevenue || REVENUE_RANGES[0].id,
         inventoryTracking: currentCompany.settings?.inventoryTracking ?? true
       });
     }
@@ -454,7 +201,7 @@ function CompanySettings() {
 
   // Auto-calculate fiscal year end date and update tax rates based on country
   useEffect(() => {
-    const selectedCountryData = countries.find(c => c.id === formData.country);
+    const selectedCountryData = getCountryByCode(formData.country);
     if (selectedCountryData) {
       const startDate = new Date(formData.fiscalYearStartDate);
       const fiscalYearEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), 0);
@@ -462,37 +209,20 @@ function CompanySettings() {
       setFormData((prev: any) => ({
         ...prev,
         timezone: selectedCountryData.timezone,
-        defaultCurrency: selectedCountryData.currency,
-        taxSystem: selectedCountryData.taxType,
+        defaultCurrency: selectedCountryData.defaultCurrency,
+        taxSystem: selectedCountryData.taxConfig.type,
         fiscalYearEndDate: fiscalYearEndDate.toISOString().split('T')[0],
-        phoneCountry: selectedCountryData.id, // Auto-update phone country code
+        phoneCountry: selectedCountryData.code, // Auto-update phone country code
         // Reset state if country changes and previous state is not valid for new country
-        state: selectedCountryData.states.includes(prev.state) ? prev.state : '',
+        state: selectedCountryData.states.find(s => s.name === prev.state) ? prev.state : '',
       }));
 
       // Update tax rates based on country
-      const taxRates: { [key: string]: number[] } = {
-        'IN': [0, 5, 12, 18, 28],
-        'US': [0, 5, 8.5, 10],
-        'AE': [0, 5],
-        'SA': [0, 15],
-        'QA': [0, 5],
-        'KW': [0, 5],
-        'BH': [0, 10],
-        'OM': [0, 5],
-        'GB': [0, 5, 20],
-        'CA': [0, 5, 13, 15],
-        'AU': [0, 10],
-        'DE': [0, 7, 19],
-        'JP': [0, 10],
-        'SG': [0, 9],
-      };
-
       setFormData((prev: any) => ({
         ...prev,
         taxConfig: {
           ...prev.taxConfig,
-          rates: taxRates[selectedCountryData.id] || [0, 10, 20],
+          rates: selectedCountryData.taxConfig.rates || [0, 10, 20],
         },
       }));
     }
@@ -509,7 +239,10 @@ function CompanySettings() {
       if (!formData.industry) newErrors.industry = 'Industry is required';
       if (!formData.businessType) newErrors.businessType = 'Business Type is required';
       if (!formData.country) newErrors.country = 'Country is required';
-      if (!formData.state.trim()) newErrors.state = 'State/Province is required';
+      const selectedCountryData = getCountryByCode(formData.country);
+      if (selectedCountryData && selectedCountryData.states.length > 0 && !formData.state.trim()) {
+        newErrors.state = 'State/Province is required';
+      }
       if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Address Line 1 is required';
     }
 
@@ -588,13 +321,21 @@ function CompanySettings() {
       // For now, assuming logo is handled separately or not changed via settings form directly
       // if (newLogoFile) { ... upload new file ... }
 
+      // --- START FIX ---
+      const selectedCountryDataForSubmission = getCountryByCode(formData.country);
+      if (!selectedCountryDataForSubmission) {
+        throw new Error('Invalid country selected. Timezone could not be determined.');
+      }
+      const selectedPhoneCountryDataForSubmission = getPhoneCountryCodes().find(c => c.id === formData.phoneCountry);
+      const phoneDialCode = selectedPhoneCountryDataForSubmission ? selectedPhoneCountryDataForSubmission.dialCode : '';
+
       const companyData = {
         name: formData.companyName,
         country: formData.country,
         currency: formData.defaultCurrency,
         fiscal_year_start: formData.fiscalYearStartDate,
         fiscal_year_end: formData.fiscalYearEndDate,
-        timezone: formData.timezone,
+        timezone: selectedCountryDataForSubmission.timezone, // Use derived timezone here
         logo: logoUrl,
         tax_config: {
           type: formData.taxSystem,
@@ -604,12 +345,14 @@ function CompanySettings() {
           gstDetails: formData.taxSystem === 'GST' ? {
             pan: formData.pan,
             tan: formData.tan,
+            registrationNumber: formData.gstin,
             registrationType: formData.gstRegistrationType,
             filingFrequency: formData.filingFrequency,
             tdsApplicable: formData.tdsApplicable,
             tcsApplicable: formData.tcsApplicable,
           } : null,
           vatDetails: formData.taxSystem === 'VAT' ? {
+            registrationNumber: formData.trnVatNumber,
             registrationType: formData.vatRegistrationType,
             filingCycle: formData.filingCycle,
           } : null,
@@ -626,8 +369,8 @@ function CompanySettings() {
           contactPersonName: formData.contactPersonName,
           designation: formData.designation,
           email: formData.email,
-          mobile: formData.mobile,
-          alternatePhone: formData.alternateContactNumber,
+          mobile: formData.mobile ? `${phoneDialCode}${formData.mobile}` : null, // Prepend dial code
+          alternatePhone: formData.alternateContactNumber ? `${phoneDialCode}${formData.alternateContactNumber}` : null, // Prepend dial code
           phoneCountry: formData.phoneCountry,
         },
         settings: {
@@ -656,6 +399,7 @@ function CompanySettings() {
           inventoryTracking: formData.inventoryTracking,
         },
       };
+      // --- END FIX ---
 
       const { error } = await supabase
         .from('companies')
@@ -674,9 +418,9 @@ function CompanySettings() {
     }
   };
 
-  const selectedCountry = countries.find(c => c.id === formData.country);
-  const selectedPhoneCountry = countries.find(c => c.id === formData.phoneCountry);
-  const availableStates = selectedCountry?.states || [];
+  const selectedCountry = getCountryByCode(formData.country);
+  const selectedPhoneCountry = getPhoneCountryCodes().find(c => c.code === formData.phoneCountry);
+  const availableStates = selectedCountry?.states.map(s => s.name) || [];
 
   if (!currentCompany) {
     return (
@@ -763,7 +507,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {industries.map(item => (
+                    {INDUSTRIES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -782,7 +526,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {companyTypes.map(item => (
+                    {COMPANY_TYPES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -814,8 +558,8 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {countries.map(country => (
-                      <option key={country.id} value={country.id}>
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
                         {country.flag} {country.name}
                       </option>
                     ))}
@@ -921,7 +665,7 @@ function CompanySettings() {
                         type="button"
                         onClick={() => setShowPhoneCountryDropdown(!showPhoneCountryDropdown)}
                         className={`
-                          flex items-center space-x-2 px-3 py-2 border ${theme.borderColor}
+                          flex items-center space-x-2 px-3 py-2.5 border ${theme.borderColor}
                           ${theme.borderRadius} border-r-0 rounded-r-none
                           ${theme.isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}
                           focus:ring-2 focus:ring-blue-500 focus:border-transparent h-full
@@ -937,7 +681,7 @@ function CompanySettings() {
                           border ${theme.isDark ? 'border-gray-600' : 'border-gray-300'}
                           ${theme.borderRadius} shadow-lg z-50 max-h-60 overflow-y-auto
                         `}>
-                          {countries.map((country) => (
+                          {getPhoneCountryCodes().map((country) => (
                             <button
                               key={country.id}
                               type="button"
@@ -1046,7 +790,7 @@ function CompanySettings() {
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                           `}
                         >
-                          {gstRegistrationTypes.map(item => (
+                          {GST_REGISTRATION_TYPES.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                         </select>
@@ -1065,7 +809,7 @@ function CompanySettings() {
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                           `}
                         >
-                          {filingFrequencies.map(item => (
+                          {FILING_FREQUENCIES.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                         </select>
@@ -1103,6 +847,7 @@ function CompanySettings() {
                         label="TRN / VAT Number"
                         value={formData.trnVatNumber}
                         onChange={(val) => setFormData({ ...formData, trnVatNumber: val })}
+                        placeholder="TRN / VAT Number"
                         required
                         error={errors.trnVatNumber}
                       />
@@ -1119,7 +864,7 @@ function CompanySettings() {
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                           `}
                         >
-                          {vatRegistrationTypes.map(item => (
+                          {VAT_REGISTRATION_TYPES.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                         </select>
@@ -1138,7 +883,7 @@ function CompanySettings() {
                             focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                           `}
                         >
-                          {filingCycles.map(item => (
+                          {FILING_CYCLES.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                         </select>
@@ -1197,7 +942,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {currencies.map(item => (
+                    {CURRENCIES.map(item => (
                       <option key={item.id} value={item.id}>{item.symbol} {item.name}</option>
                     ))}
                   </select>
@@ -1216,7 +961,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {decimalPlacesOptions.map(item => (
+                    {DECIMAL_PLACES_OPTIONS.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -1271,7 +1016,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {languages.map(item => (
+                    {LANGUAGES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -1290,7 +1035,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {dateFormats.map(item => (
+                    {DATE_FORMATS.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -1312,8 +1057,8 @@ function CompanySettings() {
                   <input
                     type="checkbox"
                     id="enableCostCenterAllocation"
-                    checked={formData.enableCostCenterAllocation}
-                    onChange={(e) => setFormData({ ...formData, enableCostCenterAllocation: e.target.checked })}
+                    checked={formData.costCenterAllocation}
+                    onChange={(e) => setFormData({ ...formData, costCenterAllocation: e.target.checked })}
                     className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
                   />
                   <label htmlFor="enableCostCenterAllocation" className={`text-sm font-medium ${theme.textPrimary}`}>
@@ -1371,7 +1116,7 @@ function CompanySettings() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -1426,7 +1171,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {companyTypes.map(item => (
+                    {COMPANY_TYPES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -1445,7 +1190,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {employeeCounts.map(item => (
+                    {EMPLOYEE_COUNTS.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
@@ -1464,7 +1209,7 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {revenueRanges.map(item => (
+                    {REVENUE_RANGES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
