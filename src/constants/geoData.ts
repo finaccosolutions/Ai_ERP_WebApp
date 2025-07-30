@@ -478,7 +478,7 @@ export const COUNTRIES = [
     },
     chartOfAccountsTemplate: {
       taxAccounts: [
-        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
       ],
     },
     customerTypes: [
@@ -582,3 +582,111 @@ export const getPhoneCountryCodes = () => {
   }));
 };
 
+// New global constants
+export const CURRENCIES = [
+  { id: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { id: 'USD', name: 'US Dollar', symbol: '$' },
+  { id: 'EUR', name: 'Euro', symbol: '€' },
+  { id: 'GBP', name: 'British Pound', symbol: '£' },
+  { id: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { id: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { id: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+  { id: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
+  { id: 'QAR', name: 'Qatari Riyal', symbol: '﷼' },
+  { id: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك' },
+  { id: 'BHD', name: 'Bahraini Dinar', symbol: '.د.ب' },
+  { id: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.' },
+  { id: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { id: 'SGD', name: 'Singapore Dollar', symbol: '$' },
+];
+
+export const LANGUAGES = [
+  { id: 'en', name: 'English' },
+  { id: 'hi', name: 'Hindi' },
+  { id: 'es', name: 'Spanish' },
+  { id: 'fr', name: 'French' },
+  { id: 'de', name: 'German' },
+  { id: 'ar', name: 'Arabic' },
+];
+
+export const COMPANY_TYPES = [
+  { id: 'private_limited', name: 'Private Limited Company' },
+  { id: 'public_limited', name: 'Public Limited Company' },
+  { id: 'partnership', name: 'Partnership' },
+  { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+  { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
+  { id: 'opc', name: 'One Person Company (OPC)' },
+  { id: 'non_profit', name: 'Non-Profit Organization' },
+  { id: 'other', name: 'Other' }
+];
+
+export const INDUSTRIES = [
+  { id: 'technology', name: 'Technology' },
+  { id: 'manufacturing', name: 'Manufacturing' },
+  { id: 'retail', name: 'Retail' },
+  { id: 'healthcare', name: 'Healthcare' },
+  { id: 'finance', name: 'Finance' },
+  { id: 'education', name: 'Education' },
+  { id: 'real_estate', name: 'Real Estate' },
+  { id: 'construction', name: 'Construction' },
+  { id: 'transportation', name: 'Transportation' },
+  { id: 'food_beverage', name: 'Food & Beverage' },
+  { id: 'professional_services', name: 'Professional Services' },
+  { id: 'media_entertainment', name: 'Media & Entertainment' },
+  { id: 'agriculture', name: 'Agriculture' },
+  { id: 'other', name: 'Other' }
+];
+
+export const EMPLOYEE_COUNTS = [
+  { id: '1-10', name: '1-10' },
+  { id: '11-50', name: '11-50' },
+  { id: '51-200', name: '51-200' },
+  { id: '201-500', name: '201-500' },
+  { id: '501-1000', name: '501-1000' },
+  { id: '1000+', name: '1000+' }
+];
+
+export const REVENUE_RANGES = [
+  { id: 'under_100k', name: 'Under $100K' },
+  { id: '100k-500k', name: '$100K - $500K' },
+  { id: '500k-1m', name: '$500K - $1M' },
+  { id: '1m-5m', name: '$1M - $5M' },
+  { id: '5m-10m', name: '$5M - $10M' },
+  { id: 'over_10m', name: 'Over $10M' }
+];
+
+export const GST_REGISTRATION_TYPES = [
+  { id: 'regular', name: 'Regular' },
+  { id: 'composition', name: 'Composition' },
+  { id: 'unregistered', name: 'Unregistered' },
+];
+
+export const FILING_FREQUENCIES = [
+  { id: 'monthly', name: 'Monthly' },
+  { id: 'quarterly', name: 'Quarterly' },
+];
+
+export const VAT_REGISTRATION_TYPES = [
+  { id: 'standard', name: 'Standard' },
+  { id: 'exempt', name: 'Exempt' },
+];
+
+export const FILING_CYCLES = [
+  { id: 'monthly', name: 'Monthly' },
+  { id: 'quarterly', name: 'Quarterly' },
+  { id: 'annually', name: 'Annually' },
+];
+
+export const DECIMAL_PLACES_OPTIONS = [
+  { id: '0', name: '0 (1,234)' },
+  { id: '1', name: '1 (1,234.5)' },
+  { id: '2', name: '2 (1,234.56)' },
+  { id: '3', name: '3 (1,234.567)' },
+  { id: '4', name: '4 (1,234.5678)' },
+];
+
+export const DATE_FORMATS = [
+  { id: 'DD-MM-YYYY', name: 'DD-MM-YYYY' },
+  { id: 'MM/DD/YYYY', name: 'MM/DD/YYYY' },
+  { id: 'YYYY-MM-DD', name: 'YYYY-MM-DD' },
+];
