@@ -139,8 +139,6 @@ interface Company {
     barcodeSupport?: boolean;
     autoVoucherCreationAI?: boolean;
     companyType?: string;
-    employeeCount?: string;
-    annualRevenue?: string;
     inventoryTracking?: boolean;
     companyUsername?: string;
   };
@@ -156,7 +154,7 @@ interface CompanySetupProps {
 
 const getInitialFormData = (company?: Company) => {
   const currentYear = new Date().getFullYear();
-  const defaultCountry = getCountryByCode(company?.country || 'IN')!;
+  const defaultCountry = getCountryByCode(company?.country || 'IN')!; // Ensure 'IN' is a valid fallback
 
   const fiscalYearStartMonth = defaultCountry.defaultFiscalYearStart ? parseInt(defaultCountry.defaultFiscalYearStart.split('-')[0]) - 1 : 3; // Month is 0-indexed
   let fiscalYearStartDate = new Date(Date.UTC(currentYear, fiscalYearStartMonth, 1));
@@ -165,22 +163,18 @@ const getInitialFormData = (company?: Company) => {
   }
   const fiscalYearEndDate = new Date(Date.UTC(fiscalYearStartDate.getUTCFullYear() + 1, fiscalYearStartDate.getUTCMonth(), 0));
 
-  // Ensure nested objects are always present, even if incoming 'company' has them as null/undefined
   const safeCompany = {
     ...company,
     address: company?.address || {},
-    contactInfo: company?.contactInfo || {}, // Changed from contact_info
-    taxConfig: { // Changed from tax_config
-      ...(company?.taxConfig || {}), // Changed from tax_config
-      gstDetails: (company?.taxConfig?.gstDetails || {}), // Changed from tax_config
-      vatDetails: (company?.taxConfig?.vatDetails || {}), // Changed from tax_config
+    contactInfo: company?.contactInfo || {},
+    taxConfig: {
+      ...(company?.taxConfig || {}),
+      gstDetails: (company?.taxConfig?.gstDetails || {}),
+      vatDetails: (company?.taxConfig?.vatDetails || {}),
     },
-    settings: company?.settings || {}, // Changed from settings
-  } as Company; // Cast to Company to ensure type safety for nested properties
+    settings: company?.settings || {}, // Ensure settings object exists
+  } as Company;
 
-  // Default values for nested objects (used if safeCompany's properties are still empty)
-  const defaultAddress = { street1: '', street2: '', city: '', state: '', country: defaultCountry.code, zipCode: '' };
-  const defaultContactInfo = { contactPersonName: '', designation: '', email: '', mobile: '', alternatePhone: '', phoneCountry: defaultCountry.code };
   const defaultTaxConfig = {
     enabled: true,
     rates: defaultCountry.taxConfig.rates || [0, 10, 20],
@@ -189,20 +183,40 @@ const getInitialFormData = (company?: Company) => {
     gstDetails: { pan: '', tan: '', registrationType: GST_REGISTRATION_TYPES[0].id, filingFrequency: FILING_FREQUENCIES[0].id, tdsApplicable: false, tcsApplicable: false, registrationNumber: '' },
     vatDetails: { registrationNumber: '', registrationType: VAT_REGISTRATION_TYPES[0].id, filingCycle: FILING_CYCLES[0].id }
   };
-  const defaultSettings = {
-    displayName: '', legalName: '', industry: INDUSTRIES[0].id, businessType: COMPANY_TYPES[0].id, registrationNo: '',
-    languagePreference: LANGUAGES[0].id, decimalPlaces: 2, multiCurrencySupport: false, autoRounding: false,
-    dateFormat: DATE_FORMATS[0].id, batchTracking: false, costCenterAllocation: false, multiUserAccess: false,
-    aiSuggestions: false, enablePassword: false, password: '', autoVoucherCreationAI: false, companyType: COMPANY_TYPES[0].id, employeeCount: '',
-    annualRevenue: '', inventoryTracking: true, companyUsername: ''
+
+  // Define default settings values explicitly, matching your database schema defaults
+  // This ensures that even if UI fields are removed, these values are consistently sent.
+  const defaultSettingsValues = {
+    displayName: '',
+    legalName: '',
+    industry: INDUSTRIES[0].id,
+    businessType: COMPANY_TYPES[0].id,
+    registrationNo: '',
+    languagePreference: LANGUAGES[0].id,
+    decimalPlaces: defaultCountry.defaultDecimalPlaces,
+    multiCurrencySupport: false,
+    autoRounding: false,
+    dateFormat: DATE_FORMATS[0].id,
+    batchTracking: false,
+    costCenterAllocation: false,
+    multiUserAccess: false,
+    aiSuggestions: true, // Default to true as per your code
+    enablePassword: false,
+    password: '',
+    splitByPeriod: false,
+    barcodeSupport: false,
+    autoVoucherCreationAI: false,
+    companyType: COMPANY_TYPES[0].id, // Default value
+    inventoryTracking: true,
+    companyUsername: '', // Assuming this is a setting
   };
 
 
   return {
     companyName: safeCompany.name || '',
-    legalName: safeCompany.settings.legalName || safeCompany.name || '',
-    industry: safeCompany.settings.industry || INDUSTRIES[0].id,
-    businessType: safeCompany.settings.businessType || COMPANY_TYPES[0].id,
+    legalName: safeCompany.settings.legalName || '',
+    industry: safeCompany.settings.industry || defaultSettingsValues.industry,
+    businessType: safeCompany.settings.businessType || defaultSettingsValues.businessType,
     registrationNo: safeCompany.settings.registrationNo || '',
     country: safeCompany.country || defaultCountry.code,
     state: safeCompany.address.state || '',
@@ -210,54 +224,58 @@ const getInitialFormData = (company?: Company) => {
     addressLine1: safeCompany.address.street1 || '',
     addressLine2: safeCompany.address.street2 || '',
     zipCode: safeCompany.address.zipCode || '',
-    languagePreference: safeCompany.settings.languagePreference || LANGUAGES[0].id,
+    languagePreference: safeCompany.settings.languagePreference || defaultSettingsValues.languagePreference,
     companyLogo: safeCompany.logo || null,
-    timezone: safeCompany.timezone || defaultCountry.timezone,
+    timezone: safeCompany.timezone || defaultCountry.timezone, // Ensure timezone is always set
 
-    contactPersonName: safeCompany.contactInfo.contactPersonName || '', // Changed from contact_info
-    designation: safeCompany.contactInfo.designation || '',             // Changed from contact_info
-    email: safeCompany.contactInfo.email || '',                         // Changed from contact_info
-    mobile: safeCompany.contactInfo.mobile || '',                       // Changed from contact_info
-    phoneCountry: safeCompany.contactInfo.phoneCountry || safeCompany.country || defaultCountry.code, // Changed from contact_info
-    alternateContactNumber: safeCompany.contactInfo.alternatePhone || '', // Changed from contact_info
+    contactPersonName: safeCompany.contactInfo.contactPersonName || '',
+    designation: safeCompany.contactInfo.designation || '',
+    email: safeCompany.contactInfo.email || '',
+    mobile: safeCompany.contactInfo.mobile || '',
+    phoneCountry: safeCompany.contactInfo.phoneCountry || safeCompany.country || defaultCountry.code,
+    alternateContactNumber: safeCompany.contactInfo.alternatePhone || '',
 
-    taxSystem: safeCompany.taxConfig.type || defaultCountry.taxConfig.type, // Changed from tax_config
-    taxConfig: { // Changed from tax_config
-      enabled: safeCompany.taxConfig.enabled ?? defaultTaxConfig.enabled, // Changed from tax_config
-      rates: safeCompany.taxConfig.rates || defaultTaxConfig.rates, // Changed from tax_config
-      registrationNumber: safeCompany.taxConfig.registrationNumber || defaultTaxConfig.registrationNumber, // Changed from tax_config
-      gstDetails: safeCompany.taxConfig.gstDetails || defaultTaxConfig.gstDetails, // Changed from tax_config
-      vatDetails: safeCompany.taxConfig.vatDetails || defaultTaxConfig.vatDetails, // Changed from tax_config
+    taxSystem: safeCompany.taxConfig.type || defaultCountry.taxConfig.type,
+    taxConfig: {
+      enabled: safeCompany.taxConfig.enabled ?? defaultTaxConfig.enabled,
+      rates: safeCompany.taxConfig.rates || defaultTaxConfig.rates,
+      registrationNumber: safeCompany.taxConfig.registrationNumber || defaultTaxConfig.registrationNumber,
+      gstDetails: safeCompany.taxConfig.gstDetails || defaultTaxConfig.gstDetails,
+      vatDetails: safeCompany.taxConfig.vatDetails || defaultTaxConfig.vatDetails,
     },
-    // MODIFIED: Prioritize top-level registrationNumber, then fallback to nested
-    gstin: safeCompany.taxConfig.type === 'GST' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.gstDetails?.registrationNumber || '') : '', // Changed from tax_config
-    pan: safeCompany.taxConfig.gstDetails?.pan || '', // Changed from tax_config
-    tan: safeCompany.taxConfig.gstDetails?.tan || '', // Changed from tax_config
-    gstRegistrationType: safeCompany.taxConfig.gstDetails?.registrationType || GST_REGISTRATION_TYPES[0].id, // Changed from tax_config
-    filingFrequency: safeCompany.taxConfig.gstDetails?.filingFrequency || FILING_FREQUENCIES[0].id,       // Changed from tax_config
-    tdsApplicable: safeCompany.taxConfig.gstDetails?.tdsApplicable ?? false,                             // Changed from tax_config
-    tcsApplicable: safeCompany.taxConfig.gstDetails?.tcsApplicable ?? false,                             // Changed from tax_config
-    trnVatNumber: safeCompany.taxConfig.type === 'VAT' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.vatDetails?.registrationNumber || '') : '', // Changed from tax_config
-    vatRegistrationType: safeCompany.taxConfig.vatDetails?.registrationType || VAT_REGISTRATION_TYPES[0].id, // Changed from tax_config
-    filingCycle: safeCompany.taxConfig.vatDetails?.filingCycle || FILING_CYCLES[0].id,                   // Changed from tax_config
+    gstin: safeCompany.taxConfig.type === 'GST' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.gstDetails?.registrationNumber || '') : '',
+    pan: safeCompany.taxConfig.gstDetails?.pan || '',
+    tan: safeCompany.taxConfig.gstDetails?.tan || '',
+    gstRegistrationType: safeCompany.taxConfig.gstDetails?.registrationType || GST_REGISTRATION_TYPES[0].id,
+    filingFrequency: safeCompany.taxConfig.gstDetails?.filingFrequency || FILING_FREQUENCIES[0].id,
+    tdsApplicable: safeCompany.taxConfig.gstDetails?.tdsApplicable ?? false,
+    tcsApplicable: safeCompany.taxConfig.gstDetails?.tcsApplicable ?? false,
+    trnVatNumber: safeCompany.taxConfig.type === 'VAT' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.vatDetails?.registrationNumber || '') : '',
+    vatRegistrationType: safeCompany.taxConfig.vatDetails?.registrationType || VAT_REGISTRATION_TYPES[0].id,
+    filingCycle: safeCompany.taxConfig.vatDetails?.filingCycle || FILING_CYCLES[0].id,
 
-    booksStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0], // Changed from fiscal_year_start
-    fiscalYearStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0], // Changed from fiscal_year_start
-    fiscalYearEndDate: safeCompany.fiscalYearEnd || fiscalYearEndDate.toISOString().split('T')[0], // Changed from fiscal_year_end
+    booksStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0],
+    fiscalYearStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0],
+    fiscalYearEndDate: safeCompany.fiscalYearEnd || fiscalYearEndDate.toISOString().split('T')[0],
     defaultCurrency: safeCompany.currency || defaultCountry.defaultCurrency,
-    decimalPlaces: safeCompany.settings.decimalPlaces ?? defaultCountry.defaultDecimalPlaces, // Changed from settings
-    multiCurrencySupport: safeCompany.settings.multiCurrencySupport ?? defaultSettings.multiCurrencySupport, // Changed from settings
-    autoRounding: safeCompany.settings.autoRounding ?? defaultSettings.autoRounding, // Changed from settings
+    decimalPlaces: safeCompany.settings.decimalPlaces ?? defaultCountry.defaultDecimalPlaces,
+    multiCurrencySupport: safeCompany.settings.multiCurrencySupport ?? defaultSettingsValues.multiCurrencySupport,
+    autoRounding: safeCompany.settings.autoRounding ?? defaultSettingsValues.autoRounding,
 
-    dateFormat: safeCompany.settings.dateFormat || DATE_FORMATS[0].id, // Changed from settings
-    enableBatchTracking: safeCompany.settings.batchTracking ?? defaultSettings.batchTracking, // Changed from settings
-    costCenterAllocation: safeCompany.settings.costCenterAllocation ?? defaultSettings.costCenterAllocation, // Changed from settings
-    enableMultiUserAccess: safeCompany.settings.multiUserAccess ?? defaultSettings.multiUserAccess, // Changed from settings
-    companyPassword: safeCompany.settings.password || '', // Changed from settings
-    enableCompanyPassword: safeCompany.settings.enablePassword ?? defaultSettings.enablePassword, // Changed from settings
-    barcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettings.barcodeSupport, // Changed from settings
-    companyType: safeCompany.settings.companyType || COMPANY_TYPES[0].id, // Changed from settings
-    inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettings.inventoryTracking // Changed from settings
+    dateFormat: safeCompany.settings.dateFormat || defaultSettingsValues.dateFormat,
+    enableBatchTracking: safeCompany.settings.batchTracking ?? defaultSettingsValues.batchTracking,
+    costCenterAllocation: safeCompany.settings.costCenterAllocation ?? defaultSettingsValues.costCenterAllocation,
+    enableMultiUserAccess: safeCompany.settings.multiUserAccess ?? defaultSettingsValues.multiUserAccess,
+    allowAiSuggestions: safeCompany.settings.aiSuggestions ?? defaultSettingsValues.aiSuggestions,
+    companyPassword: safeCompany.settings.password || '',
+    enableCompanyPassword: safeCompany.settings.enablePassword ?? defaultSettingsValues.enablePassword,
+    allowSplitByPeriod: safeCompany.settings.splitByPeriod ?? defaultSettingsValues.splitByPeriod,
+    enableBarcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettingsValues.barcodeSupport,
+    allowAutoVoucherCreationAI: safeCompany.settings.autoVoucherCreationAI ?? defaultSettingsValues.allowAutoVoucherCreationAI,
+
+    // Explicitly include these fields with their default values if they are not directly from UI
+    companyType: safeCompany.settings.companyType || defaultSettingsValues.companyType,
+    inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettingsValues.inventoryTracking,
   };
 };
 
@@ -519,11 +537,10 @@ const handleSubmit = async () => {
         console.log("handleSubmit: Logo uploaded successfully. URL:", logoUrl);
       }
 
-      // --- START FIX ---
       const selectedCountryDataForSubmission = getCountryByCode(formData.country);
-      if (!selectedCountryDataForSubmission) {
-        throw new Error('Invalid country selected. Timezone could not be determined.');
-      }
+      // Ensure timezone is always a string, fallback to 'UTC' if not found
+      const companyTimezone = selectedCountryDataForSubmission?.timezone || 'UTC'; 
+      
       const selectedPhoneCountryDataForSubmission = getPhoneCountryCodes().find(c => c.id === formData.phoneCountry);
       const phoneDialCode = selectedPhoneCountryDataForSubmission ? selectedPhoneCountryDataForSubmission.dialCode : '';
 
@@ -533,7 +550,7 @@ const handleSubmit = async () => {
         currency: formData.defaultCurrency,
         fiscal_year_start: formData.fiscalYearStartDate,
         fiscal_year_end: formData.fiscalYearEndDate,
-        timezone: selectedCountryDataForSubmission.timezone, // Use derived timezone here
+        timezone: companyTimezone, // Use the ensured timezone
         logo: logoUrl,
         tax_config: {
           type: formData.taxSystem,
@@ -567,8 +584,8 @@ const handleSubmit = async () => {
           contactPersonName: formData.contactPersonName,
           designation: formData.designation,
           email: formData.email,
-          mobile: formData.mobile ? `${phoneDialCode}${formData.mobile}` : null, // Prepend dial code
-          alternatePhone: formData.alternateContactNumber ? `${phoneDialCode}${formData.alternateContactNumber}` : null, // Prepend dial code
+          mobile: formData.mobile ? `${phoneDialCode}${formData.mobile}` : null,
+          alternatePhone: formData.alternateContactNumber ? `${phoneDialCode}${formData.alternateContactNumber}` : null,
           phoneCountry: formData.phoneCountry,
         },
         settings: {
@@ -585,39 +602,38 @@ const handleSubmit = async () => {
           batchTracking: formData.enableBatchTracking,
           costCenterAllocation: formData.costCenterAllocation,
           multiUserAccess: formData.enableMultiUserAccess,
+          aiSuggestions: formData.allowAiSuggestions,
           enablePassword: formData.enableCompanyPassword,
           password: formData.enableCompanyPassword ? formData.companyPassword : null,
+          splitByPeriod: formData.allowSplitByPeriod,
           barcodeSupport: formData.enableBarcodeSupport,
+          autoVoucherCreationAI: formData.allowAutoVoucherCreationAI,
+          // Explicitly include these fields with their current formData values or defaults
           companyType: formData.companyType,
           inventoryTracking: formData.inventoryTracking,
         },
         created_by: user.id,
       };
-      // --- END FIX ---
 
       let companyId: string | null = null;
-      console.log("Company data being sent for insert:", companyData);
-      console.log("Value of created_by in companyData:", companyData.created_by);
+      console.log("Company data being sent for insert/update:", companyData);
 
       if (companyToEdit) {
         console.log("handleSubmit: Attempting to update existing company.");
 
-        // Create a promise for the Supabase update call
         const updatePromise = supabase
           .from('companies')
           .update(companyData)
           .eq('id', companyToEdit.id)
           .select('id');
 
-        // Create a timeout promise
-        const timeoutPromise = new Promise<any>((resolve, reject) => { // Explicitly type as Promise<any>
+        const timeoutPromise = new Promise<any>((resolve, reject) => {
           const id = setTimeout(() => {
             clearTimeout(id);
             reject(new Error('Update operation timed out after 10 seconds.'));
-          }, 10000); // 10 seconds timeout
+          }, 10000);
         });
 
-        // Race the update promise against the timeout promise
         const { data, error } = await Promise.race([updatePromise, timeoutPromise]);
 
         if (error) {
@@ -625,13 +641,12 @@ const handleSubmit = async () => {
           throw new Error('Failed to update company record: ' + error.message);
         }
 
-        // Explicitly check if data is null or empty, indicating no rows were updated
         if (!data || data.length === 0) {
           console.error('handleSubmit: Update operation completed without error, but no rows were affected. Data:', data);
           throw new Error('Failed to update company record: No matching record found or update was silently denied (e.g., by RLS).');
         }
 
-        companyId = data[0].id; // Now we are sure data[0] exists
+        companyId = data[0].id;
         console.log("handleSubmit: Company updated successfully. ID:", companyId);
 
       } else {
@@ -650,7 +665,6 @@ const handleSubmit = async () => {
 
         if (companyId) {
           console.log("handleSubmit: Attempting to link user to new company in users_companies.");
-          // NEW: Check if defaultRoleId is available
           if (!defaultRoleId) {
             throw new Error("Default role ID not found. Cannot link user to company.");
           }
@@ -659,7 +673,7 @@ const handleSubmit = async () => {
             .insert({
               user_id: user.id,
               company_id: companyId,
-              role_id: defaultRoleId, // NEW: Use the fetched defaultRoleId
+              role_id: defaultRoleId,
               is_active: true,
             });
 
@@ -669,18 +683,15 @@ const handleSubmit = async () => {
           }
           console.log("handleSubmit: User successfully linked to new company.");
 
-          // NEW: Populate Chart of Accounts for the new company
           console.log("handleSubmit: Populating default Chart of Accounts.");
           await populateDefaultChartOfAccounts(supabase, companyId, formData.country);
           console.log("handleSubmit: Default Chart of Accounts populated.");
-          // END NEW
         } else {
           console.error("handleSubmit: No company ID returned after insert, cannot link user.");
           throw new Error("Failed to retrieve new company ID.");
         }
       }
 
-      // Create default period for the new company (only for creation)
       if (!companyToEdit && companyId) {
         console.log("handleSubmit: Attempting to create default period.");
         const { error: periodError } = await supabase
@@ -696,12 +707,10 @@ const handleSubmit = async () => {
 
         if (periodError) {
           console.error('handleSubmit: Error creating default period:', periodError);
-          // Do not throw here, as company is already created and linked. Log and continue.
         }
         console.log("handleSubmit: Default period creation attempted.");
       }
 
-      // Refresh companies in context and switch to the new/updated company
       await refreshCompanies();
       console.log("handleSubmit: Companies refreshed in context.");
 
