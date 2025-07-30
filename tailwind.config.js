@@ -1,3 +1,4 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -141,12 +142,11 @@ export default {
         'invoice-item-row-v3': '40% 9% 5% 9% 12% 9% 12% 4%',
         'invoice-item-row-custom': '2fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr 0.2fr',
         'ledger-entry-row-custom': '2fr 0.5fr 0.5fr 0.2fr',
-        // MODIFIED: Adjusted for tight packing and consistent height
-        'invoice-item-row-v4': '2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr auto',
+        // MODIFIED: Adjusted for better alignment and consistent height
+        'invoice-item-row-v4': 'minmax(150px, 2fr) 80px 80px 80px 80px 100px 100px auto',
         'invoice-summary-layout': '1fr 1fr', // MODIFIED: Equal width for summary and additional info
       }
     },
   },
   plugins: [],
 };
-

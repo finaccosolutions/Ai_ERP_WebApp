@@ -1,5 +1,5 @@
 // src/pages/Sales/SalesInvoicesPage.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createRef } from 'react'; // Import createRef
 import { Plus, FileText, Search, RefreshCw, Eye, Edit, Trash2, Send, Download, Filter, Calendar, Users, ArrowLeft, Calculator, Save, Info, ChevronDown, ChevronUp, Tag, List } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -203,12 +203,42 @@ function SalesInvoicesPage() {
   const [showF2ConfirmModal, setShowF2ConfirmModal] = useState(false);
   const [f2ConfirmData, setF2ConfirmData] = useState<{ field: string; value: string; index?: number; masterType?: string; existingId?: string; } | null>(null);
 
-  // Refs for MasterSelectFields to trigger F2 confirmation
-  const itemMasterSelectRefs = useRef<(MasterSelectFieldRef | null)[]>([]);
-  const accountMasterSelectRefs = useRef<(MasterSelectFieldRef | null)[]>([]);
+  // Refs for keyboard navigation
+  const invoiceNoRef = useRef<HTMLInputElement>(null);
   const customerMasterSelectRef = useRef<MasterSelectFieldRef>(null);
+  const invoiceDateRef = useRef<HTMLInputElement>(null);
+  const dueDateRef = useRef<HTMLInputElement>(null);
+  const referenceNoRef = useRef<HTMLInputElement>(null);
+  const placeOfSupplyRef = useRef<MasterSelectFieldRef>(null);
+  // Use createRef for dynamic refs in map, and then collect them in a useRef array
+  const itemMasterSelectRefs = useRef<Array<MasterSelectFieldRef | null>>([]);
+  const itemQuantityRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const itemRateRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const itemDiscountRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const itemTaxRateRefs = useRef<Array<HTMLSelectElement | null>>([]); // Ref for select element
+  const otherLedgerAccountRefs = useRef<Array<MasterSelectFieldRef | null>>([]);
+  const otherLedgerAmountRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const otherLedgerNotesRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const termsAndConditionsRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLInputElement>(null);
+  const narrationRef = useRef<HTMLInputElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const saveDraftButtonRef = useRef<HTMLButtonElement>(null);
+  const previewButtonRef = useRef<HTMLButtonElement>(null);
+
 
   useEffect(() => {
+    // Initialize itemMasterSelectRefs.current with nulls or empty array
+    itemMasterSelectRefs.current = itemMasterSelectRefs.current.slice(0, items.length);
+    itemQuantityRefs.current = itemQuantityRefs.current.slice(0, items.length);
+    itemRateRefs.current = itemRateRefs.current.slice(0, items.length);
+    itemDiscountRefs.current = itemDiscountRefs.current.slice(0, items.length);
+    itemTaxRateRefs.current = itemTaxRateRefs.current.slice(0, items.length);
+
+    otherLedgerAccountRefs.current = otherLedgerAccountRefs.current.slice(0, otherLedgerEntries.length);
+    otherLedgerAmountRefs.current = otherLedgerAmountRefs.current.slice(0, otherLedgerEntries.length);
+    otherLedgerNotesRefs.current = otherLedgerNotesRefs.current.slice(0, otherLedgerEntries.length);
+
     if (currentCompany?.id) {
       fetchMastersData(currentCompany.id);
       if (id) {
@@ -438,7 +468,7 @@ function SalesInvoicesPage() {
           referenceNo: data.reference_no || '',
           termsAndConditions: data.terms_and_conditions || '',
           notes: data.notes || '',
-          narration: data.notes || '', // Assuming notes can be used for narration
+          narration: data.narration || '', // NEW: Narration field
           status: data.status,
           subtotal: data.subtotal || 0,
           totalTax: data.total_tax || 0,
@@ -551,14 +581,14 @@ function SalesInvoicesPage() {
     calculateInvoiceTotals(newItems, otherLedgerEntries);
 
     // Add new row if this is the last item and an item was selected
-    if (index === items.length - 1 && field === 'item_name' && value) {
+    if (index === items.length - 1 && field === 'item_id' && value && viewMode !== 'view') { // Changed from item_name to item_id
       addItem();
     }
   };
 
   const addItem = () => {
     setItems([...items, {
-      id: 'new-' + Date.now().toString(),
+      id: '1',
       invoice_id: null,
       item_id: '', // Changed from item_code to item_id
       item_name: '',
@@ -591,7 +621,7 @@ function SalesInvoicesPage() {
     calculateInvoiceTotals(items, newEntries);
 
     // Add new row if this is the last entry and an account was selected
-    if (index === otherLedgerEntries.length - 1 && field === 'account_name' && value) {
+    if (index === otherLedgerEntries.length - 1 && field === 'account_name' && value && viewMode !== 'view') {
       addOtherLedgerEntry();
     }
   };
@@ -977,6 +1007,85 @@ function SalesInvoicesPage() {
     return Object.values(aggregated);
   };
 
+  // Keyboard Navigation Logic
+  const fieldOrder = useRef<Array<React.RefObject<HTMLInputElement | HTMLSelectElement | MasterSelectFieldRef>>>([]);
+
+  useEffect(() => {
+    // Dynamically build the field order based on current form state
+    const newFieldOrder: Array<React.RefObject<HTMLInputElement | HTMLSelectElement | MasterSelectFieldRef>> = [];
+
+    // Invoice Details
+    newFieldOrder.push(invoiceNoRef);
+    newFieldOrder.push(customerMasterSelectRef);
+    newFieldOrder.push(invoiceDateRef);
+    newFieldOrder.push(dueDateRef);
+    newFieldOrder.push(referenceNoRef);
+    newFieldOrder.push(placeOfSupplyRef);
+
+    // Invoice Items
+    items.forEach((_, index) => {
+      // Ensure refs are created for new items
+      if (!itemMasterSelectRefs.current[index]) itemMasterSelectRefs.current[index] = createRef();
+      if (!itemQuantityRefs.current[index]) itemQuantityRefs.current[index] = createRef();
+      if (!itemRateRefs.current[index]) itemRateRefs.current[index] = createRef();
+      if (!itemDiscountRefs.current[index]) itemDiscountRefs.current[index] = createRef();
+      if (!itemTaxRateRefs.current[index]) itemTaxRateRefs.current[index] = createRef();
+
+      newFieldOrder.push(itemMasterSelectRefs.current[index] as React.RefObject<MasterSelectFieldRef>);
+      newFieldOrder.push(itemQuantityRefs.current[index] as React.RefObject<HTMLInputElement>);
+      newFieldOrder.push(itemRateRefs.current[index] as React.RefObject<HTMLInputElement>);
+      newFieldOrder.push(itemDiscountRefs.current[index] as React.RefObject<HTMLInputElement>);
+      newFieldOrder.push(itemTaxRateRefs.current[index] as React.RefObject<HTMLSelectElement>);
+    });
+
+    // Other Ledger Entries
+    otherLedgerEntries.forEach((_, index) => {
+      // Ensure refs are created for new entries
+      if (!otherLedgerAccountRefs.current[index]) otherLedgerAccountRefs.current[index] = createRef();
+      if (!otherLedgerAmountRefs.current[index]) otherLedgerAmountRefs.current[index] = createRef();
+      if (!otherLedgerNotesRefs.current[index]) otherLedgerNotesRefs.current[index] = createRef();
+
+      newFieldOrder.push(otherLedgerAccountRefs.current[index] as React.RefObject<MasterSelectFieldRef>);
+      newFieldOrder.push(otherLedgerAmountRefs.current[index] as React.RefObject<HTMLInputElement>);
+      newFieldOrder.push(otherLedgerNotesRefs.current[index] as React.RefObject<HTMLInputElement>);
+    });
+
+    // Additional Information
+    newFieldOrder.push(termsAndConditionsRef);
+    newFieldOrder.push(notesRef);
+    newFieldOrder.push(narrationRef);
+
+    fieldOrder.current = newFieldOrder;
+  }, [items, otherLedgerEntries, invoice]); // Re-run when dynamic fields change
+
+  const focusNextField = (currentIndex: number) => {
+    if (currentIndex < fieldOrder.current.length - 1) {
+      const nextFieldRef = fieldOrder.current[currentIndex + 1];
+      if (nextFieldRef?.current) {
+        // Check if it's a MasterSelectFieldRef or a direct HTML element
+        if ('focus' in nextFieldRef.current && typeof nextFieldRef.current.focus === 'function') {
+          (nextFieldRef.current as MasterSelectFieldRef).focus();
+        } else {
+          (nextFieldRef.current as HTMLInputElement | HTMLSelectElement).focus();
+          // For date fields, select the first element (day) - browser specific, might not work universally
+          if ((nextFieldRef.current as HTMLInputElement).type === 'date') {
+            (nextFieldRef.current as HTMLInputElement).select();
+          }
+        }
+      }
+    } else {
+      // Last field, focus save button
+      saveButtonRef.current?.focus();
+    }
+  };
+
+  const handleFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>, currentFieldRef: React.RefObject<HTMLInputElement | HTMLSelectElement | MasterSelectFieldRef>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentIndex = fieldOrder.current.indexOf(currentFieldRef);
+      focusNextField(currentIndex);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1098,48 +1207,58 @@ function SalesInvoicesPage() {
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isInvoiceDetailsExpanded ? 'max-h-screen' : 'max-h-0'}`}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
+                  ref={invoiceNoRef}
                   label="Invoice Number"
                   value={invoice.invoiceNo}
                   onChange={(val) => handleInvoiceChange('invoiceNo', val)}
                   placeholder="Auto-generated or manual"
                   required
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, invoiceNoRef)}
                 />
                 <MasterSelectField
                   ref={customerMasterSelectRef}
                   label="Customer Name"
-                  value={invoice.customerName}
-                  onValueChange={(val) => handleInvoiceChange('customerName', val)}
+                  value={invoice.customerId} // Bind to customerId
+                  onValueChange={(val) => handleInvoiceChange('customerId', val)} // Update customerId
                   onSelect={(id, name, data) => handleCustomerSelect(id, name, data as CustomerOption)}
                   options={availableCustomers.map(c => ({ id: c.id, name: c.name, ...c }))}
                   placeholder="Select or type customer name"
                   required
                   readOnly={viewMode === 'view'}
                   onF2Press={(val) => handleF2Press('Customer Name', val, undefined, 'customer')}
+                  onKeyDown={(e) => handleFieldKeyDown(e, customerMasterSelectRef)}
                 />
                 <FormField
+                  ref={invoiceDateRef}
                   label="Invoice Date"
                   type="date"
                   value={invoice.invoiceDate}
                   onChange={(val) => handleInvoiceChange('invoiceDate', val)}
                   required
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, invoiceDateRef)}
                 />
                 <FormField
+                  ref={dueDateRef}
                   label="Due Date"
                   type="date"
                   value={invoice.dueDate}
                   onChange={(val) => handleInvoiceChange('dueDate', val)}
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, dueDateRef)}
                 />
                 <FormField
+                  ref={referenceNoRef}
                   label="Reference No."
                   value={invoice.referenceNo}
                   onChange={(val) => handleInvoiceChange('referenceNo', val)}
                   placeholder="e.g., Customer PO, Sales Order"
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, referenceNoRef)}
                 />
                 <MasterSelectField
+                  ref={placeOfSupplyRef}
                   label="Place of Supply"
                   value={invoice.placeOfSupply}
                   onValueChange={(val) => handleInvoiceChange('placeOfSupply', val)}
@@ -1149,6 +1268,7 @@ function SalesInvoicesPage() {
                   required
                   readOnly={viewMode === 'view'}
                   disabled={!invoice.customerId}
+                  onKeyDown={(e) => handleFieldKeyDown(e, placeOfSupplyRef)}
                 />
               </div>
             </div>
@@ -1175,12 +1295,12 @@ function SalesInvoicesPage() {
                 {items.map((item, index) => {
                   return (
                     <div key={item.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                      <div className="grid grid-cols-invoice-item-row-v4 gap-x-0 gap-y-4 items-center">
+                      <div className="grid grid-cols-invoice-item-row-v4 gap-x-2 gap-y-4 items-center">
                         <MasterSelectField
                           ref={el => itemMasterSelectRefs.current[index] = el}
                           label="Item Name"
-                          value={item.item_id}
-                          onValueChange={(val) => updateItem(index, 'item_id', val)}
+                          value={item.item_id} // Bind to item_id
+                          onValueChange={(val) => updateItem(index, 'item_id', val)} // Update item_id
                           onSelect={(id, name, data) => {
                             const selected = data as ItemOption;
                             updateItem(index, 'item_id', id);
@@ -1195,33 +1315,41 @@ function SalesInvoicesPage() {
                           required
                           readOnly={viewMode === 'view'}
                           onF2Press={(val) => handleF2Press('Item Name', val, index, 'item')}
+                          onKeyDown={(e) => handleFieldKeyDown(e, itemMasterSelectRefs.current[index]!)}
                         />
                         <FormField
+                          ref={el => itemQuantityRefs.current[index] = el}
                           label="Qty"
                           type="number"
                           value={item.quantity.toString()}
                           onChange={(val) => updateItem(index, 'quantity', parseFloat(val) || 0)}
                           required
                           readOnly={viewMode === 'view'}
+                          onKeyDown={(e) => handleFieldKeyDown(e, itemQuantityRefs.current[index]!)}
                         />
                         <FormField
+                          ref={el => itemRateRefs.current[index] = el}
                           label="Rate"
                           type="number"
                           value={item.rate.toString()}
                           onChange={(val) => updateItem(index, 'rate', parseFloat(val) || 0)}
                           required
                           readOnly={viewMode === 'view'}
+                          onKeyDown={(e) => handleFieldKeyDown(e, itemRateRefs.current[index]!)}
                         />
                         <FormField
+                          ref={el => itemDiscountRefs.current[index] = el}
                           label="Disc (%)"
                           type="number"
                           value={item.discount_percent?.toString() || '0'}
                           onChange={(val) => updateItem(index, 'discount_percent', parseFloat(val) || 0)}
                           readOnly={viewMode === 'view'}
+                          onKeyDown={(e) => handleFieldKeyDown(e, itemDiscountRefs.current[index]!)}
                         />
-                        <div className="flex flex-col">
-                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Tax %</label>
+                        <div className="flex flex-col"> {/* Tax % */}
+                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Tax %</label>
                           <select
+                            ref={el => itemTaxRateRefs.current[index] = el}
                             value={item.tax_rate?.toString() || '0'}
                             onChange={(e) => updateItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                             className={`
@@ -1230,20 +1358,21 @@ function SalesInvoicesPage() {
                               focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
                             `}
                             disabled={viewMode === 'view'}
+                            onKeyDown={(e) => handleFieldKeyDown(e, itemTaxRateRefs.current[index]!)}
                           >
                             {getTaxRatesForDropdown().map(option => (
                               <option key={option.id} value={option.id}>{option.name}</option>
                             ))}
                           </select>
                         </div>
-                        <div className="flex flex-col">
-                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Gross Amt</label>
+                        <div className="flex flex-col"> {/* Gross Amt */}
+                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Gross Amt</label>
                           <div className={`px-3 py-2.5 ${theme.inputBg} border ${theme.borderColor} rounded-lg text-sm flex items-center`}>
                             {formatCurrency(item.quantity * item.rate)}
                           </div>
                         </div>
-                        <div className="flex flex-col">
-                          <label className={`block text-sm font-medium ${theme.textPrimary}`}>Net Amt</label>
+                        <div className="flex flex-col"> {/* Net Amt */}
+                          <label className={`block text-sm font-medium ${theme.textPrimary} mb-2`}>Net Amt</label>
                           <div className={`px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg font-semibold text-sm flex items-center`}>
                             {formatCurrency(item.line_total)}
                           </div>
@@ -1286,54 +1415,62 @@ function SalesInvoicesPage() {
                 </div>
               )}
               <div className="space-y-4">
-                {otherLedgerEntries.map((entry, index) => (
-                  <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
-                    <div className="grid grid-cols-ledger-entry-row-custom gap-x-2 gap-y-4 items-center">
-                      <MasterSelectField
-                        ref={el => accountMasterSelectRefs.current[index] = el}
-                        label="Account Name"
-                        value={entry.account_name}
-                        onValueChange={(val) => handleOtherLedgerEntryChange(index, 'account_name', val)}
-                        onSelect={(id, name) => {
-                          handleOtherLedgerEntryChange(index, 'account_id', id);
-                          handleOtherLedgerEntryChange(index, 'account_name', name);
-                        }}
-                        options={availableAccounts.map(acc => ({ id: acc.id, name: acc.account_name, ...acc }))}
-                        placeholder="Select Account"
-                        required
-                        readOnly={viewMode === 'view'}
-                        onF2Press={(val) => handleF2Press('Account Name', val, index, 'account')}
-                      />
-                      <FormField
-                        label="Amount"
-                        type="number"
-                        value={entry.amount.toString()}
-                        onChange={(val) => handleOtherLedgerEntryChange(index, 'amount', parseFloat(val) || 0)}
-                        required
-                        readOnly={viewMode === 'view'}
-                      />
-                      <FormField
-                        label="Notes"
-                        value={entry.notes}
-                        onChange={(val) => handleOtherLedgerEntryChange(index, 'notes', val)}
-                        placeholder="Entry notes"
-                        readOnly={viewMode === 'view'}
-                      />
-                      {viewMode !== 'view' && (
-                        <div className="flex items-center justify-center h-full self-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={<Trash2 size={16} />}
-                            onClick={() => removeOtherLedgerEntry(index)}
-                            disabled={otherLedgerEntries.length === 1}
-                            className="text-red-600 hover:text-red-800"
-                          />
-                        </div>
-                      )}
+                {otherLedgerEntries.map((entry, index) => {
+                  const baseFieldIndex = 6 + (items.length * 5) + index * 3; // Adjust index for dynamic fields
+                  return (
+                    <div key={entry.id} className={`p-4 border ${theme.borderColor} rounded-lg`}>
+                      <div className="grid grid-cols-ledger-entry-row-custom gap-x-2 gap-y-4 items-center">
+                        <MasterSelectField
+                          ref={el => otherLedgerAccountRefs.current[index] = el}
+                          label="Account Name"
+                          value={entry.account_id} // Bind to account_id
+                          onValueChange={(val) => handleOtherLedgerEntryChange(index, 'account_id', val)} // Update account_id
+                          onSelect={(id, name) => {
+                            handleOtherLedgerEntryChange(index, 'account_id', id);
+                            handleOtherLedgerEntryChange(index, 'account_name', name);
+                          }}
+                          options={availableAccounts.map(acc => ({ id: acc.id, name: acc.account_name, ...acc }))}
+                          placeholder="Select Account"
+                          required
+                          readOnly={viewMode === 'view'}
+                          onF2Press={(val) => handleF2Press('Account Name', val, index, 'account')}
+                          onKeyDown={(e) => handleFieldKeyDown(e, otherLedgerAccountRefs.current[index]!)}
+                        />
+                        <FormField
+                          ref={el => otherLedgerAmountRefs.current[index] = el}
+                          label="Amount"
+                          type="number"
+                          value={entry.amount.toString()}
+                          onChange={(val) => handleOtherLedgerEntryChange(index, 'amount', parseFloat(val) || 0)}
+                          required
+                          readOnly={viewMode === 'view'}
+                          onKeyDown={(e) => handleFieldKeyDown(e, otherLedgerAmountRefs.current[index]!)}
+                        />
+                        <FormField
+                          ref={el => otherLedgerNotesRefs.current[index] = el}
+                          label="Notes"
+                          value={entry.notes}
+                          onChange={(val) => handleOtherLedgerEntryChange(index, 'notes', val)}
+                          placeholder="Entry notes"
+                          readOnly={viewMode === 'view'}
+                          onKeyDown={(e) => handleFieldKeyDown(e, otherLedgerNotesRefs.current[index]!)}
+                        />
+                        {viewMode !== 'view' && (
+                          <div className="flex items-center justify-center h-full self-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 size={16} />}
+                              onClick={() => removeOtherLedgerEntry(index)}
+                              disabled={otherLedgerEntries.length === 1}
+                              className="text-red-600 hover:text-red-800"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </Card>
@@ -1372,25 +1509,31 @@ function SalesInvoicesPage() {
               </h3>
               <div className="space-y-4"> {/* Added space-y for proper spacing */}
                 <FormField
+                  ref={termsAndConditionsRef}
                   label="Terms and Conditions"
                   value={invoice.termsAndConditions}
                   onChange={(val) => handleInvoiceChange('termsAndConditions', val)}
                   placeholder="Payment terms, delivery terms, etc."
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, termsAndConditionsRef)}
                 />
                 <FormField
+                  ref={notesRef}
                   label="Notes"
                   value={invoice.notes}
                   onChange={(val) => handleInvoiceChange('notes', val)}
                   placeholder="Any additional notes"
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, notesRef)}
                 />
                 <FormField
+                  ref={narrationRef}
                   label="Narration"
                   value={invoice.narration}
                   onChange={(val) => handleInvoiceChange('narration', val)}
                   placeholder="Brief description of the transaction for accounting purposes"
                   readOnly={viewMode === 'view'}
+                  onKeyDown={(e) => handleFieldKeyDown(e, narrationRef)}
                 />
               </div>
             </Card>
@@ -1451,12 +1594,15 @@ function SalesInvoicesPage() {
               <Button type="button" variant="outline" onClick={() => navigate('/sales/invoices')}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} icon={<Save size={16} />}>
+              <Button type="button" variant="secondary" ref={saveDraftButtonRef}>
+                Save Draft
+              </Button>
+              <Button type="button" variant="secondary" ref={previewButtonRef}>
+                Preview
+              </Button>
+              <Button type="submit" disabled={loading} icon={<Save size={16} />} ref={saveButtonRef}>
                 {loading ? 'Saving...' : 'Save Invoice'}
               </Button>
-              {!invoice.id && (
-                <Button type="button" icon={<Send size={16} />}>Send Invoice</Button>
-              )}
             </div>
           )}
         </form>

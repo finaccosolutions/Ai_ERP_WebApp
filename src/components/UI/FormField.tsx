@@ -1,5 +1,5 @@
 // src/components/UI/FormField.tsx
-import React from 'react';
+import React, { forwardRef } from 'react'; // Import forwardRef
 import { useTheme } from '../../contexts/ThemeContext';
 import AIFormHelper from './AIFormHelper';
 import { Eye, EyeOff } from 'lucide-react'; // Import Eye icons
@@ -23,9 +23,11 @@ interface FormFieldProps {
   showToggleVisibility?: boolean;
   onToggleVisibility?: () => void;
   isPasswordVisible?: boolean;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>; // Add onKeyDown prop
 }
 
-function FormField({
+// Use forwardRef to pass the ref to the internal input element
+const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
   label,
   type = 'text',
   value,
@@ -43,7 +45,8 @@ function FormField({
   showToggleVisibility = false, // Default to false
   onToggleVisibility,
   isPasswordVisible,
-}: FormFieldProps) {
+  onKeyDown, // Destructure onKeyDown
+}, ref) => { // Accept ref
   const { theme } = useTheme();
 
   // Determine padding based on icon and toggle visibility
@@ -76,9 +79,12 @@ function FormField({
         )}
 
         <input
+          ref={ref} // Assign the forwarded ref to the input
           type={showToggleVisibility && !isPasswordVisible ? "password" : type} // Use internal type for password toggle
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={(e) => e.target.select()} // Select text on focus
+          onKeyDown={onKeyDown} // Pass onKeyDown to the input
           placeholder={placeholder}
           required={required}
           readOnly={readOnly}
@@ -115,6 +121,6 @@ function FormField({
       )}
     </div>
   );
-}
+});
 
 export default FormField;
