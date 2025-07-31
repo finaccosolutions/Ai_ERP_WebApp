@@ -1,6 +1,6 @@
 // src/pages/Sales/CustomerGroupsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, Edit, Trash2, RefreshCw, AlertTriangle, CheckCircle, Info, ArrowLeft, Eye } from 'lucide-react';
+import { Plus, Search, Users, Edit, Trash2, RefreshCw, Save, ArrowLeft, Filter, Info, ArrowRight } from 'lucide-react'; // Added ArrowRight
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
@@ -11,8 +11,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import { useLocation, useNavigate } from 'react-router-dom';
-import AIButton from '../../components/UI/AIButton'; // Import AIButton
-import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
+import AIButton from '../../components/UI/AIButton';
+import MasterSelectField from '../../components/UI/MasterSelectField';
 
 interface CustomerGroup {
   id: string;
@@ -36,6 +36,7 @@ function CustomerGroupsPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
+    id: '', // Added id to formData
     name: '',
     description: '',
   });
@@ -65,9 +66,35 @@ function CustomerGroupsPage() {
       if (location.state.newGroupName) {
         setFormData(prev => ({ ...prev, name: location.state.newGroupName }));
       }
-      // No need to clear location.state here, it's handled by CustomerFormPage on return
+      // If editing an existing group from CustomerFormPage
+      if (location.state.groupIdToEdit) {
+        fetchGroupDataForEdit(location.state.groupIdToEdit);
+      }
     }
   }, [currentCompany?.id, location.state]);
+
+  const fetchGroupDataForEdit = async (groupId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_groups')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+      if (error) throw error;
+      setEditingGroup(data);
+      setFormData({
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+      });
+    } catch (err: any) {
+      showNotification(`Error loading group for edit: ${err.message}`, 'error');
+      console.error('Error loading group for edit:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const fetchCustomerGroups = async () => {
@@ -113,6 +140,7 @@ function CustomerGroupsPage() {
 
   const resetForm = () => {
     setFormData({
+      id: '',
       name: '',
       description: '',
     });
@@ -155,11 +183,6 @@ function CustomerGroupsPage() {
         throw error;
       }
 
-      // Only show notification here if NOT coming from CustomerFormPage
-      if (!location.state?.fromCustomerForm) {
-        showNotification('Customer group created successfully!', 'success');
-      }
-      
       // Navigate back to CustomerFormPage, passing the new group info and original form data
       if (location.state?.fromCustomerForm && location.state?.returnPath) {
         navigate(location.state.returnPath, {
@@ -171,8 +194,10 @@ function CustomerGroupsPage() {
             fromCustomerGroupCreation: true // Flag for CustomerFormPage to know it's a return from group creation
           },
         });
+        showNotification('Customer group created and selected!', 'success');
       } else {
         // Default behavior if not part of the special flow
+        showNotification('Customer group created successfully!', 'success');
         setShowCreateForm(false);
         resetForm();
         fetchCustomerGroups();
@@ -206,10 +231,23 @@ function CustomerGroupsPage() {
         throw error;
       }
 
-      showNotification('Customer group updated successfully!', 'success');
-      setShowCreateForm(false);
-      resetForm();
-      fetchCustomerGroups();
+      if (location.state?.fromCustomerForm && location.state?.returnPath) {
+        navigate(location.state.returnPath, {
+          replace: true,
+          state: {
+            createdGroupId: editingGroup.id, // Use existing ID
+            createdGroupName: formData.name, // Use updated name
+            customerFormData: location.state.customerFormData,
+            fromCustomerGroupCreation: true,
+          },
+        });
+        showNotification('Customer group updated and selected!', 'success');
+      } else {
+        showNotification('Customer group updated successfully!', 'success');
+        setShowCreateForm(false);
+        resetForm();
+        fetchCustomerGroups();
+      }
     } catch (err: any) {
       setFormErrors({ submit: err.message || 'Failed to update customer group.' });
       showNotification(err.message || 'Failed to update customer group.', 'error');
@@ -273,6 +311,7 @@ function CustomerGroupsPage() {
   const startEditGroup = (group: CustomerGroup) => {
     setEditingGroup(group);
     setFormData({
+      id: group.id, // Set ID for edit mode
       name: group.name,
       description: group.description || '',
     });
@@ -295,6 +334,11 @@ function CustomerGroupsPage() {
         </div>
         <div className="flex space-x-2">
           {/* Conditional rendering of "Back" button */}
+          {location.state?.fromCustomerForm && (
+            <Button variant="outline" onClick={() => navigate(location.state.returnPath, { replace: true, state: { customerFormData: location.state.customerFormData, fromCustomerGroupCreation: true } })} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+              <ArrowLeft size={16} className="mr-2" /> Back to Customer Form
+            </Button>
+          )}
           {!location.state?.fromCustomerForm && (
             <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
               Back
@@ -473,9 +517,6 @@ function CustomerGroupsPage() {
                         <Button variant="ghost" size="sm" onClick={() => startEditGroup(group)} title="Edit">
                           <Edit size={16} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/sales/customer-groups/edit/${group.id}?viewOnly=true`)} title="View">
-                          <Eye size={16} />
-                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)} className="text-red-600 hover:text-red-800" title="Delete">
                           <Trash2 size={16} />
                         </Button>
@@ -503,4 +544,3 @@ function CustomerGroupsPage() {
 }
 
 export default CustomerGroupsPage;
-

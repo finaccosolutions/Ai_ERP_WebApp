@@ -1,5 +1,5 @@
 // src/pages/Sales/CustomerFormPage.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   User, Mail, Phone, MapPin, Building, CreditCard, Save, ArrowLeft,
   Globe, Tag, Users, Info, DollarSign, Calendar, FileText, Truck,
@@ -685,8 +685,8 @@ function CustomerFormPage() {
         <Card className="p-6">
           {activeTab === 'basic-info' && (
             <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <Info size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold text-blue-600 mb-4 flex items-center`}>
+                <Info size={20} className="mr-2" />
                 Basic Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -768,8 +768,8 @@ function CustomerFormPage() {
 
           {activeTab === 'contact-address' && (
             <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <PhoneCall size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold text-green-600 mb-4 flex items-center`}>
+                <PhoneCall size={20} className="mr-2" />
                 Contact Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -827,7 +827,7 @@ function CustomerFormPage() {
                 </div>
               </div>
 
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+              <h3 className={`text-lg font-semibold text-purple-600 mt-6 mb-4 flex items-center`}>
                 <MapPin size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Billing Address
               </h3>
@@ -862,7 +862,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
-                  value={COUNTRIES.find(c => c.code === selectedBillingCountry)?.name || ''}
+                  value={selectedBillingCountry}
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedBillingCountry(id);
@@ -876,7 +876,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="State"
-                  value={getStatesForCountry(selectedBillingCountry).find(s => s.id === formData.billingAddress.state)?.name || ''}
+                  value={formData.billingAddress.state}
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => handleAddressChange('billingAddress', 'state', id)}
                   options={getStatesForCountry(selectedBillingCountry)}
@@ -887,7 +887,7 @@ function CustomerFormPage() {
                 />
               </div>
 
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+              <h3 className={`text-lg font-semibold text-orange-600 mt-6 mb-4 flex items-center`}>
                 <Truck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Shipping Address (Optional)
               </h3>
@@ -935,7 +935,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
-                  value={COUNTRIES.find(c => c.code === selectedShippingCountry)?.name || ''}
+                  value={selectedShippingCountry}
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedShippingCountry(id);
@@ -949,7 +949,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="State"
-                  value={getStatesForCountry(selectedShippingCountry).find(s => s.id === formData.shippingAddress.state)?.name || ''}
+                  value={formData.shippingAddress.state}
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => handleAddressChange('shippingAddress', 'state', id)}
                   options={getStatesForCountry(selectedShippingCountry)}
@@ -964,7 +964,7 @@ function CustomerFormPage() {
 
           {activeTab === 'financial-tax' && (
             <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+              <h3 className={`text-lg font-semibold text-red-600 mb-4 flex items-center`}>
                 <DollarSign size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Financial & Tax Details
               </h3>
@@ -1079,8 +1079,8 @@ function CustomerFormPage() {
                 })()}
               </div>
 
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-                <Building size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              <h3 className={`text-lg font-semibold text-teal-600 mt-6 mb-4 flex items-center`}>
+                <Landmark size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Banking Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1111,7 +1111,7 @@ function CustomerFormPage() {
 
           {activeTab === 'other-details' && (
             <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+              <h3 className={`text-lg font-semibold text-gray-600 mb-4 flex items-center`}>
                 <ClipboardList size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Other Details
               </h3>

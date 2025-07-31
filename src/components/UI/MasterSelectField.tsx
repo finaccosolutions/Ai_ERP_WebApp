@@ -28,7 +28,7 @@ type MasterSelectFieldProps = {
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   fieldIndex?: number;
   masterType?: string;
-  onF2Press?: (value: string, fieldIndex?: number, masterType?: string) => void;
+  onF2Press?: (value: string) => void; // Modified: Removed fieldIndex and masterType from here
 };
 
 export interface MasterSelectFieldRef {
@@ -58,8 +58,8 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
   onBlur,
   fieldIndex,
   masterType,
-  onF2Press,
-}, ref) => {
+  onF2Press, // Destructure onF2Press
+}, ref) => { // Accept ref
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [internalSearchTerm, setInternalSearchTerm] = useState(''); // Text displayed in input
@@ -147,10 +147,10 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
         setIsOpen(false);
         inputRef.current?.blur(); // Allow parent's onKeyDown to proceed to next field
       }
-    } else if (e.key === 'F2' && onF2Press) {
+    } else if (e.key === 'F2' && onF2Press) { // Handle F2 press
       e.preventDefault();
-      onF2Press(internalSearchTerm.trim(), fieldIndex, masterType);
-      setIsOpen(false);
+      onF2Press(internalSearchTerm.trim()); // Pass current search term
+      setIsOpen(false); // Close dropdown on F2 press
     }
   };
 

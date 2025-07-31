@@ -293,7 +293,7 @@ export const COUNTRIES = [
     },
     chartOfAccountsTemplate: {
       taxAccounts: [
-        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+        { account_code: '21401', account_name: 'GST Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
       ],
     },
     customerTypes: [
@@ -665,7 +665,7 @@ export const REVENUE_RANGES = [
   { id: 'under_100k', name: 'Under $100K' },
   { id: '100k-500k', name: '$100K - $500K' },
   { id: '500k-1m', name: '$500K - $1M' },
-  { id: '1m-5m', name: '$1M - $5M' },
+  { id: '1m-5m', name: '$5M - $10M' },
   { id: '5m-10m', name: '$5M - $10M' },
   { id: 'over_10m', name: 'Over $10M' }
 ];
