@@ -27,14 +27,29 @@ export const COUNTRIES = [
       tcsEnabled: true,
     },
     chartOfAccountsTemplate: {
-      // Simplified template for India-specific tax accounts
-      taxAccounts: [
-        { account_code: '21401', account_name: 'CGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
-        { account_code: '21402', account_name: 'SGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
-        { account_code: '21403', account_name: 'IGST Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
-        { account_code: '21404', account_name: 'TDS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
-        { account_code: '21405', account_name: 'TCS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit' },
+      // NEW: Define country-specific groups
+      groups: [
+        { account_code: '21400', account_name: 'GST', account_type: 'liability', account_group: 'Duties & Taxes Payable', is_group: true, balance_type: 'credit', parent_account_key: 'taxes_payable_id' },
       ],
+       // Simplified template for India-specific tax accounts
+       taxAccounts: [
+        // Modified to link to the new 'GST' group
+        { account_code: '21401', account_name: 'CGST @ 2.5%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21402', account_name: 'SGST @ 2.5%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21403', account_name: 'IGST @ 5%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21404', account_name: 'CGST @ 6%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400', is_default: true }, // Marked as default
+        { account_code: '21405', account_name: 'SGST @ 6%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21406', account_name: 'IGST @ 12%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21407', account_name: 'CGST @ 9%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21408', account_name: 'SGST @ 9%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21409', account_name: 'IGST @ 18%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21410', account_name: 'CGST @ 14%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21411', account_name: 'SGST @ 14%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        { account_code: '21412', account_name: 'IGST @ 28%', account_type: 'liability', account_group: 'GST', balance_type: 'credit', parent_account_key: '21400' },
+        // Keep TDS and TCS under the main Duties & Taxes Payable group
+        { account_code: '21413', account_name: 'TDS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit', parent_account_key: 'taxes_payable_id' },
+        { account_code: '21414', account_name: 'TCS Payable', account_type: 'liability', account_group: 'Duties & Taxes Payable', balance_type: 'credit', parent_account_key: 'taxes_payable_id' },
+       ],
       // Other specific accounts can be added here
     },
     customerTypes: [

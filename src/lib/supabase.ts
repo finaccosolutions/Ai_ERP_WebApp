@@ -444,7 +444,7 @@ export interface Database {
           customer_group_id?: string | null;
         };
       };
-      chart_of_accounts: {
+     chart_of_accounts: {
         Row: {
           id: string;
           company_id: string | null;
@@ -458,6 +458,8 @@ export interface Database {
           opening_balance: number | null;
           balance_type: string | null;
           tax_rate: number | null;
+          is_default: boolean | null;
+          comment: string | null; // NEW: Added comment column
           created_at: string;
           updated_at: string;
         };
@@ -474,6 +476,8 @@ export interface Database {
           opening_balance?: number | null;
           balance_type?: string | null;
           tax_rate?: number | null;
+          is_default?: boolean | null;
+          comment?: string | null; // NEW: Added comment column
           created_at?: string;
           updated_at?: string;
         };
@@ -490,6 +494,8 @@ export interface Database {
           opening_balance?: number | null;
           balance_type?: string | null;
           tax_rate?: number | null;
+          is_default?: boolean | null;
+          comment?: string | null; // NEW: Added comment column
           created_at?: string;
           updated_at?: string;
         };

@@ -41,6 +41,7 @@ function LedgerFormPage() {
     openingBalance: 0,
     balanceType: 'debit', // Default balance type, will be derived
     taxRate: 0,
+    isDefault: false, // NEW: Add isDefault to form data
     notes: '', // Custom field for notes
   });
 
@@ -123,6 +124,7 @@ function LedgerFormPage() {
           openingBalance: data.opening_balance || 0,
           balanceType: data.balance_type || 'debit',
           taxRate: data.tax_rate || 0,
+          isDefault: data.is_default || false, // NEW: Set isDefault from fetched data
           notes: data.comment || '', // Assuming 'comment' can be used for notes
         });
       }
@@ -190,6 +192,7 @@ function LedgerFormPage() {
       openingBalance: 0,
       balanceType: 'debit', // Default, will be derived
       taxRate: 0,
+      isDefault: false, // NEW: Reset isDefault
       notes: '',
     });
   };
@@ -241,6 +244,7 @@ function LedgerFormPage() {
         opening_balance: formData.openingBalance,
         balance_type: formData.balanceType,
         tax_rate: formData.taxRate,
+        is_default: formData.isDefault, // NEW: Save is_default
         comment: formData.notes, // Using 'comment' for notes
       };
 
@@ -277,7 +281,7 @@ function LedgerFormPage() {
         navigate('/accounting/masters/ledgers');
       }
       resetForm();
-    } catch (err: any) {
+     } catch (err: any) {
       showNotification(`Failed to save ledger: ${err.message}`, 'error');
       console.error('Save ledger error:', err);
     } finally {
@@ -429,6 +433,10 @@ function LedgerFormPage() {
                 onChange={(val) => handleInputChange('taxRate', parseFloat(val) || 0)}
                 icon={<Tag size={18} />}
               />
+              <div className="flex items-center space-x-3"> {/* NEW: isDefault checkbox */}
+                <input type="checkbox" id="isDefault" checked={formData.isDefault} onChange={(e) => handleInputChange('isDefault', e.target.checked)} className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]" />
+                <label htmlFor="isDefault" className={`text-sm font-medium ${theme.textPrimary}`}>Mark as Default</label>
+              </div>
             </div>
           </Card>
 
