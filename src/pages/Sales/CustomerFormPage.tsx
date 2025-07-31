@@ -135,7 +135,8 @@ function CustomerFormPage() {
 
   // New state for confirmation modal for customer group creation
   const [showCreateGroupConfirmModal, setShowCreateGroupConfirmModal] = useState(false);
-  const [pendingNewGroupName, setPendingNewGroupName] = useState('');
+  const [showEditGroupConfirmModal, setShowEditGroupConfirmModal] = useState(false); // NEW
+  const [pendingActionGroup, setPendingActionGroup] = useState<{ id?: string; name: string } | null>(null); // NEW: Stores group for action
 
   // State for the value currently typed in the customer group MasterSelectField
   const [typedCustomerGroupName, setTypedCustomerGroupName] = useState('');
@@ -535,24 +536,63 @@ function CustomerFormPage() {
       showNotification(`Customer Group "${existingGroup.name}" already exists and has been selected!`, 'info');
     } else {
       // Group does not exist, ask for confirmation to create
-      setPendingNewGroupName(newGroupName);
+      setPendingActionGroup({ name: newGroupName }); // Store name for confirmation
       setShowCreateGroupConfirmModal(true);
     }
   };
 
   const confirmCreateNewGroup = () => {
     setShowCreateGroupConfirmModal(false); // Close the confirmation modal
-    if (pendingNewGroupName.trim()) {
-      navigate('/sales/customer-groups', {
+    if (pendingActionGroup?.name) {
+      navigate('/sales/customer-groups/new', {
         state: {
           fromCustomerForm: true,
-          newGroupName: pendingNewGroupName,
+          newGroupName: pendingActionGroup.name,
           customerFormData: formData, // Pass the entire current form data
           returnPath: location.pathname // Pass the current path for return
         }
       });
     }
-    setPendingNewGroupName(''); // Clear pending name
+    setPendingActionGroup(null); // Clear pending action
+  };
+
+  // NEW: Handle F2 press on Customer Group field
+  const handleCustomerGroupF2 = (currentSearchTerm: string) => {
+    if (!currentSearchTerm.trim()) {
+      // Case 1: Field is empty
+      setPendingActionGroup({ name: '' }); // Indicate empty for confirmation message
+      setShowCreateGroupConfirmModal(true);
+    } else {
+      // Case 2: Field has text
+      const matchedGroup = customerGroups.find(group =>
+        group.name.toLowerCase() === currentSearchTerm.toLowerCase()
+      );
+
+      if (matchedGroup) {
+        // Case 2a: Text matches an existing group
+        setPendingActionGroup({ id: matchedGroup.id, name: matchedGroup.name });
+        setShowEditGroupConfirmModal(true);
+      } else {
+        // Case 2b: Text does not match an existing group, offer to create with that name
+        setPendingActionGroup({ name: currentSearchTerm.trim() });
+        setShowCreateGroupConfirmModal(true);
+      }
+    }
+  };
+
+  // NEW: Confirm Edit Group action
+  const confirmEditGroup = () => {
+    setShowEditGroupConfirmModal(false);
+    if (pendingActionGroup?.id) {
+      navigate(`/sales/customer-groups/edit/${pendingActionGroup.id}`, {
+        state: {
+          fromCustomerForm: true,
+          returnPath: location.pathname,
+          customerFormData: formData, // Pass current form data to preserve it
+        }
+      });
+    }
+    setPendingActionGroup(null); // Clear pending action
   };
 
 
@@ -731,16 +771,16 @@ function CustomerFormPage() {
                 <MasterSelectField
                   ref={customerGroupRef}
                   label="Customer Group"
-                  value={typedCustomerGroupName}
-                  onValueChange={setTypedCustomerGroupName}
-                  onSelect={handleCustomerGroupSelect}
+                  value={typedCustomerGroupName} // Control display value
+                  onValueChange={setTypedCustomerGroupName} // Update typed value
+                  onSelect={handleCustomerGroupSelect} // Handle selection from dropdown
                   options={customerGroups}
                   placeholder="Select customer group"
                   readOnly={viewOnly}
                   allowCreation={true}
                   onNewValueConfirmed={handleNewCustomerGroupConfirmed}
                   onBlur={handleCustomerGroupBlur}
-                  onF2Press={handleNewCustomerGroupConfirmed} // Pass onF2Press
+                  onF2Press={handleCustomerGroupF2} // Pass onF2Press
                 />
                 <FormField
                   label="Website"
@@ -768,344 +808,359 @@ function CustomerFormPage() {
 
           {activeTab === 'contact-address' && (
             <>
-              <h3 className={`text-lg font-semibold text-green-600 mb-4 flex items-center`}>
-                <PhoneCall size={20} className="mr-2" />
-                Contact Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(val) => handleInputChange('email', val)}
-                  placeholder="customer@example.com"
-                  icon={<Mail size={18} />}
-                  error={formErrors.email}
-                  readOnly={viewOnly}
-                />
-                <div className="flex items-end gap-2">
-                  <MasterSelectField
-                    label="Code"
-                    value={selectedPhoneCountryCode}
-                    onValueChange={() => {}}
-                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
-                    options={getPhoneCountryCodes()}
-                    placeholder="Code"
-                    className="w-1/4"
+              {/* Contact Details Section */}
+              <Card className="p-6 mb-6"> {/* Added Card wrapper */}
+                <h3 className={`text-lg font-semibold text-green-600 mb-4 flex items-center`}>
+                  <PhoneCall size={20} className="mr-2" />
+                  Contact Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(val) => handleInputChange('email', val)}
+                    placeholder="customer@example.com"
+                    icon={<Mail size={18} />}
+                    error={formErrors.email}
+                    readOnly={viewOnly}
+                  />
+                  <div className="flex items-end gap-2">
+                    <MasterSelectField
+                      label="Code"
+                      value={selectedPhoneCountryCode}
+                      onValueChange={() => {}}
+                      onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
+                      options={getPhoneCountryCodes()}
+                      placeholder="Code"
+                      className="w-1/4"
+                      readOnly={viewOnly}
+                    />
+                    <FormField
+                      label="Phone"
+                      value={formData.phone}
+                      onChange={(val) => handleInputChange('phone', val)}
+                      placeholder="1234567890"
+                      icon={<Phone size={18} />}
+                      className="w-3/4"
+                      readOnly={viewOnly}
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <MasterSelectField
+                      label="Code"
+                      value={selectedPhoneCountryCode}
+                      onValueChange={() => {}}
+                      onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
+                      options={getPhoneCountryCodes()}
+                      placeholder="Code"
+                      className="w-1/4"
+                      readOnly={viewOnly}
+                    />
+                    <FormField
+                      label="Mobile"
+                      value={formData.mobile}
+                      onChange={(val) => handleInputChange('mobile', val)}
+                      placeholder="9876543210"
+                      icon={<Phone size={18} />}
+                      className="w-3/4"
+                      readOnly={viewOnly}
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              {/* Billing Address Section */}
+              <Card className="p-6 mb-6"> {/* Added Card wrapper */}
+                <h3 className={`text-lg font-semibold text-purple-600 mt-6 mb-4 flex items-center`}>
+                  <MapPin size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                  Billing Address
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Address Line 1"
+                    value={formData.billingAddress.street1}
+                    onChange={(val) => handleAddressChange('billingAddress', 'street1', val)}
+                    placeholder="Street address, P.O. box"
                     readOnly={viewOnly}
                   />
                   <FormField
-                    label="Phone"
-                    value={formData.phone}
-                    onChange={(val) => handleInputChange('phone', val)}
-                    placeholder="1234567890"
-                    icon={<Phone size={18} />}
-                    className="w-3/4"
-                    readOnly={viewOnly}
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <MasterSelectField
-                    label="Code"
-                    value={selectedPhoneCountryCode}
-                    onValueChange={() => {}}
-                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
-                    options={getPhoneCountryCodes()}
-                    placeholder="Code"
-                    className="w-1/4"
+                    label="Address Line 2"
+                    value={formData.billingAddress.street2}
+                    onChange={(val) => handleAddressChange('billingAddress', 'street2', val)}
+                    placeholder="Apartment, suite, unit, building, floor, etc."
                     readOnly={viewOnly}
                   />
                   <FormField
-                    label="Mobile"
-                    value={formData.mobile}
-                    onChange={(val) => handleInputChange('mobile', val)}
-                    placeholder="9876543210"
-                    icon={<Phone size={18} />}
-                    className="w-3/4"
+                    label="City"
+                    value={formData.billingAddress.city}
+                    onChange={(val) => handleAddressChange('billingAddress', 'city', val)}
+                    placeholder="City"
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="ZIP Code"
+                    value={formData.billingAddress.zipCode}
+                    onChange={(val) => handleAddressChange('billingAddress', 'zipCode', val)}
+                    placeholder="ZIP Code"
+                    readOnly={viewOnly}
+                  />
+                  <MasterSelectField
+                    label="Country"
+                    value={selectedBillingCountry}
+                    onValueChange={(val) => { /* For typing */ }}
+                    onSelect={(id) => {
+                      setSelectedBillingCountry(id);
+                      handleAddressChange('billingAddress', 'country', id);
+                      handleAddressChange('billingAddress', 'state', ''); // Clear state when country changes
+                    }}
+                    options={COUNTRIES.map(c => ({ id: c.code, name: c.name, dialCode: c.dialCode }))}
+                    placeholder="Select Country"
+                    required // Made compulsory
+                    readOnly={viewOnly}
+                  />
+                  <MasterSelectField
+                    label="State"
+                    value={formData.billingAddress.state}
+                    onValueChange={(val) => { /* For typing */ }}
+                    onSelect={(id) => handleAddressChange('billingAddress', 'state', id)}
+                    options={getStatesForCountry(selectedBillingCountry)}
+                    placeholder="Select State"
+                    disabled={!selectedBillingCountry || viewOnly}
+                    required // Made compulsory
                     readOnly={viewOnly}
                   />
                 </div>
-              </div>
+              </Card>
 
-              <h3 className={`text-lg font-semibold text-purple-600 mt-6 mb-4 flex items-center`}>
-                <MapPin size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Billing Address
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Address Line 1"
-                  value={formData.billingAddress.street1}
-                  onChange={(val) => handleAddressChange('billingAddress', 'street1', val)}
-                  placeholder="Street address, P.O. box"
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="Address Line 2"
-                  value={formData.billingAddress.street2}
-                  onChange={(val) => handleAddressChange('billingAddress', 'street2', val)}
-                  placeholder="Apartment, suite, unit, building, floor, etc."
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="City"
-                  value={formData.billingAddress.city}
-                  onChange={(val) => handleAddressChange('billingAddress', 'city', val)}
-                  placeholder="City"
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="ZIP Code"
-                  value={formData.billingAddress.zipCode}
-                  onChange={(val) => handleAddressChange('billingAddress', 'zipCode', val)}
-                  placeholder="ZIP Code"
-                  readOnly={viewOnly}
-                />
-                <MasterSelectField
-                  label="Country"
-                  value={selectedBillingCountry}
-                  onValueChange={(val) => { /* For typing */ }}
-                  onSelect={(id) => {
-                    setSelectedBillingCountry(id);
-                    handleAddressChange('billingAddress', 'country', id);
-                    handleAddressChange('billingAddress', 'state', ''); // Clear state when country changes
-                  }}
-                  options={COUNTRIES.map(c => ({ id: c.code, name: c.name, dialCode: c.dialCode }))}
-                  placeholder="Select Country"
-                  required // Made compulsory
-                  readOnly={viewOnly}
-                />
-                <MasterSelectField
-                  label="State"
-                  value={formData.billingAddress.state}
-                  onValueChange={(val) => { /* For typing */ }}
-                  onSelect={(id) => handleAddressChange('billingAddress', 'state', id)}
-                  options={getStatesForCountry(selectedBillingCountry)}
-                  placeholder="Select State"
-                  disabled={!selectedBillingCountry || viewOnly}
-                  required // Made compulsory
-                  readOnly={viewOnly}
-                />
-              </div>
-
-              <h3 className={`text-lg font-semibold text-orange-600 mt-6 mb-4 flex items-center`}>
-                <Truck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Shipping Address (Optional)
-              </h3>
-              <div className="flex items-center space-x-3 mb-4">
-                <input
-                  type="checkbox"
-                  id="sameAsBilling"
-                  checked={sameAsBilling}
-                  onChange={handleSameAsBillingChange}
-                  className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
-                  disabled={viewOnly}
-                />
-                <label htmlFor="sameAsBilling" className={`text-sm font-medium ${theme.textPrimary}`}>
-                  Same as Billing Address
-                </label>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Address Line 1"
-                  value={formData.shippingAddress.street1}
-                  onChange={(val) => handleAddressChange('shippingAddress', 'street1', val)}
-                  placeholder="Street address, P.O. box"
-                  readOnly={viewOnly || sameAsBilling}
-                />
-                <FormField
-                  label="Address Line 2"
-                  value={formData.shippingAddress.street2}
-                  onChange={(val) => handleAddressChange('shippingAddress', 'street2', val)}
-                  placeholder="Apartment, suite, unit, building, floor, etc."
-                  readOnly={viewOnly || sameAsBilling}
-                />
-                <FormField
-                  label="City"
-                  value={formData.shippingAddress.city}
-                  onChange={(val) => handleAddressChange('shippingAddress', 'city', val)}
-                  placeholder="City"
-                  readOnly={viewOnly || sameAsBilling}
-                />
-                <FormField
-                  label="ZIP Code"
-                  value={formData.shippingAddress.zipCode}
-                  onChange={(val) => handleAddressChange('shippingAddress', 'zipCode', val)}
-                  placeholder="ZIP Code"
-                  readOnly={viewOnly || sameAsBilling}
-                />
-                <MasterSelectField
-                  label="Country"
-                  value={selectedShippingCountry}
-                  onValueChange={(val) => { /* For typing */ }}
-                  onSelect={(id) => {
-                    setSelectedShippingCountry(id);
-                    handleAddressChange('shippingAddress', 'country', id);
-                    handleAddressChange('shippingAddress', 'state', ''); // Clear state when country changes
-                  }}
-                  options={COUNTRIES.map(c => ({ id: c.code, name: c.name }))}
-                  placeholder="Select Country"
-                  required // Made compulsory
-                  readOnly={viewOnly || sameAsBilling}
-                />
-                <MasterSelectField
-                  label="State"
-                  value={formData.shippingAddress.state}
-                  onValueChange={(val) => { /* For typing */ }}
-                  onSelect={(id) => handleAddressChange('shippingAddress', 'state', id)}
-                  options={getStatesForCountry(selectedShippingCountry)}
-                  placeholder="Select State"
-                  disabled={!selectedShippingCountry || viewOnly || sameAsBilling}
-                  required // Made compulsory
-                  readOnly={viewOnly || sameAsBilling}
-                />
-              </div>
+              {/* Shipping Address Section */}
+              <Card className="p-6 mb-6"> {/* Added Card wrapper */}
+                <h3 className={`text-lg font-semibold text-orange-600 mt-6 mb-4 flex items-center`}>
+                  <Truck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                  Shipping Address (Optional)
+                </h3>
+                <div className="flex items-center space-x-3 mb-4">
+                  <input
+                    type="checkbox"
+                    id="sameAsBilling"
+                    checked={sameAsBilling}
+                    onChange={handleSameAsBillingChange}
+                    className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]"
+                    disabled={viewOnly}
+                  />
+                  <label htmlFor="sameAsBilling" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Same as Billing Address
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Address Line 1"
+                    value={formData.shippingAddress.street1}
+                    onChange={(val) => handleAddressChange('shippingAddress', 'street1', val)}
+                    placeholder="Street address, P.O. box"
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                  <FormField
+                    label="Address Line 2"
+                    value={formData.shippingAddress.street2}
+                    onChange={(val) => handleAddressChange('shippingAddress', 'street2', val)}
+                    placeholder="Apartment, suite, unit, building, floor, etc."
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                  <FormField
+                    label="City"
+                    value={formData.shippingAddress.city}
+                    onChange={(val) => handleAddressChange('shippingAddress', 'city', val)}
+                    placeholder="City"
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                  <FormField
+                    label="ZIP Code"
+                    value={formData.shippingAddress.zipCode}
+                    onChange={(val) => handleAddressChange('shippingAddress', 'zipCode', val)}
+                    placeholder="ZIP Code"
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                  <MasterSelectField
+                    label="Country"
+                    value={selectedShippingCountry}
+                    onValueChange={(val) => { /* For typing */ }}
+                    onSelect={(id) => {
+                      setSelectedShippingCountry(id);
+                      handleAddressChange('shippingAddress', 'country', id);
+                      handleAddressChange('shippingAddress', 'state', ''); // Clear state when country changes
+                    }}
+                    options={COUNTRIES.map(c => ({ id: c.code, name: c.name }))}
+                    placeholder="Select Country"
+                    required // Made compulsory
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                  <MasterSelectField
+                    label="State"
+                    value={formData.shippingAddress.state}
+                    onValueChange={(val) => { /* For typing */ }}
+                    onSelect={(id) => handleAddressChange('shippingAddress', 'state', id)}
+                    options={getStatesForCountry(selectedShippingCountry)}
+                    placeholder="Select State"
+                    disabled={!selectedShippingCountry || viewOnly || sameAsBilling}
+                    required // Made compulsory
+                    readOnly={viewOnly || sameAsBilling}
+                  />
+                </div>
+              </Card>
             </>
           )}
 
           {activeTab === 'financial-tax' && (
             <>
-              <h3 className={`text-lg font-semibold text-red-600 mb-4 flex items-center`}>
-                <DollarSign size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Financial & Tax Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Credit Limit"
-                  type="number"
-                  value={formData.creditLimit.toString()}
-                  onChange={(val) => handleInputChange('creditLimit', parseFloat(val) || 0)}
-                  icon={<CreditCard size={18} />}
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="Credit Days"
-                  type="number"
-                  value={formData.creditDays.toString()}
-                  onChange={(val) => handleInputChange('creditDays', parseInt(val) || 0)}
-                  icon={<Calendar size={18} />}
-                  readOnly={viewOnly}
-                />
-                <MasterSelectField
-                  label="Price List"
-                  value={priceLists.find(pl => pl.id === formData.priceListId)?.name || ''}
-                  onValueChange={(val) => { /* For typing */ }}
-                  onSelect={(id) => handleInputChange('priceListId', id)}
-                  options={priceLists}
-                  placeholder="Select Price List"
-                  readOnly={viewOnly}
-                  allowCreation={true}
-                  onNewValueConfirmed={(val) => {
-                    setNewMasterValue(val);
-                    setShowCreatePriceListModal(true);
-                  }}
-                />
-                <FormField
-                  label="Payment Terms"
-                  value={formData.paymentTerms}
-                  onChange={(val) => handleInputChange('paymentTerms', val)}
-                  placeholder="e.g., Net 30, Due on receipt"
-                  readOnly={viewOnly}
-                />
+              {/* Financial & Tax Details Section */}
+              <Card className="p-6 mb-6"> {/* Added Card wrapper */}
+                <h3 className={`text-lg font-semibold text-red-600 mb-4 flex items-center`}>
+                  <DollarSign size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                  Financial & Tax Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Credit Limit"
+                    type="number"
+                    value={formData.creditLimit.toString()}
+                    onChange={(val) => handleInputChange('creditLimit', parseFloat(val) || 0)}
+                    icon={<CreditCard size={18} />}
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="Credit Days"
+                    type="number"
+                    value={formData.creditDays.toString()}
+                    onChange={(val) => handleInputChange('creditDays', parseInt(val) || 0)}
+                    icon={<Calendar size={18} />}
+                    readOnly={viewOnly}
+                  />
+                  <MasterSelectField
+                    label="Price List"
+                    value={priceLists.find(pl => pl.id === formData.priceListId)?.name || ''}
+                    onValueChange={(val) => { /* For typing */ }}
+                    onSelect={(id) => handleInputChange('priceListId', id)}
+                    options={priceLists}
+                    placeholder="Select Price List"
+                    readOnly={viewOnly}
+                    allowCreation={true}
+                    onNewValueConfirmed={(val) => {
+                      setNewMasterValue(val);
+                      setShowCreatePriceListModal(true);
+                    }}
+                  />
+                  <FormField
+                    label="Payment Terms"
+                    value={formData.paymentTerms}
+                    onChange={(val) => handleInputChange('paymentTerms', val)}
+                    placeholder="e.g., Net 30, Due on receipt"
+                    readOnly={viewOnly}
+                  />
 
-                {/* Dynamic Tax Fields based on selectedBillingCountry */}
-                {(() => {
-                  const countryTaxConfig = getCountryByCode(selectedBillingCountry)?.taxConfig;
-                  if (!countryTaxConfig) return null;
+                  {/* Dynamic Tax Fields based on selectedBillingCountry */}
+                  {(() => {
+                    const countryTaxConfig = getCountryByCode(selectedBillingCountry)?.taxConfig;
+                    if (!countryTaxConfig) return null;
 
-                  if (countryTaxConfig.type === 'GST') {
-                    return (
-                      <>
-                        <FormField
-                          label={taxRegMainLabel}
-                          value={formData.gstin}
-                          onChange={(val) => handleInputChange('gstin', val)}
-                          placeholder={`e.g., ${taxRegMainLabel}`}
-                          // Removed 'required' prop for GSTIN
-                          readOnly={viewOnly}
-                        />
-                        <FormField
-                          label={taxRegSecondaryLabel}
-                          value={formData.pan}
-                          onChange={(val) => handleInputChange('pan', val)}
-                          placeholder={`e.g., ${taxRegSecondaryLabel}`}
-                          readOnly={viewOnly}
-                        />
-                        {countryTaxConfig.registrationLabels?.tertiary && (
+                    if (countryTaxConfig.type === 'GST') {
+                      return (
+                        <>
                           <FormField
-                            label={taxRegTertiaryLabel}
-                            value={formData.taxId} // Using taxId for tertiary if available
-                            onChange={(val) => handleInputChange('taxId', val)}
-                            placeholder={`e.g., ${taxRegTertiaryLabel}`}
+                            label={taxRegMainLabel}
+                            value={formData.gstin}
+                            onChange={(val) => handleInputChange('gstin', val)}
+                            placeholder={`e.g., ${taxRegMainLabel}`}
+                            // Removed 'required' prop for GSTIN
                             readOnly={viewOnly}
                           />
-                        )}
-                        <MasterSelectField
-                          label="GST Registration Type"
-                          value={GST_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
-                          onValueChange={(val) => {}}
-                          onSelect={(id) => handleInputChange('taxRegistrationType', id)}
-                          options={GST_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
-                          placeholder="Select Type"
-                          readOnly={viewOnly}
-                        />
-                      </>
-                    );
-                  } else if (countryTaxConfig.type === 'VAT' || countryTaxConfig.type === 'Sales Tax' || countryTaxConfig.type === 'Consumption Tax' || countryTaxConfig.type === 'GST/PST/HST') {
-                    return (
-                      <>
-                        <FormField
-                          label={taxRegMainLabel}
-                          value={formData.taxId}
-                          onChange={(val) => handleInputChange('taxId', val)}
-                          placeholder={`e.g., ${taxRegMainLabel}`}
-                          // Removed 'required' prop for taxId
-                          readOnly={viewOnly}
-                        />
-                        {countryTaxConfig.type === 'VAT' && (
+                          <FormField
+                            label={taxRegSecondaryLabel}
+                            value={formData.pan}
+                            onChange={(val) => handleInputChange('pan', val)}
+                            placeholder={`e.g., ${taxRegSecondaryLabel}`}
+                            readOnly={viewOnly}
+                          />
+                          {countryTaxConfig.registrationLabels?.tertiary && (
+                            <FormField
+                              label={taxRegTertiaryLabel}
+                              value={formData.taxId} // Using taxId for tertiary if available
+                              onChange={(val) => handleInputChange('taxId', val)}
+                              placeholder={`e.g., ${taxRegTertiaryLabel}`}
+                              readOnly={viewOnly}
+                            />
+                          )}
                           <MasterSelectField
-                            label="VAT Registration Type"
-                            value={VAT_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
+                            label="GST Registration Type"
+                            value={GST_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
                             onValueChange={(val) => {}}
                             onSelect={(id) => handleInputChange('taxRegistrationType', id)}
-                            options={VAT_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
+                            options={GST_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
                             placeholder="Select Type"
                             readOnly={viewOnly}
                           />
-                        )}
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
+                        </>
+                      );
+                    } else if (countryTaxConfig.type === 'VAT' || countryTaxConfig.type === 'Sales Tax' || countryTaxConfig.type === 'Consumption Tax' || countryTaxConfig.type === 'GST/PST/HST') {
+                      return (
+                        <>
+                          <FormField
+                            label={taxRegMainLabel}
+                            value={formData.taxId}
+                            onChange={(val) => handleInputChange('taxId', val)}
+                            placeholder={`e.g., ${taxRegMainLabel}`}
+                            // Removed 'required' prop for taxId
+                            readOnly={viewOnly}
+                          />
+                          {countryTaxConfig.type === 'VAT' && (
+                            <MasterSelectField
+                              label="VAT Registration Type"
+                              value={VAT_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
+                              onValueChange={(val) => {}}
+                              onSelect={(id) => handleInputChange('taxRegistrationType', id)}
+                              options={VAT_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
+                              placeholder="Select Type"
+                              readOnly={viewOnly}
+                            />
+                          )}
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </Card>
 
-              <h3 className={`text-lg font-semibold text-teal-600 mt-6 mb-4 flex items-center`}>
-                <Landmark size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Banking Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Bank Name"
-                  value={formData.bankName}
-                  onChange={(val) => handleInputChange('bankName', val)}
-                  placeholder="e.g., State Bank of India"
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="Account Number"
-                  value={formData.accountNumber}
-                  onChange={(val) => handleInputChange('accountNumber', val)}
-                  placeholder="e.g., 1234567890"
-                  readOnly={viewOnly}
-                />
-                <FormField
-                  label="IFSC Code"
-                  value={formData.ifscCode}
-                  onChange={(val) => handleInputChange('ifscCode', val)}
-                  placeholder="e.g., SBIN0000001"
-                  readOnly={viewOnly}
-                />
-              </div>
+              {/* Banking Details Section */}
+              <Card className="p-6 mb-6"> {/* Added Card wrapper */}
+                <h3 className={`text-lg font-semibold text-teal-600 mt-6 mb-4 flex items-center`}>
+                  <Landmark size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                  Banking Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Bank Name"
+                    value={formData.bankName}
+                    onChange={(val) => handleInputChange('bankName', val)}
+                    placeholder="e.g., State Bank of India"
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="Account Number"
+                    value={formData.accountNumber}
+                    onChange={(val) => handleInputChange('accountNumber', val)}
+                    placeholder="e.g., 1234567890"
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="IFSC Code"
+                    value={formData.ifscCode}
+                    onChange={(val) => handleInputChange('ifscCode', val)}
+                    placeholder="e.g., SBIN0000001"
+                    readOnly={viewOnly}
+                  />
+                </div>
+              </Card>
             </>
           )}
 
@@ -1164,7 +1219,7 @@ function CustomerFormPage() {
             setShowCreateCustomerGroupModal(false);
             showNotification(`Customer Group "${newGroup.name}" created!`, 'success');
           }}
-          initialName={pendingNewGroupName}
+          initialName={pendingActionGroup?.name || ''} // Pass pending name
         />
       )}
 
@@ -1187,12 +1242,29 @@ function CustomerFormPage() {
         isOpen={showCreateGroupConfirmModal}
         onClose={() => {
           setShowCreateGroupConfirmModal(false);
-          setPendingNewGroupName(''); // Clear pending name if cancelled
+          setPendingActionGroup(null); // Clear pending name if cancelled
         }}
         onConfirm={confirmCreateNewGroup}
         title="Create New Customer Group?"
-        message={`The customer group "${pendingNewGroupName}" does not exist. Do you want to create it?`}
+        message={
+          pendingActionGroup?.name
+            ? `The customer group "${pendingActionGroup.name}" does not exist. Do you want to create it?`
+            : `Do you want to create a new customer group?`
+        }
         confirmText="Yes, Create Group"
+      />
+
+      {/* Confirmation Modal for Customer Group Edit */}
+      <ConfirmationModal
+        isOpen={showEditGroupConfirmModal}
+        onClose={() => {
+          setShowEditGroupConfirmModal(false);
+          setPendingActionGroup(null); // Clear pending action if cancelled
+        }}
+        onConfirm={confirmEditGroup}
+        title="Alter Customer Group?"
+        message={`Do you want to alter the group "${pendingActionGroup?.name}"?`}
+        confirmText="Yes, Alter"
       />
     </div>
   );

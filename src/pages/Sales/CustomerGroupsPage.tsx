@@ -167,94 +167,87 @@ function CustomerGroupsPage() {
     setLoading(true);
     setFormErrors({});
 
-    try {
-      const { data, error } = await supabase
-        .from('customer_groups')
-        .insert({
-          company_id: currentCompany.id,
-          name: formData.name,
-          description: formData.description,
-        })
-        .select('id, name')
-        .single();
+   try {
+    const { data, error } = await supabase
+      .from('customer_groups')
+      .insert({
+        company_id: currentCompany.id,
+        name: formData.name,
+        description: formData.description,
+      })
+      .select('id, name')
+      .single();
 
-      if (error) {
-        console.error('CustomerGroupsPage: Error creating customer group:', error);
-        throw error;
-      }
+    if (error) throw error;
 
-      // Navigate back to CustomerFormPage, passing the new group info and original form data
-      if (location.state?.fromCustomerForm && location.state?.returnPath) {
-        navigate(location.state.returnPath, {
-          replace: true, // Replace current history entry
-          state: {
-            createdGroupId: data.id,
-            createdGroupName: data.name,
-            customerFormData: location.state.customerFormData, // Pass original customer form data back
-            fromCustomerGroupCreation: true // Flag for CustomerFormPage to know it's a return from group creation
-          },
-        });
-        showNotification('Customer group created and selected!', 'success');
-      } else {
-        // Default behavior if not part of the special flow
-        showNotification('Customer group created successfully!', 'success');
-        setShowCreateForm(false);
-        resetForm();
-        fetchCustomerGroups();
-      }
-    } catch (err: any) {
-      setFormErrors({ submit: err.message || 'Failed to create customer group.' });
-      showNotification(err.message || 'Failed to create customer group.', 'error');
-    } finally {
-      setLoading(false);
+    // Check if navigated from CustomerFormPage
+    if (location.state?.fromCustomerForm && location.state?.returnPath) {
+      navigate(location.state.returnPath, {
+        replace: true, // Replace current history entry
+        state: {
+          createdGroupId: data.id,
+          createdGroupName: data.name,
+          customerFormData: location.state.customerFormData, // Pass original customer form data back
+          fromCustomerGroupCreation: true // Flag for CustomerFormPage to know it's a return from group creation
+        },
+      });
+      showNotification('Customer group created and selected!', 'success');
+    } else {
+      // Default behavior if not part of the special flow
+      showNotification('Customer group created successfully!', 'success');
+      setShowCreateForm(false);
+      resetForm();
+      fetchCustomerGroups();
     }
-  };
+  } catch (err: any) {
+    // ... error handling
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleUpdateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleUpdateGroup = async (e: React.FormEvent) => {
+  e.preventDefault();
     if (!editingGroup || !validateForm()) return;
 
     setLoading(true);
     setFormErrors({});
 
     try {
-      const { error } = await supabase
-        .from('customer_groups')
-        .update({
-          name: formData.name,
-          description: formData.description,
-        })
-        .eq('id', editingGroup.id);
+    const { error } = await supabase
+      .from('customer_groups')
+      .update({
+        name: formData.name,
+        description: formData.description,
+      })
+      .eq('id', editingGroup.id);
 
-      if (error) {
-        console.error('CustomerGroupsPage: Error updating customer group:', error);
-        throw error;
-      }
+    if (error) throw error;
 
-      if (location.state?.fromCustomerForm && location.state?.returnPath) {
-        navigate(location.state.returnPath, {
-          replace: true,
-          state: {
-            createdGroupId: editingGroup.id, // Use existing ID
-            createdGroupName: formData.name, // Use updated name
-            customerFormData: location.state.customerFormData,
-            fromCustomerGroupCreation: true,
-          },
-        });
-        showNotification('Customer group updated and selected!', 'success');
-      } else {
-        showNotification('Customer group updated successfully!', 'success');
-        setShowCreateForm(false);
-        resetForm();
-        fetchCustomerGroups();
-      }
-    } catch (err: any) {
-      setFormErrors({ submit: err.message || 'Failed to update customer group.' });
-      showNotification(err.message || 'Failed to update customer group.', 'error');
-    } finally {
-      setLoading(false);
+    // Check if navigated from CustomerFormPage
+    if (location.state?.fromCustomerForm && location.state?.returnPath) {
+      navigate(location.state.returnPath, {
+        replace: true,
+        state: {
+          createdGroupId: editingGroup.id, // Use existing ID
+          createdGroupName: formData.name, // Use updated name
+          customerFormData: location.state.customerFormData,
+          fromCustomerGroupCreation: true,
+        },
+      });
+      showNotification('Customer group updated and selected!', 'success');
+    } else {
+      showNotification('Customer group updated successfully!', 'success');
+      setShowCreateForm(false);
+      resetForm();
+      fetchCustomerGroups();
     }
-  };
+  } catch (err: any) {
+    // ... error handling
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteGroup = (groupId: string) => {
     setGroupToDeleteId(groupId);
@@ -447,6 +440,7 @@ function CustomerGroupsPage() {
               }}>
                 Cancel
               </Button>
+
               <Button type="submit" disabled={loading}>
                 {loading ? 'Saving...' : (editingGroup ? 'Update Group' : 'Create Group')}
               </Button>

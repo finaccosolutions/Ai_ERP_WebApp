@@ -24,11 +24,11 @@ type MasterSelectFieldProps = {
   readOnly?: boolean;
   allowCreation?: boolean;
   onNewValueConfirmed?: (value: string, fieldIndex?: number, masterType?: string) => void;
-  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>; // Add onKeyDown prop
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   fieldIndex?: number;
   masterType?: string;
-  onF2Press?: (value: string) => void; // Modified: Removed fieldIndex and masterType from here
+  onF2Press?: (currentSearchTerm: string) => void; // NEW: Add onF2Press prop
 };
 
 export interface MasterSelectFieldRef {
@@ -40,6 +40,7 @@ export interface MasterSelectFieldRef {
   focus: () => void;
 }
 
+// Use forwardRef to pass the ref to the internal input element
 const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>(({
   label,
   value, // The ID from parent state
@@ -54,11 +55,11 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
   readOnly = false,
   allowCreation = false,
   onNewValueConfirmed,
-  onKeyDown,
+  onKeyDown, // Destructure onKeyDown
   onBlur,
   fieldIndex,
   masterType,
-  onF2Press, // Destructure onF2Press
+  onF2Press, // NEW: Destructure onF2Press
 }, ref) => { // Accept ref
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -147,7 +148,7 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
         setIsOpen(false);
         inputRef.current?.blur(); // Allow parent's onKeyDown to proceed to next field
       }
-    } else if (e.key === 'F2' && onF2Press) { // Handle F2 press
+    } else if (e.key === 'F2' && onF2Press) { // NEW: Handle F2 press
       e.preventDefault();
       onF2Press(internalSearchTerm.trim()); // Pass current search term
       setIsOpen(false); // Close dropdown on F2 press
@@ -281,3 +282,4 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
 });
  
 export default MasterSelectField;
+
