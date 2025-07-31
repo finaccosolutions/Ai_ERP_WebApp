@@ -4,9 +4,9 @@ import {
   User, Mail, Phone, MapPin, Building, CreditCard, Save, ArrowLeft,
   Globe, Tag, Users, Info, DollarSign, Calendar, FileText, Truck,
   Home, // Icon for Basic Info
-  BookUser, // Icon for Billing Address (previously AddressBook)
-  Package, // Icon for Shipping Address
-  PhoneCall, // Icon for Contact Details
+  BookUser, // Icon for Billing Address (now part of combined tab)
+  Package, // Icon for Shipping Address (now part of combined tab)
+  PhoneCall, // Icon for Contact Details (now part of combined tab)
   Landmark, // Icon for Financial & Tax
   ClipboardList, // Icon for Other Details
   Briefcase, // General icon for company/business info
@@ -15,23 +15,23 @@ import {
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
-import MasterSelectField, { MasterSelectFieldRef } from '../../components/UI/MasterSelectField'; // Import MasterSelectFieldRef
-import { useTheme } from '../../contexts/ThemeContext'; // CORRECTED LINE: Added 'from'
+import MasterSelectField, { MasterSelectFieldRef } from '../../components/UI/MasterSelectField';
+import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
-import { useAuth } from '../../contexts/AuthContext'; // CORRECTED LINE: Added 'from'
+import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'; // Import useLocation
-import { COUNTRIES, getCountryByCode, getPhoneCountryCodes } from '../../constants/geoData';
-import CreateCustomerGroupModal from '../../components/Modals/CreateCustomerGroupModal'; // New import
-import CreatePriceListModal from '../../components/Modals/CreatePriceListModal'; // New import
-import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { COUNTRIES, getCountryByCode, getPhoneCountryCodes, GST_REGISTRATION_TYPES, VAT_REGISTRATION_TYPES } from '../../constants/geoData'; // Import new constants
+import CreateCustomerGroupModal from '../../components/Modals/CreateCustomerGroupModal';
+import CreatePriceListModal from '../../components/Modals/CreatePriceListModal';
+import ConfirmationModal from '../../components/UI/ConfirmationModal';
 
 interface CustomerFormData {
   id?: string;
   customerCode: string;
   name: string;
-  customerType: string; // Changed to string to accommodate more types
+  customerType: string;
   email: string;
   phone: string;
   mobile: string;
@@ -63,6 +63,12 @@ interface CustomerFormData {
   customerGroupId: string;
   notes: string;
   isActive: boolean;
+  // NEW: Banking Details
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  // NEW: Tax Registration Type
+  taxRegistrationType: string;
 }
 
 function CustomerFormPage() {
@@ -74,7 +80,15 @@ function CustomerFormPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const viewOnly = searchParams.get('viewOnly') === 'true';
-  const location = useLocation(); // Initialize useLocation
+  const location = useLocation();
+
+  // Define the tabs array here
+  const tabs = [
+    { id: 'basic-info', label: 'Basic Info', icon: Home },
+    { id: 'contact-address', label: 'Contact & Address', icon: PhoneCall }, // Combined tab
+    { id: 'financial-tax', label: 'Financial & Tax', icon: Landmark },
+    { id: 'other-details', label: 'Other Details', icon: ClipboardList },
+  ];
 
   const [formData, setFormData] = useState<CustomerFormData>({
     customerCode: '',
@@ -97,6 +111,12 @@ function CustomerFormPage() {
     customerGroupId: '',
     notes: '',
     isActive: true,
+    // NEW: Banking Details
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    // NEW: Tax Registration Type
+    taxRegistrationType: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -108,10 +128,10 @@ function CustomerFormPage() {
   const [selectedShippingCountry, setSelectedShippingCountry] = useState<string>('');
   const [selectedPhoneCountryCode, setSelectedPhoneCountryCode] = useState<string>('+91'); // Default to India
 
-  // Master creation modal states (these will be bypassed for direct navigation)
+  // Master creation modal states
   const [showCreateCustomerGroupModal, setShowCreateCustomerGroupModal] = useState(false);
   const [showCreatePriceListModal, setShowCreatePriceListModal] = useState(false);
-  const [newMasterValue, setNewMasterValue] = useState(''); // To hold the value typed by user for new master
+  const [newMasterValue, setNewMasterValue] = useState('');
 
   // New state for confirmation modal for customer group creation
   const [showCreateGroupConfirmModal, setShowCreateGroupConfirmModal] = useState(false);
@@ -146,19 +166,24 @@ function CustomerFormPage() {
     if (currentCompany?.id) {
       fetchCustomerGroups();
       fetchPriceLists();
-      // Auto-fill country based on company's country
-      const companyCountryCode = currentCompany.country;
-      setSelectedBillingCountry(companyCountryCode);
-      setSelectedShippingCountry(companyCountryCode);
-      setFormData(prev => ({
-        ...prev,
-        billingAddress: { ...prev.billingAddress, country: companyCountryCode },
-        shippingAddress: { ...prev.shippingAddress, country: companyCountryCode },
-      }));
 
-      // MODIFICATION: Generate customer code if it's a new customer
-      if (!id) { // Only generate if it's a new customer
+      // Auto-fill country based on company's country for new customers
+      if (isNewCustomer) {
+        const companyCountryCode = currentCompany.country;
+        setSelectedBillingCountry(companyCountryCode);
+        setSelectedShippingCountry(companyCountryCode);
+        setFormData(prev => ({
+          ...prev,
+          billingAddress: { ...prev.billingAddress, country: companyCountryCode },
+          shippingAddress: { ...prev.shippingAddress, country: companyCountryCode },
+        }));
+      }
+
+      // Generate customer code if it's a new customer
+      if (isNewCustomer) {
         generateCustomerCode(currentCompany.id);
+      } else {
+        fetchCustomerData(id as string);
       }
     }
 
@@ -194,7 +219,7 @@ function CustomerFormPage() {
       // Clear the state to prevent re-triggering on subsequent renders
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [currentCompany?.id, id, location.pathname]);
+  }, [currentCompany?.id, id, location.pathname, isNewCustomer]);
 
 
   // Effect to update tax labels based on billing country
@@ -218,8 +243,6 @@ function CustomerFormPage() {
 
   const fetchCustomerGroups = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('CustomerFormPage: Supabase session at fetchCustomerGroups start:', session);
-
     const { data, error } = await supabase
       .from('customer_groups')
       .select('id, name')
@@ -233,8 +256,6 @@ function CustomerFormPage() {
 
   const fetchPriceLists = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('CustomerFormPage: Supabase session at fetchPriceLists start:', session);
-
     const { data, error } = await supabase
       .from('price_lists')
       .select('id, name')
@@ -247,9 +268,6 @@ function CustomerFormPage() {
   };
 
   const fetchCustomerData = async (customerId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('CustomerFormPage: Supabase session at fetchCustomerData start:', session);
-
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -310,6 +328,12 @@ function CustomerFormPage() {
           customerGroupId: data.customer_group_id || '',
           notes: data.notes || '',
           isActive: data.is_active || true,
+          // NEW: Banking Details
+          bankName: data.bank_name || '',
+          accountNumber: data.account_number || '',
+          ifscCode: data.ifsc_code || '',
+          // NEW: Tax Registration Type
+          taxRegistrationType: data.tax_registration_type || '',
         });
         setSelectedBillingCountry(data.billing_address?.country || '');
         setSelectedShippingCountry(data.shipping_address?.country || '');
@@ -325,8 +349,6 @@ function CustomerFormPage() {
 
   const generateCustomerCode = async (companyId: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('CustomerFormPage: Supabase session at generateCustomerCode start:', session);
-
     try {
       const { count, error } = await supabase
         .from('customers')
@@ -384,17 +406,16 @@ function CustomerFormPage() {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = 'Customer Name is required.';
     if (!formData.customerCode.trim()) newErrors.customerCode = 'Customer Code is required.';
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format.';
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email address.';
 
-    // Dynamic tax field validation based on billing country
-    const countryTaxConfig = getCountryByCode(selectedBillingCountry)?.taxConfig;
-    if (countryTaxConfig) {
-      if (countryTaxConfig.type === 'GST') {
-        if (!formData.gstin.trim()) newErrors.gstin = `${taxRegMainLabel} is required.`;
-        // PAN is generally required for companies in India, but not strictly validated here
-      } else if (countryTaxConfig.type === 'VAT' || countryTaxConfig.type === 'Sales Tax') {
-        if (!formData.taxId.trim()) newErrors.taxId = `${taxRegMainLabel} is required.`;
-      }
+    // Validate billing address country and state
+    if (!formData.billingAddress.country) newErrors.billingCountry = 'Billing Country is required.';
+    if (!formData.billingAddress.state) newErrors.billingState = 'Billing State is required.';
+
+    // Validate shipping address country and state if not same as billing
+    if (!sameAsBilling) {
+      if (!formData.shippingAddress.country) newErrors.shippingCountry = 'Shipping Country is required.';
+      if (!formData.shippingAddress.state) newErrors.shippingState = 'Shipping State is required.';
     }
 
     setFormErrors(newErrors);
@@ -426,7 +447,7 @@ function CustomerFormPage() {
         website: formData.website,
         tax_id: formData.taxId,
         pan: formData.pan,
-        gstin: formData.gstin,
+        gstin: formData.gstin, // GSTIN is not compulsory at DB level
         billing_address: formData.billingAddress,
         shipping_address: sameAsBilling ? formData.billingAddress : formData.shippingAddress, // Use billing if sameAsBilling
         credit_limit: formData.creditLimit,
@@ -437,6 +458,12 @@ function CustomerFormPage() {
         customer_group_id: formData.customerGroupId || null,
         notes: formData.notes,
         is_active: formData.isActive,
+        // NEW: Banking Details
+        bank_name: formData.bankName || null,
+        account_number: formData.accountNumber || null,
+        ifsc_code: formData.ifscCode || null,
+        // NEW: Tax Registration Type
+        tax_registration_type: formData.taxRegistrationType || null,
       };
 
 
@@ -498,21 +525,6 @@ function CustomerFormPage() {
     { code: 'company', name: 'Company' },
   ];
 
-  // This function is now primarily for price list, as customer group uses direct navigation
-  const handleNewMasterValue = (type: 'customerGroup' | 'priceList', value: string) => {
-    setNewMasterValue(value);
-    if (type === 'priceList') {
-      showNotification(
-        `Price list "${value}" not found. Do you want to create it?`,
-        'info',
-        {
-          action: () => setShowCreatePriceListModal(true),
-          actionText: 'Create New',
-        }
-      );
-    }
-  };
-
   // New: Handle confirmation for new customer group creation
    const handleNewCustomerGroupConfirmed = (newGroupName: string) => {
     const existingGroup = customerGroups.find(group => group.name.toLowerCase() === newGroupName.toLowerCase());
@@ -520,7 +532,7 @@ function CustomerFormPage() {
     if (existingGroup) {
       // Group already exists, select it and notify
       customerGroupRef.current?.selectOption(existingGroup.id);
-      showNotification(`Customer Group "${existingGroup.name}" already exists and has been selected.`, 'info');
+      showNotification(`Customer Group "${existingGroup.name}" already exists and has been selected!`, 'info');
     } else {
       // Group does not exist, ask for confirmation to create
       setPendingNewGroupName(newGroupName);
@@ -595,6 +607,19 @@ function CustomerFormPage() {
     setTypedCustomerGroupName(name);
   };
 
+  // Get tax registration types based on country
+  const getTaxRegistrationTypes = () => {
+    const countryData = getCountryByCode(selectedBillingCountry);
+    if (countryData) {
+      if (countryData.taxConfig.type === 'GST') {
+        return GST_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }));
+      } else if (countryData.taxConfig.type === 'VAT') {
+        return VAT_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }));
+      }
+    }
+    return [];
+  };
+
 
   if (loading) {
     return (
@@ -643,10 +668,10 @@ function CustomerFormPage() {
                     flex flex-col items-center px-4 py-2 text-sm font-medium transition-colors duration-300
                     ${isActive
                       ? `bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500 shadow-sm`
-                      : `text-emerald-700 hover:bg-emerald-50 ${theme.isDark ? 'hover:bg-gray-700' : ''}` // Added dark mode hover
+                      : `text-emerald-700 hover:bg-emerald-50 ${theme.isDark ? 'hover:bg-gray-700' : ''}`
                     }
                   `}
-                  disabled={viewOnly} // Disable tab switching in viewOnly mode
+                  disabled={viewOnly}
                 >
                   <Icon size={20} className="mb-1" />
                   {tab.label}
@@ -681,7 +706,7 @@ function CustomerFormPage() {
                   placeholder="e.g., CUST001"
                   required
                   error={formErrors.customerCode}
-                  readOnly={true} // MODIFICATION: Make read-only
+                  readOnly={true}
                 />
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
@@ -704,17 +729,18 @@ function CustomerFormPage() {
                   </select>
                 </div>
                 <MasterSelectField
-                  ref={customerGroupRef} // Attach ref here
+                  ref={customerGroupRef}
                   label="Customer Group"
-                  value={typedCustomerGroupName} // Use the new state for the input value
-                  onValueChange={setTypedCustomerGroupName} // Update the new state on type
-                  onSelect={handleCustomerGroupSelect} // Use the modified select handler
+                  value={typedCustomerGroupName}
+                  onValueChange={setTypedCustomerGroupName}
+                  onSelect={handleCustomerGroupSelect}
                   options={customerGroups}
                   placeholder="Select customer group"
                   readOnly={viewOnly}
-                  allowCreation={true} // Enable creation
-                  onNewValueConfirmed={handleNewCustomerGroupConfirmed} // Use the new handler for direct navigation
-                  onBlur={handleCustomerGroupBlur} // Add the blur handler
+                  allowCreation={true}
+                  onNewValueConfirmed={handleNewCustomerGroupConfirmed}
+                  onBlur={handleCustomerGroupBlur}
+                  onF2Press={handleNewCustomerGroupConfirmed} // Pass onF2Press
                 />
                 <FormField
                   label="Website"
@@ -740,9 +766,68 @@ function CustomerFormPage() {
             </>
           )}
 
-          {activeTab === 'billing-address' && (
+          {activeTab === 'contact-address' && (
             <>
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+                <PhoneCall size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                Contact Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(val) => handleInputChange('email', val)}
+                  placeholder="customer@example.com"
+                  icon={<Mail size={18} />}
+                  error={formErrors.email}
+                  readOnly={viewOnly}
+                />
+                <div className="flex items-end gap-2">
+                  <MasterSelectField
+                    label="Code"
+                    value={selectedPhoneCountryCode}
+                    onValueChange={() => {}}
+                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
+                    options={getPhoneCountryCodes()}
+                    placeholder="Code"
+                    className="w-1/4"
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="Phone"
+                    value={formData.phone}
+                    onChange={(val) => handleInputChange('phone', val)}
+                    placeholder="1234567890"
+                    icon={<Phone size={18} />}
+                    className="w-3/4"
+                    readOnly={viewOnly}
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <MasterSelectField
+                    label="Code"
+                    value={selectedPhoneCountryCode}
+                    onValueChange={() => {}}
+                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)}
+                    options={getPhoneCountryCodes()}
+                    placeholder="Code"
+                    className="w-1/4"
+                    readOnly={viewOnly}
+                  />
+                  <FormField
+                    label="Mobile"
+                    value={formData.mobile}
+                    onChange={(val) => handleInputChange('mobile', val)}
+                    placeholder="9876543210"
+                    icon={<Phone size={18} />}
+                    className="w-3/4"
+                    readOnly={viewOnly}
+                  />
+                </div>
+              </div>
+
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
                 <MapPin size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Billing Address
               </h3>
@@ -777,9 +862,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
-                  // MODIFICATION START: Ensure value is always a string
                   value={COUNTRIES.find(c => c.code === selectedBillingCountry)?.name || ''}
-                  // MODIFICATION END
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedBillingCountry(id);
@@ -788,6 +871,7 @@ function CustomerFormPage() {
                   }}
                   options={COUNTRIES.map(c => ({ id: c.code, name: c.name, dialCode: c.dialCode }))}
                   placeholder="Select Country"
+                  required // Made compulsory
                   readOnly={viewOnly}
                 />
                 <MasterSelectField
@@ -798,15 +882,12 @@ function CustomerFormPage() {
                   options={getStatesForCountry(selectedBillingCountry)}
                   placeholder="Select State"
                   disabled={!selectedBillingCountry || viewOnly}
+                  required // Made compulsory
                   readOnly={viewOnly}
                 />
               </div>
-            </>
-          )}
 
-          {activeTab === 'shipping-address' && (
-            <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
                 <Truck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                 Shipping Address (Optional)
               </h3>
@@ -854,9 +935,7 @@ function CustomerFormPage() {
                 />
                 <MasterSelectField
                   label="Country"
-                  // MODIFICATION START: Ensure value is always a string
                   value={COUNTRIES.find(c => c.code === selectedShippingCountry)?.name || ''}
-                  // MODIFICATION END
                   onValueChange={(val) => { /* For typing */ }}
                   onSelect={(id) => {
                     setSelectedShippingCountry(id);
@@ -865,6 +944,7 @@ function CustomerFormPage() {
                   }}
                   options={COUNTRIES.map(c => ({ id: c.code, name: c.name }))}
                   placeholder="Select Country"
+                  required // Made compulsory
                   readOnly={viewOnly || sameAsBilling}
                 />
                 <MasterSelectField
@@ -875,71 +955,9 @@ function CustomerFormPage() {
                   options={getStatesForCountry(selectedShippingCountry)}
                   placeholder="Select State"
                   disabled={!selectedShippingCountry || viewOnly || sameAsBilling}
+                  required // Made compulsory
                   readOnly={viewOnly || sameAsBilling}
                 />
-              </div>
-            </>
-          )}
-
-          {activeTab === 'contact-details' && (
-            <>
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                <PhoneCall size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                Contact Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(val) => handleInputChange('email', val)}
-                  placeholder="customer@example.com"
-                  icon={<Mail size={18} />}
-                  error={formErrors.email}
-                  readOnly={viewOnly}
-                />
-                <div className="flex items-end gap-2">
-                  <MasterSelectField
-                    label="Code"
-                    value={selectedPhoneCountryCode} // Display only the dialCode in the input field
-                    onValueChange={() => {}} // No typing for this field
-                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)} // Use selectedOption.dialCode
-                    options={getPhoneCountryCodes()} // Use the modified function
-                    placeholder="Code"
-                    className="w-1/4"
-                    readOnly={viewOnly}
-                  />
-                  <FormField
-                    label="Phone"
-                    value={formData.phone}
-                    onChange={(val) => handleInputChange('phone', val)}
-                    placeholder="1234567890"
-                    icon={<Phone size={18} />}
-                    className="w-3/4"
-                    readOnly={viewOnly}
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <MasterSelectField
-                    label="Code"
-                    value={selectedPhoneCountryCode} // Display only the dialCode in the input field
-                    onValueChange={() => {}} // No typing for this field
-                    onSelect={(selectedId, selectedName, selectedOption) => setSelectedPhoneCountryCode(selectedOption.dialCode)} // Use selectedOption.dialCode
-                    options={getPhoneCountryCodes()} // Use the modified function
-                    placeholder="Code"
-                    className="w-1/4"
-                    readOnly={viewOnly}
-                  />
-                  <FormField
-                    label="Mobile"
-                    value={formData.mobile}
-                    onChange={(val) => handleInputChange('mobile', val)}
-                    placeholder="9876543210"
-                    icon={<Phone size={18} />}
-                    className="w-3/4"
-                    readOnly={viewOnly}
-                  />
-                </div>
               </div>
             </>
           )}
@@ -975,8 +993,11 @@ function CustomerFormPage() {
                   options={priceLists}
                   placeholder="Select Price List"
                   readOnly={viewOnly}
-                  allowCreation={true} // Enable creation
-                  onNewValue={(val) => handleNewMasterValue('priceList', val)} // Handle new value
+                  allowCreation={true}
+                  onNewValueConfirmed={(val) => {
+                    setNewMasterValue(val);
+                    setShowCreatePriceListModal(true);
+                  }}
                 />
                 <FormField
                   label="Payment Terms"
@@ -999,8 +1020,7 @@ function CustomerFormPage() {
                           value={formData.gstin}
                           onChange={(val) => handleInputChange('gstin', val)}
                           placeholder={`e.g., ${taxRegMainLabel}`}
-                          required={true} // GSTIN is typically required for GST
-                          error={formErrors.gstin}
+                          // Removed 'required' prop for GSTIN
                           readOnly={viewOnly}
                         />
                         <FormField
@@ -1019,23 +1039,72 @@ function CustomerFormPage() {
                             readOnly={viewOnly}
                           />
                         )}
+                        <MasterSelectField
+                          label="GST Registration Type"
+                          value={GST_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
+                          onValueChange={(val) => {}}
+                          onSelect={(id) => handleInputChange('taxRegistrationType', id)}
+                          options={GST_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
+                          placeholder="Select Type"
+                          readOnly={viewOnly}
+                        />
                       </>
                     );
-                  } else if (countryTaxConfig.type === 'VAT' || countryTaxConfig.type === 'Sales Tax') {
+                  } else if (countryTaxConfig.type === 'VAT' || countryTaxConfig.type === 'Sales Tax' || countryTaxConfig.type === 'Consumption Tax' || countryTaxConfig.type === 'GST/PST/HST') {
                     return (
-                      <FormField
-                        label={taxRegMainLabel}
-                        value={formData.taxId}
-                        onChange={(val) => handleInputChange('taxId', val)}
-                        placeholder={`e.g., ${taxRegMainLabel}`}
-                        required={true}
-                        error={formErrors.taxId}
-                        readOnly={viewOnly}
-                      />
+                      <>
+                        <FormField
+                          label={taxRegMainLabel}
+                          value={formData.taxId}
+                          onChange={(val) => handleInputChange('taxId', val)}
+                          placeholder={`e.g., ${taxRegMainLabel}`}
+                          // Removed 'required' prop for taxId
+                          readOnly={viewOnly}
+                        />
+                        {countryTaxConfig.type === 'VAT' && (
+                          <MasterSelectField
+                            label="VAT Registration Type"
+                            value={VAT_REGISTRATION_TYPES.find(type => type.id === formData.taxRegistrationType)?.name || ''}
+                            onValueChange={(val) => {}}
+                            onSelect={(id) => handleInputChange('taxRegistrationType', id)}
+                            options={VAT_REGISTRATION_TYPES.map(type => ({ id: type.id, name: type.name }))}
+                            placeholder="Select Type"
+                            readOnly={viewOnly}
+                          />
+                        )}
+                      </>
                     );
                   }
                   return null;
                 })()}
+              </div>
+
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+                <Building size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                Banking Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  label="Bank Name"
+                  value={formData.bankName}
+                  onChange={(val) => handleInputChange('bankName', val)}
+                  placeholder="e.g., State Bank of India"
+                  readOnly={viewOnly}
+                />
+                <FormField
+                  label="Account Number"
+                  value={formData.accountNumber}
+                  onChange={(val) => handleInputChange('accountNumber', val)}
+                  placeholder="e.g., 1234567890"
+                  readOnly={viewOnly}
+                />
+                <FormField
+                  label="IFSC Code"
+                  value={formData.ifscCode}
+                  onChange={(val) => handleInputChange('ifscCode', val)}
+                  placeholder="e.g., SBIN0000001"
+                  readOnly={viewOnly}
+                />
               </div>
             </>
           )}
@@ -1084,7 +1153,7 @@ function CustomerFormPage() {
         )}
       </form>
 
-      {/* Modals for creating new masters (these are now bypassed for direct navigation for customer groups) */}
+      {/* Modals for creating new masters */}
       {showCreateCustomerGroupModal && (
         <CreateCustomerGroupModal
           isOpen={showCreateCustomerGroupModal}
@@ -1095,7 +1164,7 @@ function CustomerFormPage() {
             setShowCreateCustomerGroupModal(false);
             showNotification(`Customer Group "${newGroup.name}" created!`, 'success');
           }}
-          initialName={pendingNewGroupName} // Pass the typed value
+          initialName={pendingNewGroupName}
         />
       )}
 

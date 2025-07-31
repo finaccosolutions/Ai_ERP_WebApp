@@ -343,7 +343,7 @@ export interface Database {
             state?: string;
             country?: string;
             zipCode?: string;
-          } | null; // Explicitly define address structure
+          } | null;
           shipping_address: {
             street1?: string;
             street2?: string;
@@ -351,7 +351,7 @@ export interface Database {
             state?: string;
             country?: string;
             zipCode?: string;
-          } | null; // Explicitly define address structure
+          } | null;
           credit_limit: number | null;
           credit_days: number | null;
           price_list_id: string | null;
@@ -362,6 +362,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
           customer_group_id: string | null;
+          // NEW: Banking Details
+          bank_name: string | null;
+          account_number: string | null;
+          ifsc_code: string | null;
+          // NEW: Tax Registration Type
+          tax_registration_type: string | null;
         };
         Insert: {
           id?: string;
@@ -402,6 +408,12 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           customer_group_id?: string | null;
+          // NEW: Banking Details
+          bank_name?: string | null;
+          account_number?: string | null;
+          ifsc_code?: string | null;
+          // NEW: Tax Registration Type
+          tax_registration_type?: string | null;
         };
         Update: {
           id?: string;
@@ -442,8 +454,14 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           customer_group_id?: string | null;
+          // NEW: Banking Details
+          bank_name?: string | null;
+          account_number?: string | null;
+          ifsc_code?: string | null;
+          // NEW: Tax Registration Type
+          tax_registration_type?: string | null;
         };
-      };
+      }; 
      chart_of_accounts: {
         Row: {
           id: string;
