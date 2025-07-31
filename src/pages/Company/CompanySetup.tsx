@@ -98,7 +98,7 @@ interface Company {
     };
     vatDetails?: {
       registrationNumber?: string; // Keep this for nested access
-      registrationType?: string;
+      vatRegistrationType?: string;
       filingCycle?: string;
     };
   };
@@ -181,7 +181,7 @@ const getInitialFormData = (company?: Company) => {
     type: defaultCountry.taxConfig.type,
     registrationNumber: '',
     gstDetails: { pan: '', tan: '', registrationType: GST_REGISTRATION_TYPES[0].id, filingFrequency: FILING_FREQUENCIES[0].id, tdsApplicable: false, tcsApplicable: false, registrationNumber: '' },
-    vatDetails: { registrationNumber: '', registrationType: VAT_REGISTRATION_TYPES[0].id, filingCycle: FILING_CYCLES[0].id }
+    vatDetails: { registrationNumber: '', vatRegistrationType: VAT_REGISTRATION_TYPES[0].id, filingCycle: FILING_CYCLES[0].id }
   };
 
   // Define default settings values explicitly, matching your database schema defaults
@@ -251,7 +251,7 @@ const getInitialFormData = (company?: Company) => {
     tdsApplicable: safeCompany.taxConfig.gstDetails?.tdsApplicable ?? false,
     tcsApplicable: safeCompany.taxConfig.gstDetails?.tcsApplicable ?? false,
     trnVatNumber: safeCompany.taxConfig.type === 'VAT' ? (safeCompany.taxConfig.registrationNumber || safeCompany.taxConfig.vatDetails?.registrationNumber || '') : '',
-    vatRegistrationType: safeCompany.taxConfig.vatDetails?.registrationType || VAT_REGISTRATION_TYPES[0].id,
+    vatRegistrationType: safeCompany.taxConfig.vatDetails?.vatRegistrationType || VAT_REGISTRATION_TYPES[0].id,
     filingCycle: safeCompany.taxConfig.vatDetails?.filingCycle || FILING_CYCLES[0].id,
 
     booksStartDate: safeCompany.fiscalYearStart || fiscalYearStartDate.toISOString().split('T')[0],
@@ -273,7 +273,7 @@ const getInitialFormData = (company?: Company) => {
     enableBarcodeSupport: safeCompany.settings.barcodeSupport ?? defaultSettingsValues.barcodeSupport,
     allowAutoVoucherCreationAI: safeCompany.settings.autoVoucherCreationAI ?? defaultSettingsValues.allowAutoVoucherCreationAI,
 
-    // Explicitly include these fields with their default values if they are not directly from UI
+    // Explicitly include these fields with their current formData values or defaults
     companyType: safeCompany.settings.companyType || defaultSettingsValues.companyType,
     inventoryTracking: safeCompany.settings.inventoryTracking ?? defaultSettingsValues.inventoryTracking,
   };
@@ -519,6 +519,30 @@ const handleSubmit = async () => {
 
       console.log("handleSubmit: User authenticated. User ID:", user.id);
 
+      // --- START MODIFICATION FOR UNIQUE COMPANY NAME ---
+      if (!companyToEdit) { // Only check for new company creation
+        const { data: existingCompanies, error: checkError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('name', formData.companyName)
+          .eq('created_by', user.id);
+
+        if (checkError) {
+          console.error('handleSubmit: Error checking for existing company name:', checkError);
+          throw new Error('Failed to check for existing company name: ' + checkError.message);
+        }
+
+        if (existingCompanies && existingCompanies.length > 0) {
+          const errorMessage = 'You already have a company with this name. Please choose a different name.';
+          setErrors({ ...allValidationErrors, companyName: errorMessage, submit: errorMessage });
+          showNotification(errorMessage, 'error');
+          onSaveError?.(errorMessage);
+          setLoading(false);
+          return; // Prevent further execution
+        }
+      }
+      // --- END MODIFICATION FOR UNIQUE COMPANY NAME ---
+
       let logoUrl = formData.companyLogo;
       if (logoFile) {
         console.log("handleSubmit: Attempting to upload logo.");
@@ -568,7 +592,7 @@ const handleSubmit = async () => {
           } : null,
           vatDetails: formData.taxSystem === 'VAT' ? {
             registrationNumber: formData.trnVatNumber,
-            registrationType: formData.vatRegistrationType,
+            vatRegistrationType: formData.vatRegistrationType,
             filingCycle: formData.filingCycle,
           } : null,
         },
@@ -923,7 +947,7 @@ const handleSubmit = async () => {
                 </div>
 
                 <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-                  <MapPin size={20} className="mr-2 text-[#6AC8A3]" />
+                  <MapPin size={20} className="mr-3 text-[#6AC8A3]" />
                   Business Address
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -979,7 +1003,7 @@ const handleSubmit = async () => {
                       label="Address Line 1"
                       value={formData.addressLine1}
                       onChange={(val) => setFormData({ ...formData, addressLine1: val })}
-                      placeholder="Street address, P.O. Box"
+                      placeholder="Street address, P.O. box"
                       required
                       error={errors.addressLine1}
                       icon={<MapPin size={18} className="text-gray-400" />}
@@ -1429,7 +1453,7 @@ const handleSubmit = async () => {
                       onChange={(e) => setFormData({ ...formData, languagePreference: e.target.value })}
                       className={`
                         w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                        ${theme.inputBg} ${theme.textPrimary}
+                        ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
                         focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                       `}
                     >

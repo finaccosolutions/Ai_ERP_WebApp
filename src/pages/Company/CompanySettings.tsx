@@ -1,3 +1,4 @@
+// src/pages/Company/CompanySettings.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Settings,
@@ -29,6 +30,7 @@ import { supabase } from '../../lib/supabase';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 
 // --- IMPORT STATIC DATA FROM geoData.ts ---
 import {
@@ -53,6 +55,7 @@ import {
 function CompanySettings() {
   const { currentCompany, refreshCompanies } = useCompany();
   const { theme } = useTheme();
+  const { user } = useAuth(); // Use the useAuth hook
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -101,7 +104,7 @@ function CompanySettings() {
     filingFrequency: '',
     tdsApplicable: false,
     tcsApplicable: false,
-trnVatNumber: '',
+    trnVatNumber: '',
     vatRegistrationType: '',
     filingCycle: '',
 
@@ -169,7 +172,7 @@ trnVatNumber: '',
         tdsApplicable: currentCompany.taxConfig?.gstDetails?.tdsApplicable ?? false,
         tcsApplicable: currentCompany.taxConfig?.gstDetails?.tcsApplicable ?? false,
         trnVatNumber: currentCompany.taxConfig?.vatDetails?.registrationNumber || '',
-        vatRegistrationType: currentCompany.taxConfig?.vatDetails?.registrationType || VAT_REGISTRATION_TYPES[0].id,
+        vatRegistrationType: currentCompany.taxConfig?.vatDetails?.vatRegistrationType || VAT_REGISTRATION_TYPES[0].id,
         filingCycle: currentCompany.taxConfig?.vatDetails?.filingCycle || FILING_CYCLES[0].id,
 
         booksStartDate: currentCompany.fiscal_year_start || '', // Editable, defaults to fiscal year start
@@ -291,7 +294,7 @@ trnVatNumber: '',
   };
 
   const handleSave = async () => {
-    if (!currentCompany) return;
+    if (!currentCompany || !user) return; // Ensure currentCompany and user are available
 
     // Validate all tabs before final submission
     let allFormsValid = true;
@@ -315,13 +318,36 @@ trnVatNumber: '',
 
     setLoading(true);
     try {
+      // --- START MODIFICATION ---
+      // Check for duplicate company name for the current user, excluding the current company being edited
+      const { data: existingCompanies, error: checkError } = await supabase
+        .from('companies')
+        .select('id')
+        .ilike('name', formData.companyName) // Changed from .eq to .ilike for case-insensitivity
+        .eq('created_by', user.id)
+        .neq('id', currentCompany.id); // Exclude the current company being edited
+
+      if (checkError) {
+        console.error('Error checking for existing company name:', checkError);
+        setErrors({ submit: 'Failed to check for existing company name: ' + checkError.message });
+        setLoading(false);
+        return;
+      }
+
+      if (existingCompanies && existingCompanies.length > 0) {
+        const errorMessage = 'You already have another company with this name. Please choose a different name.';
+        setErrors({ companyName: errorMessage, submit: errorMessage });
+        setLoading(false);
+        return; // Prevent further execution
+      }
+      // --- END MODIFICATION ---
+
       // Logo upload logic (if a new file is selected, not just the URL)
       let logoUrl = formData.companyLogo; // Keep existing URL by default
       // This part would need a file input and state to handle new file uploads
       // For now, assuming logo is handled separately or not changed via settings form directly
       // if (newLogoFile) { ... upload new file ... }
 
-      // --- START FIX ---
       const selectedCountryDataForSubmission = getCountryByCode(formData.country);
       if (!selectedCountryDataForSubmission) {
         throw new Error('Invalid country selected. Timezone could not be determined.');
@@ -399,7 +425,6 @@ trnVatNumber: '',
           inventoryTracking: formData.inventoryTracking,
         },
       };
-      // --- END FIX ---
 
       const { error } = await supabase
         .from('companies')
@@ -541,7 +566,7 @@ trnVatNumber: '',
               </div>
 
               <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-                <MapPin size={20} className="mr-2 text-[#6AC8A3]" />
+                <MapPin size={20} className="mr-3 text-[#6AC8A3]" />
                 Business Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
