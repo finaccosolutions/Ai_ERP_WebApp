@@ -38,7 +38,41 @@ export interface Database {
             zipCode?: string;
           }; // Explicitly define address structure
           contact_info: any;
-          settings: any;
+          settings: {
+            displayName?: string;
+            legalName?: string;
+            industry?: string;
+            businessType?: string; // NEW: Added businessType
+            legalStructure?: string; // NEW: Added legalStructure
+            registrationNo?: string;
+            languagePreference?: string;
+            decimalPlaces?: number;
+            multiCurrencySupport?: boolean;
+            autoRounding?: boolean;
+            dateFormat?: string;
+            batchTracking?: boolean;
+            costCenterAllocation?: boolean;
+            multiUserAccess?: boolean;
+            aiSuggestions?: boolean;
+            enablePassword?: boolean;
+            password?: string;
+            splitByPeriod?: boolean;
+            barcodeSupport?: boolean;
+            autoVoucherCreationAI?: boolean;
+            companyType?: string; // Renamed to legalStructure
+            employeeCount?: string;
+            annualRevenue?: string;
+            inventoryTracking?: boolean;
+            companyUsername?: string;
+            bankDetails?: { // NEW: Added bankDetails
+              bankName?: string;
+              accountNumber?: string;
+              ifscCode?: string;
+              swiftCode?: string;
+              accountHolderName?: string; // NEW
+              currency?: string; // NEW
+            };
+          };
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -62,7 +96,41 @@ export interface Database {
             zipCode?: string;
           };
           contact_info?: any;
-          settings?: any;
+          settings?: {
+            displayName?: string;
+            legalName?: string;
+            industry?: string;
+            businessType?: string; // NEW: Added businessType
+            legalStructure?: string; // NEW: Added legalStructure
+            registrationNo?: string;
+            languagePreference?: string;
+            decimalPlaces?: number;
+            multiCurrencySupport?: boolean;
+            autoRounding?: boolean;
+            dateFormat?: string;
+            batchTracking?: boolean;
+            costCenterAllocation?: boolean;
+            multiUserAccess?: boolean;
+            aiSuggestions?: boolean;
+            enablePassword?: boolean;
+            password?: string;
+            splitByPeriod?: boolean;
+            barcodeSupport?: boolean;
+            autoVoucherCreationAI?: boolean;
+            companyType?: string; // Renamed to legalStructure
+            employeeCount?: string;
+            annualRevenue?: string;
+            inventoryTracking?: boolean;
+            companyUsername?: string;
+            bankDetails?: { // NEW: Added bankDetails
+              bankName?: string;
+              accountNumber?: string;
+              ifscCode?: string;
+              swiftCode?: string;
+              accountHolderName?: string; // NEW
+              currency?: string; // NEW
+            };
+          };
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -86,7 +154,41 @@ export interface Database {
             zipCode?: string;
           };
           contact_info?: any;
-          settings?: any;
+          settings?: {
+            displayName?: string;
+            legalName?: string;
+            industry?: string;
+            businessType?: string; // NEW: Added businessType
+            legalStructure?: string; // NEW: Added legalStructure
+            registrationNo?: string;
+            languagePreference?: string;
+            decimalPlaces?: number;
+            multiCurrencySupport?: boolean;
+            autoRounding?: boolean;
+            dateFormat?: string;
+            batchTracking?: boolean;
+            costCenterAllocation?: boolean;
+            multiUserAccess?: boolean;
+            aiSuggestions?: boolean;
+            enablePassword?: boolean;
+            password?: string;
+            splitByPeriod?: boolean;
+            barcodeSupport?: boolean;
+            autoVoucherCreationAI?: boolean;
+            companyType?: string; // Renamed to legalStructure
+            employeeCount?: string;
+            annualRevenue?: string;
+            inventoryTracking?: boolean;
+            companyUsername?: string;
+            bankDetails?: { // NEW: Added bankDetails
+              bankName?: string;
+              accountNumber?: string;
+              ifscCode?: string;
+              swiftCode?: string;
+              accountHolderName?: string; // NEW
+              currency?: string; // NEW
+            };
+          };
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;

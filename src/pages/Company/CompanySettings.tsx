@@ -23,6 +23,7 @@ import {
   ChevronDown,
   AlertTriangle,
   FileText,
+  CreditCard, // NEW: For Bank Details tab
 } from 'lucide-react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -30,14 +31,15 @@ import { supabase } from '../../lib/supabase';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
+import { useAuth } from '../../contexts/AuthContext'; // Use the useAuth hook
 
 // --- IMPORT STATIC DATA FROM geoData.ts ---
 import {
   COUNTRIES,
   CURRENCIES,
   LANGUAGES,
-  COMPANY_TYPES,
+  LEGAL_STRUCTURES, // Changed from COMPANY_TYPES
+  BUSINESS_TYPES, // NEW: Added BUSINESS_TYPES
   INDUSTRIES,
   EMPLOYEE_COUNTS,
   REVENUE_RANGES,
@@ -62,12 +64,13 @@ function CompanySettings() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPhoneCountryDropdown, setShowPhoneCountryDropdown] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('company_info');
+  const [activeTab, setActiveTab] = useState('basic_info'); // Changed from company_info
 
   const tabs = [
-    { id: 'company_info', label: 'Company Info', icon: Briefcase },
-    { id: 'contact', label: 'Contact', icon: User },
-    { id: 'tax', label: 'Tax', icon: ReceiptText },
+    { id: 'basic_info', label: 'Basic Info', icon: Briefcase }, // Changed from company_info
+    { id: 'contact_address', label: 'Contact & Address', icon: User }, // Changed from contact
+    { id: 'bank_details', label: 'Bank Details', icon: CreditCard }, // NEW Tab
+    { id: 'tax', label: 'Taxation & Compliance', icon: ReceiptText },
     { id: 'books', label: 'Books', icon: BookMarked },
     { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
   ];
@@ -76,7 +79,8 @@ function CompanySettings() {
     companyName: '',
     legalName: '',
     industry: '',
-    businessType: '',
+    businessType: '', // NEW
+    legalStructure: '', // NEW
     registrationNo: '',
     country: '',
     state: '',
@@ -127,10 +131,15 @@ function CompanySettings() {
     enableBarcodeSupport: false,
     allowAutoVoucherCreationAI: true,
 
-    companyType: '',
     employeeCount: '',
     annualRevenue: '',
-    inventoryTracking: true
+    inventoryTracking: true,
+    bankDetails: { // NEW
+      bankName: '',
+      accountNumber: '',
+      ifscCode: '',
+      swiftCode: '',
+    },
   });
 
   useEffect(() => {
@@ -140,7 +149,8 @@ function CompanySettings() {
         companyName: currentCompany.name || '',
         legalName: currentCompany.settings?.legalName || '',
         industry: currentCompany.settings?.industry || INDUSTRIES[0].id,
-        businessType: currentCompany.settings?.businessType || COMPANY_TYPES[0].id,
+        businessType: currentCompany.settings?.businessType || BUSINESS_TYPES[0].id, // NEW
+        legalStructure: currentCompany.settings?.legalStructure || LEGAL_STRUCTURES[0].id, // NEW
         registrationNo: currentCompany.settings?.registrationNo || '',
         country: currentCompany.country || COUNTRIES[0].code,
         state: currentCompany.address?.state || '',
@@ -152,28 +162,28 @@ function CompanySettings() {
         companyLogo: currentCompany.logo || null, // This will be the URL
         timezone: currentCompany.timezone || COUNTRIES[0].timezone,
 
-        contactPersonName: currentCompany.contactInfo?.contactPersonName || '',
-        designation: currentCompany.contactInfo?.designation || '',
-        email: currentCompany.contactInfo?.email || '',
-        mobile: currentCompany.contactInfo?.mobile || '',
-        phoneCountry: currentCompany.contactInfo?.phoneCountry || currentCompany.country || COUNTRIES[0].code,
-        alternateContactNumber: currentCompany.contactInfo?.alternatePhone || '',
+        contactPersonName: currentCompany.contact_info?.contactPersonName || '',
+        designation: currentCompany.contact_info?.designation || '',
+        email: currentCompany.contact_info?.email || '',
+        mobile: currentCompany.contact_info?.mobile || '',
+        phoneCountry: currentCompany.contact_info?.phoneCountry || currentCompany.country || COUNTRIES[0].code,
+        alternateContactNumber: currentCompany.contact_info?.alternatePhone || '',
 
-        taxSystem: currentCompany.taxConfig?.type || COUNTRIES[0].taxConfig.type,
+        taxSystem: currentCompany.tax_config?.type || COUNTRIES[0].tax_config.type,
         taxConfig: {
-          enabled: currentCompany.taxConfig?.enabled ?? true,
-          rates: currentCompany.taxConfig?.rates || [],
+          enabled: currentCompany.tax_config?.enabled ?? true,
+          rates: currentCompany.tax_config?.rates || [],
         },
-        gstin: currentCompany.taxConfig?.gstDetails?.registrationNumber || '',
-        pan: currentCompany.taxConfig?.gstDetails?.pan || '',
-        tan: currentCompany.taxConfig?.gstDetails?.tan || '',
-        gstRegistrationType: currentCompany.taxConfig?.gstDetails?.registrationType || GST_REGISTRATION_TYPES[0].id,
-        filingFrequency: currentCompany.taxConfig?.gstDetails?.filingFrequency || FILING_FREQUENCIES[0].id,
-        tdsApplicable: currentCompany.taxConfig?.gstDetails?.tdsApplicable ?? false,
-        tcsApplicable: currentCompany.taxConfig?.gstDetails?.tcsApplicable ?? false,
-        trnVatNumber: currentCompany.taxConfig?.vatDetails?.registrationNumber || '',
-        vatRegistrationType: currentCompany.taxConfig?.vatDetails?.vatRegistrationType || VAT_REGISTRATION_TYPES[0].id,
-        filingCycle: currentCompany.taxConfig?.vatDetails?.filingCycle || FILING_CYCLES[0].id,
+        gstin: currentCompany.tax_config?.gstDetails?.registrationNumber || '',
+        pan: currentCompany.tax_config?.gstDetails?.pan || '',
+        tan: currentCompany.tax_config?.gstDetails?.tan || '',
+        gstRegistrationType: currentCompany.tax_config?.gstDetails?.registrationType || GST_REGISTRATION_TYPES[0].id,
+        filingFrequency: currentCompany.tax_config?.gstDetails?.filingFrequency || FILING_FREQUENCIES[0].id,
+        tdsApplicable: currentCompany.tax_config?.gstDetails?.tdsApplicable ?? false,
+        tcsApplicable: currentCompany.tax_config?.gstDetails?.tcsApplicable ?? false,
+        trnVatNumber: currentCompany.tax_config?.vatDetails?.registrationNumber || '',
+        vatRegistrationType: currentCompany.tax_config?.vatDetails?.vatRegistrationType || VAT_REGISTRATION_TYPES[0].id,
+        filingCycle: currentCompany.tax_config?.vatDetails?.filingCycle || FILING_CYCLES[0].id,
 
         booksStartDate: currentCompany.fiscal_year_start || '', // Editable, defaults to fiscal year start
         fiscalYearStartDate: currentCompany.fiscal_year_start || '',
@@ -194,10 +204,10 @@ function CompanySettings() {
         enableBarcodeSupport: currentCompany.settings?.barcodeSupport ?? false,
         allowAutoVoucherCreationAI: currentCompany.settings?.autoVoucherCreationAI ?? true,
 
-        companyType: currentCompany.settings?.companyType || COMPANY_TYPES[0].id,
         employeeCount: currentCompany.settings?.employeeCount || EMPLOYEE_COUNTS[0].id,
         annualRevenue: currentCompany.settings?.annualRevenue || REVENUE_RANGES[0].id,
-        inventoryTracking: currentCompany.settings?.inventoryTracking ?? true
+        inventoryTracking: currentCompany.settings?.inventoryTracking ?? true,
+        bankDetails: currentCompany.settings?.bankDetails || { bankName: '', accountNumber: '', ifscCode: '', swiftCode: '' }, // NEW
       });
     }
   }, [currentCompany]);
@@ -232,36 +242,47 @@ function CompanySettings() {
   }, [formData.country, formData.fiscalYearStartDate]);
 
 
-  const validateForm = (): boolean => {
+  const validateForm = (currentTabId: string): Record<string, string> => {
     let newErrors: Record<string, string> = {};
     let isValid = true;
 
-    // Company Info Tab Validation
-    if (activeTab === 'company_info') {
+    // Basic Info Tab Validation
+    if (currentTabId === 'basic_info') { // Changed from company_info
       if (!formData.companyName.trim()) newErrors.companyName = 'Company Name is required';
       if (!formData.industry) newErrors.industry = 'Industry is required';
-      if (!formData.businessType) newErrors.businessType = 'Business Type is required';
-      if (!formData.country) newErrors.country = 'Country is required';
-      const selectedCountryData = getCountryByCode(formData.country);
-      if (selectedCountryData && selectedCountryData.states.length > 0 && !formData.state.trim()) {
-        newErrors.state = 'State/Province is required';
-      }
-      if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Address Line 1 is required';
+      if (!formData.businessType) newErrors.businessType = 'Business Type is required'; // NEW
+      if (!formData.legalStructure) newErrors.legalStructure = 'Legal Structure is required'; // NEW
+      if (!formData.registrationNo.trim()) newErrors.registrationNo = 'Registration No. is required'; // NEW: Made required
     }
 
-    // Contact Tab Validation
-    if (activeTab === 'contact') {
-      if (!formData.contactPersonName.trim()) newErrors.contactPersonName = 'Contact Person Name is required';
+    // Contact & Address Tab Validation
+    if (currentTabId === 'contact_address') { // Changed from contact
+      // Contact Person Name is no longer compulsory
       if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
         newErrors.email = 'Invalid email address';
+      }
+      if (!formData.country) newErrors.country = 'Country is required'; // Moved from company_info
+      const selectedCountryData = getCountryByCode(formData.country);
+      if (selectedCountryData && selectedCountryData.states.length > 0 && !formData.state.trim()) {
+        newErrors.state = 'State/Province is required'; // Moved from company_info
+      }
+      if (!formData.addressLine1.trim()) newErrors.addressLine1 = 'Address Line 1 is required'; // Moved from company_info
+    }
+
+    // Bank Details Tab Validation (NEW)
+    if (currentTabId === 'bank_details') {
+      if (formData.bankDetails.bankName || formData.bankDetails.accountNumber || formData.bankDetails.ifscCode || formData.bankDetails.swiftCode) {
+        if (!formData.bankDetails.bankName.trim()) newErrors.bankName = 'Bank Name is required if bank details are provided';
+        if (!formData.bankDetails.accountNumber.trim()) newErrors.accountNumber = 'Account Number is required if bank details are provided';
+        if (!formData.bankDetails.ifscCode.trim()) newErrors.ifscCode = 'IFSC Code is required if bank details are provided';
       }
     }
 
     // Tax Tab Validation
-    if (activeTab === 'tax' && formData.taxConfig.enabled) {
+    if (currentTabId === 'tax' && formData.taxConfig.enabled) {
       if (formData.taxSystem === 'GST') {
         if (!formData.gstin.trim()) newErrors.gstin = 'GSTIN is required';
-        if (!formData.pan.trim()) newErrors.pan = 'PAN is required';
+        // PAN is now optional
         if (!formData.gstRegistrationType) newErrors.gstRegistrationType = 'GST Registration Type is required';
         if (!formData.filingFrequency) newErrors.filingFrequency = 'Filing Frequency is required';
       } else if (formData.taxSystem === 'VAT') {
@@ -272,7 +293,7 @@ function CompanySettings() {
     }
 
     // Books Tab Validation
-    if (activeTab === 'books') {
+    if (currentTabId === 'books') {
       if (!formData.booksStartDate) newErrors.booksStartDate = 'Books Start Date is required';
       if (!formData.fiscalYearStartDate) newErrors.fiscalYearStartDate = 'Financial Year Start Date is required';
       if (!formData.defaultCurrency) newErrors.defaultCurrency = 'Default Currency is required';
@@ -280,12 +301,14 @@ function CompanySettings() {
     }
 
     // Preferences Tab Validation
-    if (activeTab === 'preferences') {
+    if (currentTabId === 'preferences') {
       if (!formData.languagePreference) newErrors.languagePreference = 'Language Preference is required';
       if (!formData.dateFormat) newErrors.dateFormat = 'Date Format is required';
       if (formData.enableCompanyPassword && !formData.companyPassword.trim()) {
         newErrors.companyPassword = 'Company Password is required if enabled';
       }
+      if (!formData.employeeCount) newErrors.employeeCount = 'Employee Count is required'; // NEW
+      if (!formData.annualRevenue) newErrors.annualRevenue = 'Annual Revenue is required'; // NEW
     }
 
     setErrors(newErrors);
@@ -303,7 +326,7 @@ function CompanySettings() {
     const originalActiveTab = activeTab;
     for (const tab of tabs) {
       setActiveTab(tab.id);
-      const isTabValid = validateForm();
+      const isTabValid = validateForm(tab.id);
       if (!isTabValid) {
         allFormsValid = false;
         Object.assign(currentErrors, errors); // Merge errors from state
@@ -379,7 +402,7 @@ function CompanySettings() {
           } : null,
           vatDetails: formData.taxSystem === 'VAT' ? {
             registrationNumber: formData.trnVatNumber,
-            registrationType: formData.vatRegistrationType,
+            vatRegistrationType: formData.vatRegistrationType,
             filingCycle: formData.filingCycle,
           } : null,
         },
@@ -403,7 +426,8 @@ function CompanySettings() {
           displayName: formData.legalName || formData.companyName,
           legalName: formData.legalName,
           industry: formData.industry,
-          businessType: formData.businessType,
+          businessType: formData.businessType, // NEW
+          legalStructure: formData.legalStructure, // NEW
           registrationNo: formData.registrationNo,
           languagePreference: formData.languagePreference,
           decimalPlaces: formData.decimalPlaces,
@@ -419,10 +443,10 @@ function CompanySettings() {
           splitByPeriod: formData.allowSplitByPeriod,
           barcodeSupport: formData.enableBarcodeSupport,
           autoVoucherCreationAI: formData.allowAutoVoucherCreationAI,
-          companyType: formData.companyType,
           employeeCount: formData.employeeCount,
           annualRevenue: formData.annualRevenue,
           inventoryTracking: formData.inventoryTracking,
+          bankDetails: formData.bankDetails, // NEW
         },
       };
 
@@ -495,8 +519,8 @@ function CompanySettings() {
       <Card className="p-6 space-y-8">
         {/* This div wraps all the content inside the Card to ensure it's a single child */}
         <div>
-          {/* Company Info Tab */}
-          {activeTab === 'company_info' && (
+          {/* Basic Info Tab */}
+          {activeTab === 'basic_info' && ( // Changed from company_info
             <div>
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <Briefcase size={24} className="mr-3 text-[#6AC8A3]" />
@@ -551,118 +575,55 @@ function CompanySettings() {
                       focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
                     `}
                   >
-                    {COMPANY_TYPES.map(item => (
+                    {BUSINESS_TYPES.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
                   {errors.businessType && <p className="mt-2 text-sm text-red-500">{errors.businessType}</p>}
                 </div>
+                <div className="space-y-2">
+                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                    Legal Structure <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.legalStructure}
+                    onChange={(e) => setFormData({ ...formData, legalStructure: e.target.value })}
+                    className={`
+                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                      ${theme.inputBg} ${theme.textPrimary}
+                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    `}
+                  >
+                    {LEGAL_STRUCTURES.map(item => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                  {errors.legalStructure && <p className="mt-2 text-sm text-red-500">{errors.legalStructure}</p>}
+                </div>
                 <FormField
-                  label="Registration No. (Optional)"
+                  label="Registration No."
                   value={formData.registrationNo}
                   onChange={(val) => setFormData({ ...formData, registrationNo: val })}
                   icon={<FileText size={18} className="text-gray-400" />}
-                />
-              </div>
-
-              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
-                <MapPin size={20} className="mr-3 text-[#6AC8A3]" />
-                Business Address
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Country <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.flag} {country.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.country && <p className="mt-2 text-sm text-red-500">{errors.country}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    State/Province <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                    disabled={availableStates.length === 0}
-                  >
-                    <option value="">Select State/Province</option>
-                    {availableStates.map(state => (
-                      <option key={state} value={state}>
-                        {state}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.state && <p className="mt-2 text-sm text-red-500">{errors.state}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <FormField
-                    label="Address Line 1"
-                    value={formData.addressLine1}
-                    onChange={(val) => setFormData({ ...formData, addressLine1: val })}
-                    placeholder="Street address, P.O. Box"
-                    required
-                    error={errors.addressLine1}
-                    icon={<MapPin size={18} className="text-gray-400" />}
-                  />
-                </div>
-                <FormField
-                  label="Address Line 2 (Optional)"
-                  value={formData.addressLine2}
-                  onChange={(val) => setFormData({ ...formData, addressLine2: val })}
-                  placeholder="Apartment, suite, unit, building, floor, etc."
-                  icon={<MapPin size={18} className="text-gray-400" />}
-                />
-                <FormField
-                  label="City (Optional)"
-                  value={formData.city}
-                  onChange={(val) => setFormData({ ...formData, city: val })}
-                  placeholder="City"
-                  error={errors.city}
-                />
-                <FormField
-                  label="PIN/ZIP Code (Optional)"
-                  value={formData.zipCode}
-                  onChange={(val) => setFormData({ ...formData, zipCode: val })}
-                  placeholder="ZIP or Postal Code"
-                  error={errors.zipCode}
+                  required
+                  error={errors.registrationNo}
                 />
               </div>
             </div>
           )}
 
-          {/* Contact Tab */}
-          {activeTab === 'contact' && (
+          {/* Contact & Address Tab */}
+          {activeTab === 'contact_address' && ( // Changed from contact
             <div>
               <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
                 <User size={24} className="mr-3 text-[#6AC8A3]" />
-                Contact Person Details
+                Contact & Address Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   label="Contact Person Name"
                   value={formData.contactPersonName}
                   onChange={(val) => setFormData({ ...formData, contactPersonName: val })}
-                  required
                   error={errors.contactPersonName}
                 />
                 <FormField
@@ -753,6 +714,128 @@ function CompanySettings() {
                   icon={<Phone size={18} className="text-gray-400" />}
                 />
               </div>
+
+              <h3 className={`text-lg font-semibold ${theme.textPrimary} mt-6 mb-4 flex items-center`}>
+                <MapPin size={20} className="mr-3 text-[#6AC8A3]" />
+                Business Address
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                    Country <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    className={`
+                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                      ${theme.inputBg} ${theme.textPrimary}
+                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    `}
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.flag} {country.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.country && <p className="mt-2 text-sm text-red-500">{errors.country}</p>}
+                </div>
+                <div className="space-y-2">
+                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
+                    State/Province <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    className={`
+                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
+                      ${theme.inputBg} ${theme.textPrimary}
+                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
+                    `}
+                    disabled={availableStates.length === 0}
+                  >
+                    <option value="">Select State/Province</option>
+                    {availableStates.map(state => (
+                      <option key={state} value={state}>
+                        {state}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.state && <p className="mt-2 text-sm text-red-500">{errors.state}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <FormField
+                    label="Address Line 1"
+                    value={formData.addressLine1}
+                    onChange={(val) => setFormData({ ...formData, addressLine1: val })}
+                    placeholder="Street address, P.O. box"
+                    required
+                    error={errors.addressLine1}
+                    icon={<MapPin size={18} className="text-gray-400" />}
+                  />
+                </div>
+                <FormField
+                  label="Address Line 2 (Optional)"
+                  value={formData.addressLine2}
+                  onChange={(val) => setFormData({ ...formData, addressLine2: val })}
+                  placeholder="Apartment, suite, unit, building, floor, etc."
+                  icon={<MapPin size={18} className="text-gray-400" />}
+                />
+                <FormField
+                  label="City (Optional)"
+                  value={formData.city}
+                  onChange={(val) => setFormData({ ...formData, city: val })}
+                  placeholder="City"
+                  error={errors.city}
+                />
+                <FormField
+                  label="PIN/ZIP Code (Optional)"
+                  value={formData.zipCode}
+                  onChange={(val) => setFormData({ ...formData, zipCode: val })}
+                  placeholder="ZIP or Postal Code"
+                  error={errors.zipCode}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Bank Details Tab (NEW) */}
+          {activeTab === 'bank_details' && (
+            <div>
+              <h2 className={`text-2xl font-bold ${theme.textPrimary} mb-6 flex items-center`}>
+                <CreditCard size={24} className="mr-3 text-[#6AC8A3]" />
+                Bank Details
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  label="Bank Name"
+                  value={formData.bankDetails.bankName}
+                  onChange={(val) => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, bankName: val } })}
+                  placeholder="e.g., State Bank of India"
+                  error={errors.bankName}
+                />
+                <FormField
+                  label="Account Number"
+                  value={formData.bankDetails.accountNumber}
+                  onChange={(val) => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, accountNumber: val } })}
+                  placeholder="e.g., 1234567890"
+                  error={errors.accountNumber}
+                />
+                <FormField
+                  label="IFSC Code"
+                  value={formData.bankDetails.ifscCode}
+                  onChange={(val) => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, ifscCode: val } })}
+                  placeholder="e.g., SBIN0000001"
+                  error={errors.ifscCode}
+                />
+                <FormField
+                  label="SWIFT Code (Optional)"
+                  value={formData.bankDetails.swiftCode}
+                  onChange={(val) => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, swiftCode: val } })}
+                  placeholder="e.g., SBININBBXXX"
+                />
+              </div>
             </div>
           )}
 
@@ -793,7 +876,7 @@ function CompanySettings() {
                         value={formData.pan}
                         onChange={(val) => setFormData({ ...formData, pan: val })}
                         placeholder="AAAAA0000A"
-                        required
+                        // PAN is now optional
                         error={errors.pan}
                       />
                       <FormField
@@ -992,30 +1075,6 @@ function CompanySettings() {
                   </select>
                   {errors.decimalPlaces && <p className="mt-2 text-sm text-red-500">{errors.decimalPlaces}</p>}
                 </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="multiCurrencySupport"
-                    checked={formData.multiCurrencySupport}
-                    onChange={(e) => setFormData({ ...formData, multiCurrencySupport: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="multiCurrencySupport" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Multi-Currency Support
-                  </label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="autoRounding"
-                    checked={formData.autoRounding}
-                    onChange={(e) => setFormData({ ...formData, autoRounding: e.target.checked })}
-                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
-                  />
-                  <label htmlFor="autoRounding" className={`text-sm font-medium ${theme.textPrimary}`}>
-                    Enable Auto Rounding
-                  </label>
-                </div>
               </div>
             </div>
           )}
@@ -1065,6 +1124,30 @@ function CompanySettings() {
                     ))}
                   </select>
                   {errors.dateFormat && <p className="mt-2 text-sm text-red-500">{errors.dateFormat}</p>}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="multiCurrencySupport"
+                    checked={formData.multiCurrencySupport}
+                    onChange={(e) => setFormData({ ...formData, multiCurrencySupport: e.target.checked })}
+                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  />
+                  <label htmlFor="multiCurrencySupport" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable Multi-Currency Support
+                  </label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="autoRounding"
+                    checked={formData.autoRounding}
+                    onChange={(e) => setFormData({ ...formData, autoRounding: e.target.checked })}
+                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  />
+                  <label htmlFor="autoRounding" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable Auto Rounding
+                  </label>
                 </div>
                 <div className="flex items-center space-x-3">
                   <input
@@ -1185,25 +1268,6 @@ function CompanySettings() {
                 </div>
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${theme.textPrimary}`}>
-                    Company Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.companyType}
-                    onChange={(e) => setFormData({ ...formData, companyType: e.target.value })}
-                    className={`
-                      w-full px-3 py-2 border ${theme.inputBorder} rounded-lg
-                      ${theme.inputBg} ${theme.textPrimary}
-                      focus:ring-2 focus:ring-[#6AC8A3] focus:border-transparent
-                    `}
-                  >
-                    {COMPANY_TYPES.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  {errors.companyType && <p className="mt-2 text-sm text-red-500">{errors.companyType}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>
                     Employee Count <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -1239,6 +1303,18 @@ function CompanySettings() {
                     ))}
                   </select>
                   {errors.annualRevenue && <p className="mt-2 text-sm text-red-500">{errors.annualRevenue}</p>}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="inventoryTracking"
+                    checked={formData.inventoryTracking}
+                    onChange={(e) => setFormData({ ...formData, inventoryTracking: e.target.checked })}
+                    className="w-4 h-4 text-[#6AC8A3] border-gray-300 rounded focus:ring-[#6AC8A3]"
+                  />
+                  <label htmlFor="inventoryTracking" className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Enable Inventory Tracking
+                  </label>
                 </div>
               </div>
             </div>

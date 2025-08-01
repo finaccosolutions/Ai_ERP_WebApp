@@ -130,7 +130,6 @@ export const COUNTRIES = [
     },
     complianceModules: {
       salesTaxReportsEnabled: true,
-      federalTaxFormsEnabled: true,
     },
     chartOfAccountsTemplate: {
       taxAccounts: [
@@ -167,7 +166,7 @@ export const COUNTRIES = [
       { code: 'ND', name: 'North Dakota' }, { code: 'OH', name: 'Ohio' }, { code: 'OK', name: 'Oklahoma' },
       { code: 'OR', name: 'Oregon' }, { code: 'PA', name: 'Pennsylvania' }, { code: 'RI', name: 'Rhode Island' },
       { code: 'SC', name: 'South Carolina' }, { code: 'SD', name: 'South Dakota' }, { code: 'TN', name: 'Tennessee' },
-      { code: 'TX', name: 'Texas' }, { code: 'UT', name: 'Utah' }, { code: 'VT', name: 'Vermont' },
+      { code: 'TX', 'name': 'Texas' }, { code: 'UT', name: 'Utah' }, { code: 'VT', name: 'Vermont' },
       { code: 'VA', name: 'Virginia' }, { code: 'WA', name: 'Washington' }, { code: 'WV', name: 'West Virginia' },
       { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' },
     ],
@@ -343,13 +342,6 @@ export const COUNTRIES = [
         { account_code: '21401', account_name: 'VAT Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
       ],
     },
-    customerTypes: [
-      { code: 'individual', name: 'Individual' },
-      { code: 'company', name: 'Company' },
-      { code: 'reseller', name: 'Reseller' },
-      { code: 'government', name: 'Government' },
-      { code: 'non_profit', name: 'Non-Profit' },
-    ],
     businessTypes: [
       { id: 'sole_proprietorship', name: 'Einzelunternehmen' }, // Sole Proprietorship
       { id: 'gbr', name: 'GbR (Gesellschaft bürgerlichen Rechts)' }, // Partnership under civil law
@@ -541,13 +533,6 @@ export const COUNTRIES = [
         { account_code: '21401', account_name: 'VAT Payable', account_type: 'liability', account_group: 'Current Liabilities', balance_type: 'credit' },
       ],
     },
-    customerTypes: [
-      { code: 'individual', name: 'Individual' },
-      { code: 'company', name: 'Company' },
-      { code: 'reseller', name: 'Reseller' },
-      { code: 'government', name: 'Government' },
-      { code: 'non_profit', name: 'Non-Profit' },
-    ],
     businessTypes: [
       { id: 'sole_establishment', name: 'Sole Establishment' },
       { id: 'civil_company', name: 'Civil Company' },
@@ -594,6 +579,8 @@ export const getPhoneCountryCodes = () => {
     id: country.dialCode,
     name: `${country.flag} ${country.dialCode} ${country.name}`, // Display flag + dialCode + country name
     dialCode: country.dialCode, // Keep dialCode for selection
+    code: country.code, // Add country code for matching
+    flag: country.flag, // Add flag for display
   }));
 };
 
@@ -612,7 +599,7 @@ export const CURRENCIES = [
   { id: 'BHD', name: 'Bahraini Dinar', symbol: '.د.ب' },
   { id: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.' },
   { id: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { id: 'SGD', name: 'Singapore Dollar', symbol: '$' },
+  { id: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
 ];
 
 export const LANGUAGES = [
@@ -624,32 +611,123 @@ export const LANGUAGES = [
   { id: 'ar', name: 'Arabic' },
 ];
 
-export const COMPANY_TYPES = [
+// Renamed COMPANY_TYPES to LEGAL_STRUCTURES
+export const LEGAL_STRUCTURES = [
+  { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
+  { id: 'partnership', name: 'Partnership' },
   { id: 'private_limited', name: 'Private Limited Company' },
   { id: 'public_limited', name: 'Public Limited Company' },
-  { id: 'partnership', name: 'Partnership' },
-  { id: 'sole_proprietorship', name: 'Sole Proprietorship' },
   { id: 'llp', name: 'Limited Liability Partnership (LLP)' },
   { id: 'opc', name: 'One Person Company (OPC)' },
   { id: 'non_profit', name: 'Non-Profit Organization' },
   { id: 'other', name: 'Other' }
 ];
 
+// NEW: Business Types
+export const BUSINESS_TYPES = [
+  { id: 'manufacturer', name: 'Manufacturer' },
+  { id: 'trader_wholesaler', name: 'Trader / Wholesaler' },
+  { id: 'retailer', name: 'Retailer' },
+  { id: 'service_provider', name: 'Service Provider' },
+  { id: 'importer', name: 'Importer' },
+  { id: 'exporter', name: 'Exporter' },
+  { id: 'distributor', name: 'Distributor' },
+  { id: 'franchise', name: 'Franchise' },
+  { id: 'contractor', name: 'Contractor' },
+  { id: 'consultant', name: 'Consultant' },
+  { id: 'government_entity', name: 'Government Entity' },
+  { id: 'educational_institution', name: 'Educational Institution' },
+  { id: 'ngo_non_profit', name: 'NGO / Non-Profit' },
+  { id: 'freelancer_sole_proprietor', name: 'Freelancer / Sole Proprietor' },
+  { id: 'e_commerce', name: 'E-commerce' },
+  { id: 'real_estate_developer', name: 'Real Estate Developer' },
+  { id: 'financial_institution', name: 'Financial Institution' },
+  { id: 'healthcare_provider', name: 'Healthcare Provider' },
+  { id: 'logistic_transporter', name: 'Logistic / Transporter' },
+  { id: 'other_specify', name: 'Others (Specify)' },
+];
+
 export const INDUSTRIES = [
-  { id: 'technology', name: 'Technology' },
-  { id: 'manufacturing', name: 'Manufacturing' },
-  { id: 'retail', name: 'Retail' },
-  { id: 'healthcare', name: 'Healthcare' },
-  { id: 'finance', name: 'Finance' },
-  { id: 'education', name: 'Education' },
-  { id: 'real_estate', name: 'Real Estate' },
-  { id: 'construction', name: 'Construction' },
-  { id: 'transportation', name: 'Transportation' },
-  { id: 'food_beverage', name: 'Food & Beverage' },
-  { id: 'professional_services', name: 'Professional Services' },
-  { id: 'media_entertainment', name: 'Media & Entertainment' },
-  { id: 'agriculture', name: 'Agriculture' },
-  { id: 'other', name: 'Other' }
+  { id: 'manufacturing_production', name: 'Manufacturing & Production', subCategories: [
+    { id: 'automotive', name: 'Automotive' },
+    { id: 'chemical', name: 'Chemical' },
+    { id: 'electronics', name: 'Electronics' },
+    { id: 'food_beverage', name: 'Food & Beverage' },
+    { id: 'machinery', name: 'Machinery' },
+    { id: 'metal_steel', name: 'Metal & Steel' },
+    { id: 'packaging', name: 'Packaging' },
+    { id: 'pharmaceuticals', name: 'Pharmaceuticals' },
+    { id: 'plastic_rubber', name: 'Plastic & Rubber' },
+    { id: 'textiles_apparel', name: 'Textiles & Apparel' },
+  ]},
+  { id: 'services', name: 'Services', subCategories: [
+    { id: 'information_technology', name: 'Information Technology (IT)' },
+    { id: 'software_saas', name: 'Software & SaaS' },
+    { id: 'legal_services', name: 'Legal Services' },
+    { id: 'accounting_finance', name: 'Accounting & Finance' },
+    { id: 'marketing_advertising', name: 'Marketing & Advertising' },
+    { id: 'consulting', name: 'Consulting' },
+    { id: 'education_training', name: 'Education & Training' },
+    { id: 'travel_tourism', name: 'Travel & Tourism' },
+    { id: 'event_management', name: 'Event Management' },
+    { id: 'hr_staffing', name: 'HR & Staffing' },
+  ]},
+  { id: 'retail_wholesale', name: 'Retail & Wholesale', subCategories: [
+    { id: 'grocery_fmcg', name: 'Grocery / FMCG' },
+    { id: 'apparel_fashion', name: 'Apparel / Fashion' },
+    { id: 'electronics_appliances', name: 'Electronics & Appliances' },
+    { id: 'furniture', name: 'Furniture' },
+    { id: 'jewelry', name: 'Jewelry' },
+    { id: 'books_stationery', name: 'Books & Stationery' },
+    { id: 'beauty_personal_care', name: 'Beauty & Personal Care' },
+  ]},
+  { id: 'construction_infrastructure', name: 'Construction & Infrastructure', subCategories: [
+    { id: 'civil_engineering', name: 'Civil Engineering' },
+    { id: 'real_estate_development', name: 'Real Estate Development' },
+    { id: 'architecture_design', name: 'Architecture & Design' },
+    { id: 'electrical_plumbing', name: 'Electrical & Plumbing' },
+  ]},
+  { id: 'healthcare', name: 'Healthcare', subCategories: [
+    { id: 'hospitals_clinics', name: 'Hospitals & Clinics' },
+    { id: 'pharmaceuticals', name: 'Pharmaceuticals' },
+    { id: 'diagnostic_labs', name: 'Diagnostic Labs' },
+    { id: 'medical_devices', name: 'Medical Devices' },
+  ]},
+  { id: 'finance_insurance', name: 'Finance & Insurance', subCategories: [
+    { id: 'banking', name: 'Banking' },
+    { id: 'insurance', name: 'Insurance' },
+    { id: 'investment_wealth_management', name: 'Investment / Wealth Management' },
+    { id: 'nbfcs_fintech', name: 'NBFCs / FinTech' },
+  ]},
+  { id: 'transportation_logistics', name: 'Transportation & Logistics', subCategories: [
+    { id: 'courier_delivery', name: 'Courier & Delivery' },
+    { id: 'freight_forwarding', name: 'Freight Forwarding' },
+    { id: 'warehousing', name: 'Warehousing' },
+    { id: 'supply_chain', name: 'Supply Chain' },
+  ]},
+  { id: 'agriculture_natural_resources', name: 'Agriculture & Natural Resources', subCategories: [
+    { id: 'farming_agribusiness', name: 'Farming / Agribusiness' },
+    { id: 'mining_quarrying', name: 'Mining & Quarrying' },
+    { id: 'forestry', name: 'Forestry' },
+    { id: 'fisheries', name: 'Fisheries' },
+  ]},
+  { id: 'utilities_energy', name: 'Utilities & Energy', subCategories: [
+    { id: 'electricity', name: 'Electricity' },
+    { id: 'oil_gas', name: 'Oil & Gas' },
+    { id: 'renewable_energy', name: 'Renewable Energy' },
+    { id: 'water_supply', name: 'Water Supply' },
+  ]},
+  { id: 'media_entertainment', name: 'Media & Entertainment', subCategories: [
+    { id: 'tv_radio', name: 'TV & Radio' },
+    { id: 'film_production', name: 'Film Production' },
+    { id: 'digital_media', name: 'Digital Media' },
+    { id: 'publishing', name: 'Publishing' },
+  ]},
+  { id: 'public_sector_government', name: 'Public Sector / Government', subCategories: [
+    { id: 'local_government', name: 'Local Government' },
+    { id: 'central_federal_government', name: 'Central / Federal Government' },
+    { id: 'public_sector_undertaking', name: 'Public Sector Undertaking' },
+  ]},
 ];
 
 export const EMPLOYEE_COUNTS = [
