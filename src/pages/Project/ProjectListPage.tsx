@@ -65,7 +65,7 @@ function ProjectListPage() {
     overdue: searchParams.get('overdue') || 'false',
     upcoming_due: searchParams.get('upcoming_due') || 'false',
   });
-  const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
+  const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
 
   useEffect(() => {
     // NEW: Update filterCriteria from URL search params on component mount/update
@@ -212,6 +212,13 @@ function ProjectListPage() {
     return project.progress_percentage || 0;
   };
 
+  // Add this function to ProjectListPage.tsx
+  const getProgressBarColor = (percentage: number) => {
+    if (percentage < 30) return 'bg-red-500';
+    if (percentage < 70) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     setFilterCriteria(newFilters);
     setShowFilterModal(false);
@@ -269,9 +276,9 @@ function ProjectListPage() {
             Filter
           </Button>
           <MasterSelectField
-            label=""
+            label="" // No label needed for this dropdown
             value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
-            onValueChange={() => {}}
+            onValueChange={() => {}} // Not used for typing
             onSelect={(id) => setNumResultsToShow(id)}
             options={numResultsOptions}
             placeholder="Show"

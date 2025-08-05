@@ -372,27 +372,6 @@ function Project() {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex items-center space-x-4">
-          <div className="relative flex-1">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              className={`
-                w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
-                ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
-              `}
-            />
-          </div>
-          <Button variant="outline" icon={<Filter size={16} />} onClick={() => navigate('/project/list?filter=true')}>
-            More Filters
-          </Button>
-        </div>
-      </Card>
-
       {/* AI Insights Banner */}
       {aiInsights.length > 0 && (
         <Card className="p-4 bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 border-l-4 border-l-[${theme.hoverAccent}]">

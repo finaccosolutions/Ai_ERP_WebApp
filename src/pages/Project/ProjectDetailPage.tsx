@@ -1,6 +1,5 @@
 // src/pages/Project/ProjectDetailPage.tsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, ClipboardCheck, Users, Calendar, DollarSign, FileText,
   Clock, MessageSquare, CheckCircle, XCircle, TrendingUp,
@@ -14,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
+import { useParams, useNavigate, Link } from 'react-router-dom'; // Import Link
 
 interface Project {
   id: string;
@@ -145,6 +145,19 @@ function ProjectDetailPage() {
     if (percentage < 30) return 'bg-red-500';
     if (percentage < 70) return 'bg-yellow-500';
     return 'bg-green-500';
+  };
+
+  // Add getStatusColor function here
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'not_started': return 'bg-gray-100 text-gray-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'waiting_for_client': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'billed': return 'bg-purple-100 text-purple-800';
+      case 'closed': return 'bg-emerald-100 text-emerald-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const calculateDaysLeft = (dueDate: string) => {
