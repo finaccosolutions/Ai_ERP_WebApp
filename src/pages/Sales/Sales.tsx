@@ -447,9 +447,49 @@ function Sales() {
     }
   };
 
-  // Removed the problematic useEffect and getContextualRecentSales function
-  // The recentSalesData is now correctly populated by fetchSalesData
-  // AI insights are only generated on explicit button click
+  // Removed handleFilterChange and handleApplyFilters as they are now handled by the modal
+  /*
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterCriteria((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    setShowFilterModal(false);
+    fetchSalesData(currentCompany?.id || ''); // Re-fetch data with new filters
+  };
+  */
+
+  const handleExport = (format: string) => {
+    console.log(`Exporting data in ${format} format...`);
+    console.log('Current Sales Data:', recentSalesData);
+    setShowExportDropdown(false);
+
+    // Basic CSV export example (client-side)
+    if (format === 'csv') {
+      const headers = ['Invoice No', 'Customer', 'Date', 'Amount', 'Status'];
+      const rows = recentSalesData.map((item: any) => [
+        item.refNo,
+        item.party,
+        item.date,
+        item.amount,
+        item.status,
+      ]);
+
+      let csvContent = headers.join(',') + '\n' + rows.map((e: string[]) => e.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) { // Feature detection
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `sales_data_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        document.body.removeChild(link);
+      }
+    } else {
+      alert(`Export to ${format} is not fully implemented yet. Check console for data.`);
+    }
+  };
 
   if (!isMainSalesPage) {
     return (
@@ -501,50 +541,6 @@ function Sales() {
     }
   };
 
-  // Removed handleFilterChange and handleApplyFilters as they are now handled by the modal
-  /*
-  const handleFilterChange = (key: string, value: string) => {
-    setFilterCriteria((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleApplyFilters = () => {
-    setShowFilterModal(false);
-    fetchSalesData(currentCompany?.id || ''); // Re-fetch data with new filters
-  };
-  */
-
-  const handleExport = (format: string) => {
-    console.log(`Exporting data in ${format} format...`);
-    console.log('Current Sales Data:', recentSalesData);
-    setShowExportDropdown(false);
-
-    // Basic CSV export example (client-side)
-    if (format === 'csv') {
-      const headers = ['Invoice No', 'Customer', 'Date', 'Amount', 'Status'];
-      const rows = recentSalesData.map((item: any) => [
-        item.refNo,
-        item.party,
-        item.date,
-        item.amount,
-        item.status,
-      ]);
-
-      let csvContent = headers.join(',') + '\n' + rows.map((e: string[]) => e.join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      if (link.download !== undefined) { // Feature detection
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `sales_data_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        document.body.removeChild(link);
-      }
-    } else {
-      alert(`Export to ${format} is not fully implemented yet. Check console for data.`);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -559,20 +555,8 @@ function Sales() {
             AI-powered sales operations and customer management
           </p>
         </div>
+        {/* MODIFIED: Moved search and action buttons here */}
         <div className="flex space-x-2">
-          <AIButton variant="voice" onSuggest={handleVoiceSearch} />
-          <AIButton variant="suggest" onSuggest={() => console.log('AI Sales Suggestions')} />
-          <Link to="/sales/invoices/create">
-            {' '}
-            {/* UPDATED: Link to the dedicated create route */}
-            <Button icon={<Plus size={16} />}>Create Invoice</Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* AI-Enhanced Search */}
-      <Card className="p-4">
-        <div className="flex items-center space-x-4">
           <div className="relative flex-1 max-w-md">
             <Search
               size={16}
@@ -606,8 +590,6 @@ function Sales() {
             </button>
           </div>
           <Button onClick={handleSmartSearch}>Search</Button>
-          {/* Removed direct filter button, now handled by SalesInvoicesListPage */}
-          {/* <Button onClick={() => setShowFilterModal(true)} icon={<ListFilter size={16} />}>Filter</Button> */}
           <div className="relative">
             <Button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
@@ -641,18 +623,7 @@ function Sales() {
             )}
           </div>
         </div>
-      </Card>
-
-      {/* Filter Modal - REMOVED FROM HERE, NOW HANDLED BY SalesInvoicesListPage */}
-      {/*
-      <FilterModal
-        isOpen={showFilterModal}
-        onClose={() => setShowFilterModal(false)}
-        filters={filterCriteria}
-        onFilterChange={handleFilterChange}
-        onApplyFilters={handleApplyFilters}
-      />
-      */}
+      </div>
 
       {/* Tab Navigation - Redesigned for visual distinction */}
       <div className="flex flex-wrap justify-center md:justify-start gap-2">
@@ -664,8 +635,8 @@ function Sales() {
               flex-1 px-6 py-3 text-sm font-semibold transition-all duration-300 ease-in-out
               ${
                 activeSalesTab === category.title
-                  ? `bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg transform scale-105 border border-sky-700 rounded-t-lg rounded-b-none`
-                  : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200 rounded-lg`
+                  ? `bg-blue-600 text-white shadow-lg transform scale-105 rounded-lg` // Solid background for active
+                  : `bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg` // Subtle background for inactive
               }
             `}
           >
@@ -682,7 +653,7 @@ function Sales() {
         >
           <Card
             className={`
-            p-6 space-y-4 rounded-t-none rounded-b-lg
+            p-6 space-y-4 rounded-lg
             border-t-4 ${getActiveTabBorderColor(category.title)}
             bg-white shadow-lg
           `}
@@ -693,7 +664,7 @@ function Sales() {
             </h2>
             <p className={theme.textSecondary}>{category.description}</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"> {/* MODIFIED: lg:grid-cols-4 */}
               {category.modules.map((module, moduleIndex) => {
                 const Icon = module.icon;
                 const colors = moduleColors[moduleIndex % moduleColors.length];
@@ -895,3 +866,4 @@ function Sales() {
 }
 
 export default Sales;
+
