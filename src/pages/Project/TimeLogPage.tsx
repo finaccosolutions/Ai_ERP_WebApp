@@ -69,6 +69,8 @@ function TimeLogPage() {
   const [taskDetails, setTaskDetails] = useState<any>(null); // To display task name
 
   const isEditMode = !!formData.id; // Check if formData.id exists for edit mode
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   useEffect(() => {
     const initializePage = async () => {

@@ -188,7 +188,8 @@ function LeadListPage() {
       showNotification('This lead is already converted.', 'info');
       return;
     }
-    if (!confirm(`Are you sure you want to convert "${lead.lead_name}" to a customer?`)) return;
+    // MODIFIED: Use window.confirm for browser-level confirmation
+    if (!window.confirm(`Are you sure you want to convert "${lead.lead_name}" to a customer? This will also allow you to create a project for them.`)) return;
 
     setLoading(true);
     try {
@@ -222,8 +223,8 @@ function LeadListPage() {
 
       showNotification(`Lead "${lead.lead_name}" converted to customer successfully!`, 'success');
       fetchLeads(); // Refresh list
-      // MODIFIED: Navigate to the new customer's edit page in Sales module, passing state to indicate origin
-      navigate(`/sales/customers/edit/${newCustomer.id}`, { state: { fromCrm: true } });
+      // MODIFIED: Navigate to the new project creation page, passing the new customer ID
+      navigate(`/project/new`, { state: { customerId: newCustomer.id, customerName: newCustomer.name } });
     } catch (err: any) {
       showNotification(`Failed to convert lead: ${err.message}`, 'error');
       console.error('Error converting lead:', err);

@@ -10,7 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 interface CustomerOption {
   id: string;
@@ -30,6 +30,7 @@ function ProjectFormPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
+  const location = useLocation(); // Use useLocation to access state
 
   const [formData, setFormData] = useState({
     id: '',
@@ -64,6 +65,14 @@ function ProjectFormPage() {
         await fetchProjectData(id as string);
       } else {
         resetForm();
+        // Pre-fill customer if navigated from Lead Conversion
+        if (location.state?.customerId && location.state?.customerName) {
+          setFormData(prev => ({
+            ...prev,
+            customerId: location.state.customerId,
+            customerName: location.state.customerName
+          }));
+        }
       }
       setLoading(false);
     };
@@ -71,7 +80,7 @@ function ProjectFormPage() {
     if (currentCompany?.id) {
       initializeForm();
     }
-  }, [currentCompany?.id, id, isEditMode]);
+  }, [currentCompany?.id, id, isEditMode, location.state]);
 
   const fetchMastersData = async (companyId: string) => {
     try {
@@ -211,7 +220,7 @@ function ProjectFormPage() {
         is_recurring: formData.isRecurring,
         recurrence_frequency: formData.isRecurring ? formData.recurrenceFrequency || null : null,
         recurrence_due_date: formData.isRecurring ? formData.recurrenceDueDate || null : null,
-        created_by: supabase.auth.getUser().then(res => res.data.user?.id).catch(() => null), // Assuming created_by is current user
+        created_by: (await supabase.auth.getUser()).data.user?.id || null, // Assuming created_by is current user
       };
 
       if (formData.id) {

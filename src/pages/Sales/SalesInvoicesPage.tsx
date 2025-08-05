@@ -68,6 +68,7 @@ interface SalesInvoice {
   other_ledger_entries: any | null; // JSONB to store other ledger entries
   total_discount: number | null; // Total discount of all items
   place_of_supply: string | null; // NEW: Place of Supply
+  project_id: string | null; // NEW: Project ID
 }
 
 interface ItemOption {
@@ -105,6 +106,13 @@ interface AccountOption {
   account_name: string;
   account_type: string;
   balance_type: string;
+}
+
+// NEW: ProjectOption interface
+interface ProjectOption {
+  id: string;
+  project_name: string;
+  customer_id: string | null;
 }
 
 function SalesInvoicesPage() {
@@ -146,6 +154,7 @@ function SalesInvoicesPage() {
     outstandingAmount: 0,
     totalDiscount: 0, // Total discount of all items
     placeOfSupply: '', // NEW: Place of Supply
+    projectId: '', // NEW: Project ID
   });
 
   const [items, setItems] = useState<SalesInvoiceItem[]>([
@@ -174,6 +183,7 @@ function SalesInvoicesPage() {
   const [availableItems, setAvailableItems] = useState<ItemOption[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountOption[]>([]);
   const [availableStates, setAvailableStates] = useState<{ id: string; name: string }[]>([]); // NEW: For Place of Supply
+  const [availableProjects, setAvailableProjects] = useState<ProjectOption[]>([]); // NEW: For Projects
 
   // State for collapsible sections
   const [isInvoiceDetailsExpanded, setIsInvoiceDetailsExpanded] = useState(true);
@@ -210,6 +220,7 @@ function SalesInvoicesPage() {
   const dueDateRef = useRef<HTMLInputElement>(null);
   const referenceNoRef = useRef<HTMLInputElement>(null);
   const placeOfSupplyRef = useRef<MasterSelectFieldRef>(null);
+  const projectMasterSelectRef = useRef<MasterSelectFieldRef>(null); // NEW: Ref for Project MasterSelectField
   // Use createRef for dynamic refs in map, and then collect them in a useRef array
   const itemMasterSelectRefs = useRef<Array<MasterSelectFieldRef | null>>([]);
   const itemQuantityRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -373,6 +384,15 @@ function SalesInvoicesPage() {
         balance_type: acc.balance_type,
       })));
 
+      // NEW: Fetch Projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, project_name, customer_id')
+        .eq('company_id', companyId)
+        .order('project_name', { ascending: true });
+      if (projectsError) throw projectsError;
+      setAvailableProjects(projectsData || []);
+
     } catch (error) {
       console.error('Error fetching master data:', error);
       showNotification('Failed to load customers, items, or accounts.', 'error');
@@ -389,7 +409,7 @@ function SalesInvoicesPage() {
         .from('sales_invoices')
         .select(`
           id, invoice_no, invoice_date, due_date, status, total_amount, paid_amount, outstanding_amount, created_at,
-          customers ( name ), tax_details, other_ledger_entries, total_discount, place_of_supply
+          customers ( name ), tax_details, other_ledger_entries, total_discount, place_of_supply, project_id
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -477,6 +497,7 @@ function SalesInvoicesPage() {
           outstandingAmount: data.outstanding_amount || 0,
           totalDiscount: data.total_discount || 0,
           placeOfSupply: data.place_of_supply || '', // Load place of supply
+          projectId: data.project_id || '', // NEW: Load project ID
         });
         setItems(data.sales_invoice_items.map((item: any) => ({
           id: item.id,
@@ -552,6 +573,18 @@ function SalesInvoicesPage() {
     } else {
       setAvailableStates([]); // Clear states if no country
       setInvoice(prev => ({ ...prev, placeOfSupply: '' })); // Clear place of supply
+    }
+  };
+
+  // NEW: Handle Project Select
+  const handleProjectSelect = (id: string, name: string, data: ProjectOption) => {
+    setInvoice(prev => ({ ...prev, projectId: id }));
+    // Optionally, auto-select customer if project has one
+    if (data.customer_id && !invoice.customerId) {
+      const projectCustomer = availableCustomers.find(c => c.id === data.customer_id);
+      if (projectCustomer) {
+        handleCustomerSelect(projectCustomer.id, projectCustomer.name, projectCustomer);
+      }
     }
   };
 
@@ -690,6 +723,7 @@ function SalesInvoicesPage() {
       outstandingAmount: 0,
       totalDiscount: 0,
       placeOfSupply: '', // NEW: Reset place of supply
+      projectId: '', // NEW: Reset project ID
     });
     setItems([
       {
@@ -761,6 +795,7 @@ function SalesInvoicesPage() {
         tax_details: getAggregatedTaxDetails(), // Save aggregated tax details
         other_ledger_entries: otherLedgerEntries,
         place_of_supply: invoice.placeOfSupply || null, // NEW: Save place of supply
+        project_id: invoice.projectId || null, // NEW: Save project ID
       };
 
       let invoiceId = invoice.id;
@@ -897,6 +932,7 @@ function SalesInvoicesPage() {
         case 'customer': navigatePath = '/sales/customers/new'; break;
         case 'item': navigatePath = '/inventory/masters/items/new'; break;
         case 'account': navigatePath = '/accounting/masters/ledgers/new'; break;
+        case 'project': navigatePath = '/project/new'; break; // NEW: Project case
         default: break;
       }
     } else {
@@ -918,6 +954,12 @@ function SalesInvoicesPage() {
           navigatePath = existingMaster ? `/accounting/masters/ledgers/edit/${existingMaster.id}` : `/accounting/masters/ledgers/new`;
           confirmMessage = existingMaster ? `Do you want to alter account "${value}"?` : `Do you want to create a new account named "${value}"?`;
           confirmBtnText = existingMaster ? `Yes, Alter Account` : `Yes, Create Account`;
+          break;
+        case 'project': // NEW: Project case
+          existingMaster = availableProjects.find(p => p.id === value || p.project_name.toLowerCase() === value.toLowerCase());
+          navigatePath = existingMaster ? `/project/edit/${existingMaster.id}` : `/project/new`;
+          confirmMessage = existingMaster ? `Do you want to alter project "${value}"?` : `Do you want to create a new project named "${value}"?`;
+          confirmBtnText = existingMaster ? `Yes, Alter Project` : `Yes, Create Project`;
           break;
         default:
           break;
@@ -941,6 +983,7 @@ function SalesInvoicesPage() {
         case 'customer': targetPath = `/sales/customers/edit/${existingId}`; break;
         case 'item': targetPath = `/inventory/masters/items/edit/${existingId}`; break;
         case 'account': targetPath = `/accounting/masters/ledgers/edit/${existingId}`; break;
+        case 'project': targetPath = `/project/edit/${existingId}`; break; // NEW: Project case
         default: break;
       }
     } else {
@@ -949,6 +992,7 @@ function SalesInvoicesPage() {
         case 'customer': targetPath = '/sales/customers/new'; break;
         case 'item': targetPath = '/inventory/masters/items/new'; break;
         case 'account': targetPath = '/accounting/masters/ledgers/new'; break;
+        case 'project': targetPath = '/project/new'; break; // NEW: Project case
         default: break;
       }
     }
@@ -1021,6 +1065,7 @@ function SalesInvoicesPage() {
     newFieldOrder.push(dueDateRef);
     newFieldOrder.push(referenceNoRef);
     newFieldOrder.push(placeOfSupplyRef);
+    newFieldOrder.push(projectMasterSelectRef); // NEW: Add Project field to navigation order
 
     // Invoice Items
     items.forEach((_, index) => {
@@ -1269,6 +1314,19 @@ function SalesInvoicesPage() {
                   readOnly={viewMode === 'view'}
                   disabled={!invoice.customerId}
                   onKeyDown={(e) => handleFieldKeyDown(e, placeOfSupplyRef)}
+                />
+                {/* NEW: Project Field */}
+                <MasterSelectField
+                  ref={projectMasterSelectRef}
+                  label="Project"
+                  value={invoice.projectId}
+                  onValueChange={(val) => handleInvoiceChange('projectId', val)}
+                  onSelect={(id, name, data) => handleProjectSelect(id, name, data as ProjectOption)}
+                  options={availableProjects.map(p => ({ id: p.id, name: p.project_name, ...p }))}
+                  placeholder="Link to a Project (Optional)"
+                  readOnly={viewMode === 'view'}
+                  onF2Press={(val) => handleF2Press('Project', val, undefined, 'project')}
+                  onKeyDown={(e) => handleFieldKeyDown(e, projectMasterSelectRef)}
                 />
               </div>
             </div>

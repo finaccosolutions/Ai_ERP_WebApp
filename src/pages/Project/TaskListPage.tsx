@@ -120,6 +120,7 @@ function TaskListPage() {
       if (error) throw error;
       setTasks(data || []);
       setTotalTasksCount(count || 0);
+
     } catch (err: any) {
       showNotification(`Error fetching tasks: ${err.message}`, 'error');
       console.error('Error fetching tasks:', err);
@@ -178,7 +179,7 @@ function TaskListPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            Tasks for {projectDetails?.project_name || 'Project'}
+            Tasks for {groupDetails?.project_name || 'Project'}
           </h1>
           <p className={theme.textSecondary}>Manage tasks and track progress for this project.</p>
         </div>
@@ -283,7 +284,7 @@ function TaskListPage() {
                         </Button>
                       </Link>
                       <Link to={`/project/${projectId}/tasks/${task.id}/time-logs`}>
-                        <Button variant="ghost" size="sm" title="Time Logs">
+                        <Button variant="ghost" size="sm" title="View Time Logs">
                           <Clock size={16} />
                         </Button>
                       </Link>
