@@ -134,25 +134,41 @@ function Sales() {
 
       if (kpisError) {
         console.error('Sales.tsx: Error fetching KPIs from materialized view:', kpisError);
-        throw kpisError;
+        // Fallback or show error to user
+        setSalesMetrics({
+          totalItems: 'N/A', // This metric is not in the example KPI view, would need to be added or fetched separately
+          totalCustomers: '0',
+          totalQuotations: '0',
+          totalSalesOrders: '0',
+          totalSalesInvoices: '0',
+          totalReceipts: '0',
+          totalCreditNotes: '0',
+          totalSalesReturns: '0',
+          totalPriceLists: '0',
+          totalCustomerOutstanding: '0',
+          totalDeliveryChallans: '0',
+          totalCustomerGroups: '0',
+          totalSalesAmount: '0',
+          totalOutstandingAmount: '0',
+        });
+      } else {
+        setSalesMetrics({
+          totalItems: 'N/A', // This metric is not in the example KPI view, would need to be added or fetched separately
+          totalCustomers: kpis?.total_customers?.toString() || '0',
+          totalQuotations: kpis?.total_quotations?.toString() || '0',
+          totalSalesOrders: kpis?.total_sales_orders?.toString() || '0',
+          totalSalesInvoices: kpis?.total_sales_invoices?.toString() || '0',
+          totalReceipts: kpis?.total_receipts?.toString() || '0',
+          totalCreditNotes: kpis?.total_credit_notes?.toString() || '0',
+          totalSalesReturns: kpis?.total_sales_returns?.toString() || '0',
+          totalPriceLists: kpis?.total_price_lists?.toString() || '0',
+          totalCustomerOutstanding: kpis?.total_outstanding_amount?.toLocaleString() || '0',
+          totalDeliveryChallans: kpis?.total_delivery_challans?.toString() || '0',
+          totalCustomerGroups: kpis?.total_customer_groups?.toString() || '0',
+          totalSalesAmount: kpis?.total_sales_invoices_amount?.toLocaleString() || '0',
+          totalOutstandingAmount: kpis?.total_outstanding_amount?.toLocaleString() || '0',
+        });
       }
-
-      setSalesMetrics({
-        totalItems: 'N/A', // This metric is not in the example KPI view, would need to be added or fetched separately
-        totalCustomers: kpis?.total_customers?.toString() || '0',
-        totalQuotations: kpis?.total_quotations?.toString() || '0',
-        totalSalesOrders: kpis?.total_sales_orders?.toString() || '0',
-        totalSalesInvoices: kpis?.total_sales_invoices?.toString() || '0',
-        totalReceipts: kpis?.total_receipts?.toString() || '0',
-        totalCreditNotes: kpis?.total_credit_notes?.toString() || '0',
-        totalSalesReturns: kpis?.total_sales_returns?.toString() || '0',
-        totalPriceLists: kpis?.total_price_lists?.toString() || '0',
-        totalCustomerOutstanding: kpis?.total_outstanding_amount?.toLocaleString() || '0',
-        totalDeliveryChallans: kpis?.total_delivery_challans?.toString() || '0',
-        totalCustomerGroups: kpis?.total_customer_groups?.toString() || '0',
-        totalSalesAmount: kpis?.total_sales_invoices_amount?.toLocaleString() || '0',
-        totalOutstandingAmount: kpis?.total_outstanding_amount?.toLocaleString() || '0',
-      });
 
       // For recent transactions, you might still query the main tables, but with limits
       const { data: recentInvoices, error: recentInvoicesError } = await supabase
@@ -840,4 +856,3 @@ function Sales() {
 }
 
 export default Sales;
-

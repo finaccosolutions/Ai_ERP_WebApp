@@ -32,7 +32,9 @@ function TaskFormPage() {
     assignedToId: '',
     assignedToName: '', // For MasterSelectField display
     status: 'open',
+    startDate: '', // NEW: Start Date
     dueDate: '',
+    priority: 'medium', // NEW: Priority
     description: '',
   });
 
@@ -116,7 +118,9 @@ function TaskFormPage() {
           assignedToId: data.assigned_to_id || '',
           assignedToName: data.employees ? `${data.employees.first_name} ${data.employees.last_name}` : '',
           status: data.status,
+          startDate: data.start_date || '',
           dueDate: data.due_date || '',
+          priority: data.priority || 'medium',
           description: data.description || '',
         });
       }
@@ -142,7 +146,9 @@ function TaskFormPage() {
       assignedToId: '',
       assignedToName: '',
       status: 'open',
+      startDate: '',
       dueDate: '',
+      priority: 'medium',
       description: '',
     });
   };
@@ -152,8 +158,16 @@ function TaskFormPage() {
       showNotification('Task Name is required.', 'error');
       return false;
     }
+    if (!formData.startDate) {
+      showNotification('Start Date is required.', 'error');
+      return false;
+    }
     if (!formData.dueDate) {
       showNotification('Due Date is required.', 'error');
+      return false;
+    }
+    if (new Date(formData.startDate) > new Date(formData.dueDate)) {
+      showNotification('Due Date cannot be before Start Date.', 'error');
       return false;
     }
     return true;
@@ -174,7 +188,9 @@ function TaskFormPage() {
         task_name: formData.taskName,
         assigned_to_id: formData.assignedToId || null,
         status: formData.status,
+        start_date: formData.startDate,
         due_date: formData.dueDate,
+        priority: formData.priority,
         description: formData.description || null,
       };
 
@@ -201,6 +217,20 @@ function TaskFormPage() {
       setIsSubmitting(false);
     }
   };
+
+  const taskStatuses = [
+    { id: 'open', name: 'To-Do' },
+    { id: 'in_progress', name: 'Working' },
+    { id: 'on_hold', name: 'On Hold' },
+    { id: 'completed', name: 'Done' },
+  ];
+
+  const taskPriorities = [
+    { id: 'low', name: 'Low' },
+    { id: 'medium', name: 'Medium' },
+    { id: 'high', name: 'High' },
+    { id: 'critical', name: 'Critical' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -245,19 +275,29 @@ function TaskFormPage() {
                 options={availableEmployees}
                 placeholder="Assign Employee (Optional)"
               />
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${theme.textPrimary}`}>Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent`}
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="on_hold">On Hold</option>
-                </select>
-              </div>
+              <MasterSelectField
+                label="Status"
+                value={taskStatuses.find(status => status.id === formData.status)?.name || ''}
+                onValueChange={(val) => handleInputChange('status', val)}
+                onSelect={(id) => handleInputChange('status', id)}
+                options={taskStatuses}
+                placeholder="Select Status"
+              />
+              <MasterSelectField
+                label="Priority"
+                value={taskPriorities.find(priority => priority.id === formData.priority)?.name || ''}
+                onValueChange={(val) => handleInputChange('priority', val)}
+                onSelect={(id) => handleInputChange('priority', id)}
+                options={taskPriorities}
+                placeholder="Select Priority"
+              />
+              <FormField
+                label="Start Date"
+                type="date"
+                value={formData.startDate}
+                onChange={(val) => handleInputChange('startDate', val)}
+                required
+              />
               <FormField
                 label="Due Date"
                 type="date"

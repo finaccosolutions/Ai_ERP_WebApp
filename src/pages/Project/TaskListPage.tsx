@@ -19,7 +19,9 @@ interface Task {
   task_name: string;
   assigned_to_id: string | null;
   status: string;
+  start_date: string | null; // NEW
   due_date: string | null;
+  priority: string | null; // NEW
   description: string | null;
   created_at: string;
   // Joined data
@@ -48,14 +50,17 @@ function TaskListPage() {
     assignedTo: '',
     dueDateBefore: '',
     dueDateAfter: '',
+    priority: 'all', // NEW
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
   const [projectDetails, setProjectDetails] = useState<any>(null); // To display project name
+  const [availableEmployees, setAvailableEmployees] = useState<{ id: string; name: string }[]>([]); // For assigned staff filter
 
   useEffect(() => {
     if (currentCompany?.id && projectId) {
       fetchProjectDetails(projectId);
+      fetchEmployees(currentCompany.id); // Fetch employees for filter
       fetchTasks(projectId);
     }
   }, [currentCompany?.id, projectId, filterCriteria, numResultsToShow, searchTerm]);
@@ -77,6 +82,22 @@ function TaskListPage() {
     }
   };
 
+  const fetchEmployees = async (companyId: string) => {
+    try {
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name')
+        .eq('company_id', companyId)
+        .eq('status', 'active');
+      if (employeesError) throw employeesError;
+      setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}` })) || []);
+
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      showNotification('Failed to load employees for filter.', 'error');
+    }
+  };
+
   const fetchTasks = async (id: string) => {
     if (!currentCompany?.id) return;
     setLoading(true);
@@ -84,7 +105,7 @@ function TaskListPage() {
       let query = supabase
         .from('tasks')
         .select(`
-          id, project_id, task_name, assigned_to_id, status, due_date, description, created_at,
+          id, project_id, task_name, assigned_to_id, status, start_date, due_date, priority, description, created_at,
           employees ( first_name, last_name )
         `, { count: 'exact' })
         .eq('project_id', id); // Filter by project_id
@@ -107,6 +128,9 @@ function TaskListPage() {
       }
       if (filterCriteria.dueDateAfter) {
         query = query.gte('due_date', filterCriteria.dueDateAfter);
+      }
+      if (filterCriteria.priority !== 'all') { // NEW: Apply priority filter
+        query = query.eq('priority', filterCriteria.priority);
       }
 
       query = query.order('created_at', { ascending: false });
@@ -174,12 +198,42 @@ function TaskListPage() {
     }
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'low': return 'text-green-600';
+      case 'medium': return 'text-yellow-600';
+      case 'high': return 'text-orange-600';
+      case 'critical': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const taskStatuses = [
+    { id: 'all', name: 'All Statuses' },
+    { id: 'open', name: 'To-Do' },
+    { id: 'in_progress', name: 'Working' },
+    { id: 'on_hold', name: 'On Hold' },
+    { id: 'completed', name: 'Done' },
+  ];
+
+  const taskPriorities = [
+    { id: 'all', name: 'All Priorities' },
+    { id: 'low', name: 'Low' },
+    { id: 'medium', name: 'Medium' },
+    { id: 'high', name: 'High' },
+    { id: 'critical', name: 'Critical' },
+  ];
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterCriteria(prev => ({ ...prev, [key]: value }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            Tasks for {groupDetails?.project_name || 'Project'}
+            Tasks for {projectDetails?.project_name || 'Project'}
           </h1>
           <p className={theme.textSecondary}>Manage tasks and track progress for this project.</p>
         </div>
@@ -212,36 +266,64 @@ function TaskListPage() {
               `}
             />
           </div>
-          {/* Filter options can be expanded into a modal or dropdown */}
-          <div className="flex items-center space-x-2">
-            <select
-              value={filterCriteria.status}
-              onChange={(e) => setFilterCriteria(prev => ({ ...prev, status: e.target.value }))}
-              className={`
-                px-3 py-2 border ${theme.inputBorder} rounded-lg
-                ${theme.inputBg} ${theme.textPrimary}
-                focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
-              `}
-            >
-              <option value="all">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="on_hold">On Hold</option>
-            </select>
-            <MasterSelectField
-              label=""
-              value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
-              onValueChange={() => {}}
-              onSelect={(id) => setNumResultsToShow(id)}
-              options={numResultsOptions}
-              placeholder="Show"
-              className="w-32"
-            />
-            <Button onClick={() => fetchTasks(projectId as string)} disabled={loading} icon={<RefreshCw size={16} />}>
-              {loading ? 'Loading...' : 'Refresh'}
-            </Button>
-          </div>
+          {/* Filter options */}
+          <MasterSelectField
+            label=""
+            value={taskStatuses.find(status => status.id === filterCriteria.status)?.name || ''}
+            onValueChange={(val) => handleFilterChange('status', val)}
+            onSelect={(id) => handleFilterChange('status', id)}
+            options={taskStatuses}
+            placeholder="Filter by Status"
+            className="w-40"
+          />
+          <MasterSelectField
+            label=""
+            value={availableEmployees.find(emp => emp.id === filterCriteria.assignedTo)?.name || ''}
+            onValueChange={(val) => handleFilterChange('assignedTo', val)}
+            onSelect={(id) => handleFilterChange('assignedTo', id)}
+            options={[{ id: 'all', name: 'All Staff' }, ...availableEmployees]}
+            placeholder="Filter by Assigned To"
+            className="w-40"
+          />
+          <MasterSelectField
+            label=""
+            value={taskPriorities.find(priority => priority.id === filterCriteria.priority)?.name || ''}
+            onValueChange={(val) => handleFilterChange('priority', val)}
+            onSelect={(id) => handleFilterChange('priority', id)}
+            options={taskPriorities}
+            placeholder="Filter by Priority"
+            className="w-40"
+          />
+          <FormField
+            label=""
+            type="date"
+            value={filterCriteria.dueDateAfter}
+            onChange={(val) => handleFilterChange('dueDateAfter', val)}
+            placeholder="Due After"
+            icon={<Calendar size={16} />}
+            className="w-36"
+          />
+          <FormField
+            label=""
+            type="date"
+            value={filterCriteria.dueDateBefore}
+            onChange={(val) => handleFilterChange('dueDateBefore', val)}
+            placeholder="Due Before"
+            icon={<Calendar size={16} />}
+            className="w-36"
+          />
+          <MasterSelectField
+            label=""
+            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
+            onValueChange={() => {}}
+            onSelect={(id) => setNumResultsToShow(id)}
+            options={numResultsOptions}
+            placeholder="Show"
+            className="w-32"
+          />
+          <Button onClick={() => fetchTasks(projectId as string)} disabled={loading} icon={<RefreshCw size={16} />}>
+            {loading ? 'Loading...' : 'Refresh'}
+          </Button>
         </div>
 
         <div className="overflow-x-auto">
@@ -259,8 +341,9 @@ function TaskListPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -271,10 +354,17 @@ function TaskListPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {task.employees ? `${task.employees.first_name} ${task.employees.last_name}` : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.due_date || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {task.start_date} - {task.due_date}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
                         {task.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`font-medium ${getPriorityColor(task.priority || 'medium')}`}>
+                        {task.priority || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

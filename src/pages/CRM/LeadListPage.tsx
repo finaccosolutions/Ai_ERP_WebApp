@@ -5,7 +5,7 @@ import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import FormField from '../../components/UI/FormField';
-import MasterSelectField from '../../components/UI/MasterSelectField';
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Corrected: Added missing import for MasterSelectField
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -204,7 +204,7 @@ function LeadListPage() {
           phone: lead.phone || lead.mobile,
           // Copy other relevant lead data to customer
         })
-        .select('id')
+        .select('id, name') // Select name as well
         .single();
 
       if (customerError) throw customerError;
@@ -223,7 +223,7 @@ function LeadListPage() {
 
       showNotification(`Lead "${lead.lead_name}" converted to customer successfully!`, 'success');
       fetchLeads(); // Refresh list
-      // MODIFIED: Navigate to the new project creation page, passing the new customer ID
+      // MODIFIED: Navigate to the new project creation page, passing the new customer ID and name
       navigate(`/project/new`, { state: { customerId: newCustomer.id, customerName: newCustomer.name } });
     } catch (err: any) {
       showNotification(`Failed to convert lead: ${err.message}`, 'error');

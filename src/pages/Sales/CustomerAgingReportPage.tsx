@@ -1,6 +1,6 @@
 // src/pages/Sales/CustomerAgingReportPage.tsx
 import React, { useState } from 'react';
-import { CalendarCheck, Search, Clock, Filter, Users, RefreshCw, ArrowLeft } from 'lucide-react';
+import { CalendarCheck, Search, Clock, Filter, Users, RefreshCw, Calendar, ArrowLeft } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';

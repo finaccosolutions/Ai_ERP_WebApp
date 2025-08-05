@@ -8,8 +8,8 @@ import {
   CheckCircle, 
   Lightbulb,
   Target,
-  Zap,
-  Brain
+  Zap, // NEW: Added Zap
+  Brain // NEW: Added Brain
 } from 'lucide-react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
@@ -216,7 +216,7 @@ function AIInsightPanel({ insights, onToggle, onRefresh }: AIInsightPanelProps) 
             <Bot size={14} />
             <span>Last updated: {new Date().toLocaleTimeString()}</span>
           </div>
-          <button className="text-[${theme.hoverAccent}] hover:text-emerald-600 font-medium text-sm transition-colors">
+          <button className="text-[${theme.hoverAccent}] hover:text-emerald-600 font-medium transition-colors">
             View All Insights →
           </button>
         </div>

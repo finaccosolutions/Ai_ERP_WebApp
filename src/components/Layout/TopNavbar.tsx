@@ -172,7 +172,6 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 rounded-xl bg-slate-800/40 text-white placeholder:text-slate-400
                 focus:ring-2 focus:ring-[${theme.hoverAccent}]/50 focus:border-[${theme.hoverAccent}]/50 focus:bg-slate-800/60
                 transition-all duration-300 hover:bg-slate-800/50 backdrop-blur-sm
-                ${isAIEnabled ? 'shadow-inner' : ''}
               `}
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">

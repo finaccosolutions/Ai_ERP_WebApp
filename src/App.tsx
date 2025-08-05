@@ -15,7 +15,7 @@ import Accounting from './pages/Accounting/Accounting'; // Import Accounting
 import Inventory from './pages/Inventory/Inventory'; // Import Inventory
 import Manufacturing from './pages/Manufacturing/Manufacturing';
 import Reports from './pages/Reports/Reports';
-import Compliance from './pages/Compliance/Compliance'; 
+import Compliance from './pages/Compliance/Compliance';
 import HR from './pages/HR/HR';
 import CRM from './pages/CRM/CRM';
 import Admin from './pages/Admin/Admin'; // Admin module entry
@@ -63,8 +63,8 @@ function AppContent() {
         <Route path="*" element={<Login />} /> {/* Catch all other routes and redirect to Login */}
       </Routes>
     );
-  } 
- 
+  }
+
   // If companies are still loading, show a loading indicator
   if (loadingCompanies) {
     return (
@@ -109,9 +109,9 @@ function AppContent() {
           <Route path="/crm/*" element={<CRM />} />
           <Route path="/project/*" element={<Project />} /> {/* NEW: Project Module Route */}
           {/* Conditional Admin Route */}
-          <Route 
-            path="/admin/*" 
-            element={hasPermission('admin_panel', 'access') ? <Admin /> : <Navigate to="/" replace />} 
+          <Route
+            path="/admin/*"
+            element={hasPermission('admin_panel', 'access') ? <Admin /> : <Navigate to="/" replace />}
           />
           {/* User-related Routes wrapped with UserPageLayout */}
           <Route path="/user/*" element={<UserPageLayout />}>

@@ -37,11 +37,15 @@ function ProjectFormPage() {
     projectName: '',
     customerId: '',
     customerName: '', // For MasterSelectField display
+    referenceNo: '', // NEW: Reference No / Contract No
+    categoryType: '', // NEW: Category / Type
+    projectOwnerId: '', // NEW: Project Owner
+    projectOwnerName: '', // For MasterSelectField display
+    assignedTeamMembers: [] as string[], // NEW: Assigned Team Members (array of employee IDs)
     startDate: '',
     dueDate: '',
+    expectedValue: 0, // NEW: Expected Value / Contract Amount
     billingType: 'fixed_price',
-    assignedStaffId: '',
-    assignedStaffName: '', // For MasterSelectField display
     status: 'not_started',
     description: '',
     isRecurring: false,
@@ -113,7 +117,8 @@ function ProjectFormPage() {
         .select(`
           *,
           customers ( name ),
-          employees ( first_name, last_name )
+          project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
+          project_team_members ( employee_id, employees ( first_name, last_name ) )
         `)
         .eq('id', projectId)
         .eq('company_id', currentCompany?.id)
@@ -127,11 +132,15 @@ function ProjectFormPage() {
           projectName: data.project_name,
           customerId: data.customer_id || '',
           customerName: data.customers?.name || '',
+          referenceNo: data.reference_no || '',
+          categoryType: data.category_type || '',
+          projectOwnerId: data.project_owner_id || '',
+          projectOwnerName: data.project_owner ? `${data.project_owner.first_name} ${data.project_owner.last_name}` : '',
+          assignedTeamMembers: data.project_team_members?.map(tm => tm.employee_id) || [],
           startDate: data.start_date,
           dueDate: data.due_date,
+          expectedValue: data.expected_value || 0,
           billingType: data.billing_type,
-          assignedStaffId: data.assigned_staff_id || '',
-          assignedStaffName: data.employees ? `${data.employees.first_name} ${data.employees.last_name}` : '',
           status: data.status,
           description: data.description || '',
           isRecurring: data.is_recurring,
@@ -154,8 +163,12 @@ function ProjectFormPage() {
     setFormData(prev => ({ ...prev, customerId: id, customerName: name }));
   };
 
-  const handleEmployeeSelect = (id: string, name: string) => {
-    setFormData(prev => ({ ...prev, assignedStaffId: id, assignedStaffName: name }));
+  const handleProjectOwnerSelect = (id: string, name: string) => {
+    setFormData(prev => ({ ...prev, projectOwnerId: id, projectOwnerName: name }));
+  };
+
+  const handleTeamMembersSelect = (selectedIds: string[]) => {
+    setFormData(prev => ({ ...prev, assignedTeamMembers: selectedIds }));
   };
 
   const resetForm = () => {
@@ -164,11 +177,15 @@ function ProjectFormPage() {
       projectName: '',
       customerId: '',
       customerName: '',
+      referenceNo: '',
+      categoryType: '',
+      projectOwnerId: '',
+      projectOwnerName: '',
+      assignedTeamMembers: [],
       startDate: '',
       dueDate: '',
+      expectedValue: 0,
       billingType: 'fixed_price',
-      assignedStaffId: '',
-      assignedStaffName: '',
       status: 'not_started',
       description: '',
       isRecurring: false,
@@ -194,6 +211,14 @@ function ProjectFormPage() {
       showNotification('Due Date cannot be before Start Date.', 'error');
       return false;
     }
+    if (formData.isRecurring && !formData.recurrenceFrequency) {
+      showNotification('Recurrence Frequency is required for recurring projects.', 'error');
+      return false;
+    }
+    if (formData.isRecurring && !formData.recurrenceDueDate) {
+      showNotification('Recurrence Due Date is required for recurring projects.', 'error');
+      return false;
+    }
     return true;
   };
 
@@ -211,18 +236,22 @@ function ProjectFormPage() {
         company_id: currentCompany.id,
         project_name: formData.projectName,
         customer_id: formData.customerId || null,
+        reference_no: formData.referenceNo || null,
+        category_type: formData.categoryType || null,
+        project_owner_id: formData.projectOwnerId || null,
         start_date: formData.startDate,
         due_date: formData.dueDate,
+        expected_value: formData.expectedValue,
         billing_type: formData.billingType,
-        assigned_staff_id: formData.assignedStaffId || null,
         status: formData.status,
         description: formData.description || null,
         is_recurring: formData.isRecurring,
         recurrence_frequency: formData.isRecurring ? formData.recurrenceFrequency || null : null,
         recurrence_due_date: formData.isRecurring ? formData.recurrenceDueDate || null : null,
-        created_by: (await supabase.auth.getUser()).data.user?.id || null, // Assuming created_by is current user
+        created_by: (await supabase.auth.getUser()).data.user?.id || null,
       };
 
+      let currentProjectId = formData.id;
       if (formData.id) {
         const { error } = await supabase
           .from('projects')
@@ -231,12 +260,29 @@ function ProjectFormPage() {
         if (error) throw error;
         showNotification('Project updated successfully!', 'success');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('projects')
-          .insert(projectToSave);
+          .insert(projectToSave)
+          .select('id')
+          .single();
         if (error) throw error;
+        currentProjectId = data.id;
         showNotification('Project created successfully!', 'success');
       }
+
+      // Handle project team members
+      if (currentProjectId) {
+        await supabase.from('project_team_members').delete().eq('project_id', currentProjectId);
+        if (formData.assignedTeamMembers.length > 0) {
+          const teamMembersToInsert = formData.assignedTeamMembers.map(employeeId => ({
+            project_id: currentProjectId,
+            employee_id: employeeId,
+          }));
+          const { error: teamMembersError } = await supabase.from('project_team_members').insert(teamMembersToInsert);
+          if (teamMembersError) throw teamMembersError;
+        }
+      }
+
       navigate('/project/list');
       resetForm();
     } catch (err: any) {
@@ -246,6 +292,38 @@ function ProjectFormPage() {
       setIsSubmitting(false);
     }
   };
+
+  const categoryTypes = [
+    { id: 'gst_filing', name: 'GST Filing' },
+    { id: 'audit', name: 'Audit' },
+    { id: 'installation', name: 'Installation' },
+    { id: 'amc_service', name: 'AMC Service' },
+    { id: 'software_project', name: 'Software Project' },
+    { id: 'other', name: 'Other' },
+  ];
+
+  const billingTypes = [
+    { id: 'fixed_price', name: 'Fixed Price' },
+    { id: 'time_based', name: 'Time & Material' },
+    { id: 'recurring', name: 'Recurring' },
+  ];
+
+  const recurrenceFrequencies = [
+    { id: 'daily', name: 'Daily' },
+    { id: 'weekly', name: 'Weekly' },
+    { id: 'monthly', name: 'Monthly' },
+    { id: 'quarterly', name: 'Quarterly' },
+    { id: 'yearly', name: 'Yearly' },
+  ];
+
+  const projectStatuses = [
+    { id: 'not_started', name: 'Not Started' },
+    { id: 'in_progress', name: 'In Progress' },
+    { id: 'waiting_for_client', name: 'Waiting for Client' },
+    { id: 'completed', name: 'Completed' },
+    { id: 'billed', name: 'Billed' },
+    { id: 'closed', name: 'Closed' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -272,11 +350,11 @@ function ProjectFormPage() {
           <Card className="p-6">
             <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
               <ClipboardCheck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-              Project Details
+              General Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
-                label="Project Name"
+                label="Project / Job Name"
                 value={formData.projectName}
                 onChange={(val) => handleInputChange('projectName', val)}
                 placeholder="e.g., Website Redesign, ERP Implementation"
@@ -288,7 +366,45 @@ function ProjectFormPage() {
                 onValueChange={(val) => handleInputChange('customerName', val)}
                 onSelect={handleCustomerSelect}
                 options={availableCustomers}
-                placeholder="Select Customer (Optional)"
+                placeholder="Select Customer"
+              />
+              <FormField
+                label="Reference No / Contract No"
+                value={formData.referenceNo}
+                onChange={(val) => handleInputChange('referenceNo', val)}
+                placeholder="e.g., PO-12345, CON-XYZ"
+              />
+              <MasterSelectField
+                label="Category / Type"
+                value={categoryTypes.find(type => type.id === formData.categoryType)?.name || ''}
+                onValueChange={(val) => handleInputChange('categoryType', val)}
+                onSelect={(id) => handleInputChange('categoryType', id)}
+                options={categoryTypes}
+                placeholder="Select Category"
+              />
+              <MasterSelectField
+                label="Project Owner / Assigned Manager"
+                value={formData.projectOwnerName}
+                onValueChange={(val) => handleInputChange('projectOwnerName', val)}
+                onSelect={handleProjectOwnerSelect}
+                options={availableEmployees}
+                placeholder="Select Project Owner"
+              />
+              <MasterSelectField
+                label="Assigned Team Members"
+                value={formData.assignedTeamMembers.map(id => availableEmployees.find(emp => emp.id === id)?.name || '').join(', ')}
+                onValueChange={(val) => {}} // Multi-select handles its own input
+                onSelect={(id, name, data) => {
+                  // Toggle selection for multi-select
+                  const newSelection = formData.assignedTeamMembers.includes(id)
+                    ? formData.assignedTeamMembers.filter(memberId => memberId !== id)
+                    : [...formData.assignedTeamMembers, id];
+                  handleTeamMembersSelect(newSelection);
+                }}
+                options={availableEmployees}
+                placeholder="Select Team Members"
+                isMultiSelect={true}
+                selectedValues={formData.assignedTeamMembers}
               />
               <FormField
                 label="Start Date"
@@ -304,43 +420,31 @@ function ProjectFormPage() {
                 onChange={(val) => handleInputChange('dueDate', val)}
                 required
               />
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${theme.textPrimary}`}>Billing Type</label>
-                <select
-                  value={formData.billingType}
-                  onChange={(e) => handleInputChange('billingType', e.target.value)}
-                  className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent`}
-                >
-                  <option value="fixed_price">Fixed Price</option>
-                  <option value="time_based">Time Based</option>
-                  <option value="recurring">Recurring</option>
-                </select>
-              </div>
-              <MasterSelectField
-                label="Assigned To"
-                value={formData.assignedStaffName}
-                onValueChange={(val) => handleInputChange('assignedStaffName', val)}
-                onSelect={handleEmployeeSelect}
-                options={availableEmployees}
-                placeholder="Assign Staff (Optional)"
-              />
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${theme.textPrimary}`}>Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent`}
-                >
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="waiting_for_client">Waiting for Client</option>
-                  <option value="completed">Completed</option>
-                  <option value="billed">Billed</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
               <FormField
-                label="Description"
+                label="Expected Value / Contract Amount"
+                type="number"
+                value={formData.expectedValue.toString()}
+                onChange={(val) => handleInputChange('expectedValue', parseFloat(val) || 0)}
+                icon={<DollarSign size={18} />}
+              />
+              <MasterSelectField
+                label="Billing Type"
+                value={billingTypes.find(type => type.id === formData.billingType)?.name || ''}
+                onValueChange={(val) => handleInputChange('billingType', val)}
+                onSelect={(id) => handleInputChange('billingType', id)}
+                options={billingTypes}
+                placeholder="Select Billing Type"
+              />
+              <MasterSelectField
+                label="Status"
+                value={projectStatuses.find(status => status.id === formData.status)?.name || ''}
+                onValueChange={(val) => handleInputChange('status', val)}
+                onSelect={(id) => handleInputChange('status', id)}
+                options={projectStatuses}
+                placeholder="Select Status"
+              />
+              <FormField
+                label="Description / Scope of Work"
                 value={formData.description}
                 onChange={(val) => handleInputChange('description', val)}
                 placeholder="Detailed project description and scope"
@@ -360,29 +464,37 @@ function ProjectFormPage() {
             </div>
             {formData.isRecurring && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${theme.textPrimary}`}>Recurrence Frequency</label>
-                  <select
-                    value={formData.recurrenceFrequency}
-                    onChange={(e) => handleInputChange('recurrenceFrequency', e.target.value)}
-                    className={`w-full px-3 py-2 border ${theme.inputBorder} rounded-lg ${theme.inputBg} ${theme.textPrimary} focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent`}
-                  >
-                    <option value="">Select Frequency</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </div>
+                <MasterSelectField
+                  label="Frequency"
+                  value={recurrenceFrequencies.find(freq => freq.id === formData.recurrenceFrequency)?.name || ''}
+                  onValueChange={(val) => handleInputChange('recurrenceFrequency', val)}
+                  onSelect={(id) => handleInputChange('recurrenceFrequency', id)}
+                  options={recurrenceFrequencies}
+                  placeholder="Select Frequency"
+                  required
+                />
                 <FormField
-                  label="Recurrence Due Date"
-                  type="date"
+                  label="Due day/date (e.g., 11 for 11th of month)"
                   value={formData.recurrenceDueDate}
                   onChange={(val) => handleInputChange('recurrenceDueDate', val)}
+                  placeholder="e.g., 11, 25, or a specific date"
+                  required
                 />
               </div>
             )}
+          </Card>
+
+          {/* Attachments Section (Placeholder - actual implementation would involve Supabase Storage) */}
+          <Card className="p-6">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+              <FileText size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+              Attachments
+            </h3>
+            <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg text-gray-500 cursor-pointer hover:border-blue-500 transition-colors">
+              <input type="file" multiple className="hidden" />
+              <p>Drag & drop files here, or click to browse</p>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">Max file size: 5MB. Supported formats: PDF, DOCX, JPG, PNG.</p>
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">

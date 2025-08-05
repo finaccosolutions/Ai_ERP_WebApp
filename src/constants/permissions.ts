@@ -211,4 +211,3 @@ export const ALL_PERMISSIONS = {
     project_reports: 'Access Project Reports',
   },
 };
-

@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Database types 
+// Database types
 export interface Database {
   public: {
     Tables: {
@@ -566,8 +566,8 @@ export interface Database {
           // NEW: Tax Registration Type
           tax_registration_type?: string | null;
         };
-      }; 
-     chart_of_accounts: {
+      };
+      chart_of_accounts: {
         Row: {
           id: string;
           company_id: string | null;
@@ -924,6 +924,12 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          reference_no: string | null;
+          category_type: string | null;
+          expected_value: number | null;
+          project_owner_id: string | null;
+          progress_percentage: number | null;
+          last_recurrence_created_at: string | null;
         };
         Insert: {
           id?: string;
@@ -942,6 +948,12 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          reference_no?: string | null;
+          category_type?: string | null;
+          expected_value?: number | null;
+          project_owner_id?: string | null;
+          progress_percentage?: number | null;
+          last_recurrence_created_at?: string | null;
         };
         Update: {
           id?: string;
@@ -960,6 +972,12 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          reference_no?: string | null;
+          category_type?: string | null;
+          expected_value?: number | null;
+          project_owner_id?: string | null;
+          progress_percentage?: number | null;
+          last_recurrence_created_at?: string | null;
         };
       };
       tasks: { // NEW: Tasks table definition
@@ -973,6 +991,8 @@ export interface Database {
           description: string | null;
           created_at: string;
           updated_at: string;
+          start_date: string | null;
+          priority: string | null;
         };
         Insert: {
           id?: string;
@@ -984,6 +1004,8 @@ export interface Database {
           description?: string | null;
           created_at?: string;
           updated_at?: string;
+          start_date?: string | null;
+          priority?: string | null;
         };
         Update: {
           id?: string;
@@ -995,6 +1017,8 @@ export interface Database {
           description?: string | null;
           created_at?: string;
           updated_at?: string;
+          start_date?: string | null;
+          priority?: string | null;
         };
       };
       time_logs: { // NEW: Time Logs table definition
@@ -1253,7 +1277,84 @@ export interface Database {
           created_at?: string;
         };
       };
+      project_team_members: {
+        Row: {
+          id: string;
+          project_id: string;
+          employee_id: string;
+          role: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          employee_id: string;
+          role?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          employee_id?: string;
+          role?: string | null;
+          created_at?: string;
+        };
+      };
+      project_comments: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string;
+          comment_text: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id: string;
+          comment_text: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          user_id?: string;
+          comment_text?: string;
+          created_at?: string;
+        };
+      };
+      project_activity_log: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string | null;
+          activity_type: string;
+          description: string;
+          old_value: any | null;
+          new_value: any | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id?: string | null;
+          activity_type: string;
+          description: string;
+          old_value?: any | null;
+          new_value?: any | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          user_id?: string | null;
+          activity_type?: string;
+          description?: string;
+          old_value?: any | null;
+          new_value?: any | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }
-

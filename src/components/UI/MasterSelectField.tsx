@@ -1,6 +1,6 @@
 // src/components/UI/MasterSelectField.tsx
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Search, Check } from 'lucide-react'; // Import Check icon
 import { useTheme } from '../../contexts/ThemeContext';
 import DropdownPortal from './DropdownPortal';
 
@@ -12,8 +12,8 @@ type Option = {
 
 type MasterSelectFieldProps = {
   label: string;
-  value: string; // This is the selected ID from the parent
-  onValueChange: (id: string) => void; // Callback to update the parent's state with the selected ID
+  value: string; // This is the selected ID from the parent (for single select)
+  onValueChange: (id: string) => void; // Callback to update the parent's state with the selected ID (for single select)
   onSelect: (selectedId: string, selectedName: string, additionalData?: any) => void;
   options: Option[];
   placeholder?: string;
@@ -31,6 +31,8 @@ type MasterSelectFieldProps = {
   onF2Press?: (currentSearchTerm: string) => void;
   displayValue?: string;
   disableTyping?: boolean; // NEW: Prop to disable typing and filtering
+  isMultiSelect?: boolean; // NEW: Prop for multi-select
+  selectedValues?: string[]; // NEW: Array of selected IDs for multi-select
 };
 
 export interface MasterSelectFieldRef {
@@ -63,6 +65,8 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
   onF2Press,
   displayValue,
   disableTyping = false, // NEW: Default to false
+  isMultiSelect = false, // NEW: Default to false
+  selectedValues = [], // NEW: Default to empty array
 }, ref) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +78,14 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (displayValue !== undefined) {
+    if (isMultiSelect) {
+      // For multi-select, display selected names as comma-separated string
+      const selectedNames = options
+        .filter(opt => selectedValues.includes(opt.id))
+        .map(opt => opt.name)
+        .join(', ');
+      setInternalSearchTerm(selectedNames);
+    } else if (displayValue !== undefined) {
       setInternalSearchTerm(displayValue);
     } else {
       const selectedOption = options.find(opt => opt.id === value);
@@ -84,7 +95,7 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
         setInternalSearchTerm('');
       }
     }
-  }, [value, options, displayValue]);
+  }, [value, options, displayValue, isMultiSelect, selectedValues]);
 
   useImperativeHandle(ref, () => ({
     getSearchTerm: () => internalSearchTerm,
@@ -94,9 +105,17 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
     selectOption: (id: string) => {
       const option = options.find(opt => opt.id === id);
       if (option) {
-        setInternalSearchTerm(option.name);
-        onValueChange(option.id);
-        onSelect(option.id, option.name, option);
+        if (isMultiSelect) {
+          // Multi-select logic for external control
+          const newSelectedValues = selectedValues.includes(id)
+            ? selectedValues.filter(val => val !== id)
+            : [...selectedValues, id];
+          onSelect(id, option.name, option); // Still call onSelect for individual item
+        } else {
+          setInternalSearchTerm(option.name);
+          onValueChange(option.id);
+          onSelect(option.id, option.name, option);
+        }
         setIsOpen(false);
       }
     },
@@ -163,33 +182,42 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
 
   const handleOptionClick = (option: Option) => {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
-    setInternalSearchTerm(option.name);
-    onValueChange(option.id);
-    onSelect(option.id, option.name, option);
-    setIsOpen(false);
-    inputRef.current?.focus();
+
+    if (isMultiSelect) {
+      onSelect(option.id, option.name, option); // Let parent handle adding/removing from selectedValues
+      setInternalSearchTerm(''); // Clear search term after selection in multi-select
+      inputRef.current?.focus();
+    } else {
+      setInternalSearchTerm(option.name);
+      onValueChange(option.id);
+      onSelect(option.id, option.name, option);
+      setIsOpen(false);
+      inputRef.current?.focus();
+    }
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     blurTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-      const typedText = internalSearchTerm.trim();
-      const selectedOption = options.find(opt => opt.id === value);
+      if (!isMultiSelect) {
+        const typedText = internalSearchTerm.trim();
+        const selectedOption = options.find(opt => opt.id === value);
 
-      if (typedText === '') {
-        onValueChange('');
-        setInternalSearchTerm('');
-      } else if (selectedOption && selectedOption.name.toLowerCase() === typedText.toLowerCase()) {
-        // Value is already correctly set and displayed
-      } else {
-        const matchingOption = options.find(opt => opt.name.toLowerCase() === typedText.toLowerCase());
-        if (matchingOption) {
-          onValueChange(matchingOption.id);
-          onSelect(matchingOption.id, matchingOption.name, matchingOption);
-          setInternalSearchTerm(matchingOption.name);
-        } else {
+        if (typedText === '') {
           onValueChange('');
           setInternalSearchTerm('');
+        } else if (selectedOption && selectedOption.name.toLowerCase() === typedText.toLowerCase()) {
+          // Value is already correctly set and displayed
+        } else {
+          const matchingOption = options.find(opt => opt.name.toLowerCase() === typedText.toLowerCase());
+          if (matchingOption) {
+            onValueChange(matchingOption.id);
+            onSelect(matchingOption.id, matchingOption.name, matchingOption);
+            setInternalSearchTerm(matchingOption.name);
+          } else {
+            onValueChange('');
+            setInternalSearchTerm('');
+          }
         }
       }
       if (onBlur) onBlur(e);
@@ -265,6 +293,9 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
                   flex items-center justify-between`}
               >
                 <span>{option.flag ? `${option.flag} ${option.name} (${option.dialCode})` : option.name}</span>
+                {isMultiSelect && selectedValues.includes(option.id) && (
+                  <Check size={16} className="text-green-500" />
+                )}
                 {option.is_system_defined && (
                   <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                     System
@@ -280,5 +311,5 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
     </div>
   );
 });
- 
+
 export default MasterSelectField;

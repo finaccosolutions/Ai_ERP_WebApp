@@ -50,15 +50,15 @@ function Sidebar({ open, setOpen }: SidebarProps) {
     <>
       {/* Backdrop for mobile */}
       {open && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
-      
+
       <div className={`
         fixed left-0 top-16 h-[calc(100vh-4rem)] z-30 transition-all duration-300 ease-in-out
-        ${open ? 'w-64' : 'w-16'} 
+        ${open ? 'w-64' : 'w-16'}
         ${theme.sidebarBg}
         border-r border-slate-700/30 shadow-xl backdrop-blur-sm
         flex flex-col
@@ -98,7 +98,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
           <div className="p-2 space-y-1">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path || 
+              const isActive = location.pathname === item.path ||
                              (item.path !== '/' && location.pathname.startsWith(item.path));
 
               return (
@@ -108,8 +108,8 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                   className={`
                     group relative flex items-center px-3 py-3 rounded-xl
                     transition-all duration-300 ease-in-out
-                    ${isActive 
-                      ? 'bg-gradient-to-r ${theme.primaryGradient} text-white shadow-lg shadow-[#6AC8A3]/25' 
+                    ${isActive
+                      ? 'bg-gradient-to-r ${theme.primaryGradient} text-white shadow-lg shadow-[#6AC8A3]/25'
                       : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' // Changed text-slate-300 to text-slate-400 for better contrast
                     }
                     ${!open ? 'justify-center' : ''}
@@ -122,11 +122,11 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                   {/* Icon Container */}
                   <div className={`
                     relative flex items-center justify-center
-                    ${open ? 'mr-3' : ''} 
+                    ${open ? 'mr-3' : ''}
                     transition-all duration-300
                   `}>
                     <Icon size={18} className="relative z-10" />
-                    
+
                     {/* Active indicator for collapsed state */}
                     {!open && isActive && (
                       <div className="absolute inset-0 bg-gradient-to-r ${theme.primaryGradient} rounded-lg opacity-20 scale-150" />
@@ -155,13 +155,13 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                   {/* Tooltip for collapsed state */}
                   {!open && (
                     <div className={`
-                      absolute left-full ml-4 px-3 py-2 bg-slate-800 text-white text-sm 
+                      absolute left-full ml-4 px-3 py-2 bg-slate-800 text-white text-sm
                       rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible
                       transition-all duration-300 whitespace-nowrap z-50 shadow-xl
                       border border-slate-600
                     `}>
                       {item.label}
-                      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 
+                      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1
                                     border-4 border-transparent border-r-slate-800" />
                     </div>
                   )}
@@ -187,4 +187,4 @@ function Sidebar({ open, setOpen }: SidebarProps) {
   );
 }
 
-export default Sidebar 
+export default Sidebar
