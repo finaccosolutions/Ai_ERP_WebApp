@@ -12,6 +12,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
+import TaskListFilterModal from '../../components/Modals/TaskListFilterModal'; // NEW: Import the filter modal
 
 interface Task {
   id: string;
@@ -19,9 +20,9 @@ interface Task {
   task_name: string;
   assigned_to_id: string | null;
   status: string;
-  start_date: string | null; // NEW
+  start_date: string | null;
   due_date: string | null;
-  priority: string | null; // NEW
+  priority: string | null;
   description: string | null;
   created_at: string;
   // Joined data
@@ -34,7 +35,7 @@ function TaskListPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>(); // Get projectId from URL
+  const { projectId } = useParams<{ projectId: string }>();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,23 +45,22 @@ function TaskListPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [taskToDeleteId, setTaskToDeleteId] = useState<string | null>(null);
 
+  const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
   const [filterCriteria, setFilterCriteria] = useState({
     name: '',
     status: 'all',
     assignedTo: '',
     dueDateBefore: '',
     dueDateAfter: '',
-    priority: 'all', // NEW
+    priority: 'all',
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
-  const [projectDetails, setProjectDetails] = useState<any>(null); // To display project name
-  const [availableEmployees, setAvailableEmployees] = useState<{ id: string; name: string }[]>([]); // For assigned staff filter
+  const [projectDetails, setProjectDetails] = useState<any>(null);
 
   useEffect(() => {
     if (currentCompany?.id && projectId) {
       fetchProjectDetails(projectId);
-      fetchEmployees(currentCompany.id); // Fetch employees for filter
       fetchTasks(projectId);
     }
   }, [currentCompany?.id, projectId, filterCriteria, numResultsToShow, searchTerm]);
@@ -78,23 +78,7 @@ function TaskListPage() {
     } catch (err: any) {
       showNotification(`Error fetching project details: ${err.message}`, 'error');
       console.error('Error fetching project details:', err);
-      navigate('/project/list'); // Redirect if project not found
-    }
-  };
-
-  const fetchEmployees = async (companyId: string) => {
-    try {
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('employees')
-        .select('id, first_name, last_name')
-        .eq('company_id', companyId)
-        .eq('status', 'active');
-      if (employeesError) throw employeesError;
-      setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}` })) || []);
-
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-      showNotification('Failed to load employees for filter.', 'error');
+      navigate('/project/list');
     }
   };
 
@@ -108,7 +92,7 @@ function TaskListPage() {
           id, project_id, task_name, assigned_to_id, status, start_date, due_date, priority, description, created_at,
           employees ( first_name, last_name )
         `, { count: 'exact' })
-        .eq('project_id', id); // Filter by project_id
+        .eq('project_id', id);
 
       if (searchTerm) {
         query = query.ilike('task_name', `%${searchTerm}%`);
@@ -120,7 +104,7 @@ function TaskListPage() {
       if (filterCriteria.status !== 'all') {
         query = query.eq('status', filterCriteria.status);
       }
-      if (filterCriteria.assignedTo) {
+      if (filterCriteria.assignedTo && filterCriteria.assignedTo !== 'all') {
         query = query.eq('assigned_to_id', filterCriteria.assignedTo);
       }
       if (filterCriteria.dueDateBefore) {
@@ -129,7 +113,7 @@ function TaskListPage() {
       if (filterCriteria.dueDateAfter) {
         query = query.gte('due_date', filterCriteria.dueDateAfter);
       }
-      if (filterCriteria.priority !== 'all') { // NEW: Apply priority filter
+      if (filterCriteria.priority !== 'all') {
         query = query.eq('priority', filterCriteria.priority);
       }
 
@@ -208,24 +192,9 @@ function TaskListPage() {
     }
   };
 
-  const taskStatuses = [
-    { id: 'all', name: 'All Statuses' },
-    { id: 'open', name: 'To-Do' },
-    { id: 'in_progress', name: 'Working' },
-    { id: 'on_hold', name: 'On Hold' },
-    { id: 'completed', name: 'Done' },
-  ];
-
-  const taskPriorities = [
-    { id: 'all', name: 'All Priorities' },
-    { id: 'low', name: 'Low' },
-    { id: 'medium', name: 'Medium' },
-    { id: 'high', name: 'High' },
-    { id: 'critical', name: 'Critical' },
-  ];
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilterCriteria(prev => ({ ...prev, [key]: value }));
+  const handleApplyFilters = (newFilters: typeof filterCriteria) => {
+    setFilterCriteria(newFilters);
+    setShowFilterModal(false);
   };
 
   return (
@@ -266,52 +235,9 @@ function TaskListPage() {
               `}
             />
           </div>
-          {/* Filter options */}
-          <MasterSelectField
-            label=""
-            value={taskStatuses.find(status => status.id === filterCriteria.status)?.name || ''}
-            onValueChange={(val) => handleFilterChange('status', val)}
-            onSelect={(id) => handleFilterChange('status', id)}
-            options={taskStatuses}
-            placeholder="Filter by Status"
-            className="w-40"
-          />
-          <MasterSelectField
-            label=""
-            value={availableEmployees.find(emp => emp.id === filterCriteria.assignedTo)?.name || ''}
-            onValueChange={(val) => handleFilterChange('assignedTo', val)}
-            onSelect={(id) => handleFilterChange('assignedTo', id)}
-            options={[{ id: 'all', name: 'All Staff' }, ...availableEmployees]}
-            placeholder="Filter by Assigned To"
-            className="w-40"
-          />
-          <MasterSelectField
-            label=""
-            value={taskPriorities.find(priority => priority.id === filterCriteria.priority)?.name || ''}
-            onValueChange={(val) => handleFilterChange('priority', val)}
-            onSelect={(id) => handleFilterChange('priority', id)}
-            options={taskPriorities}
-            placeholder="Filter by Priority"
-            className="w-40"
-          />
-          <FormField
-            label=""
-            type="date"
-            value={filterCriteria.dueDateAfter}
-            onChange={(val) => handleFilterChange('dueDateAfter', val)}
-            placeholder="Due After"
-            icon={<Calendar size={16} />}
-            className="w-36"
-          />
-          <FormField
-            label=""
-            type="date"
-            value={filterCriteria.dueDateBefore}
-            onChange={(val) => handleFilterChange('dueDateBefore', val)}
-            placeholder="Due Before"
-            icon={<Calendar size={16} />}
-            className="w-36"
-          />
+          <Button onClick={() => setShowFilterModal(true)} icon={<Filter size={16} />}>
+            Filter
+          </Button>
           <MasterSelectField
             label=""
             value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
@@ -339,35 +265,35 @@ function TaskListPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {tasks.map((task) => (
                   <tr key={task.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.task_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[150px] overflow-hidden text-ellipsis">{task.task_name}</td>
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">
                       {task.employees ? `${task.employees.first_name} ${task.employees.last_name}` : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {task.start_date} - {task.due_date}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
                         {task.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <span className={`font-medium ${getPriorityColor(task.priority || 'medium')}`}>
                         {task.priority || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/${projectId}/tasks/edit/${task.id}`}>
                         <Button variant="ghost" size="sm" title="Edit">
                           <Edit size={16} />
@@ -397,6 +323,14 @@ function TaskListPage() {
         title="Confirm Task Deletion"
         message="Are you sure you want to delete this task? This action cannot be undone and will also delete all associated time logs."
         confirmText="Yes, Delete Task"
+      />
+
+      <TaskListFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onApplyFilters={handleApplyFilters}
+        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
       />
     </div>
   );

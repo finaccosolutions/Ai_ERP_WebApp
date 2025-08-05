@@ -12,6 +12,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
+import TimeLogFilterModal from '../../components/Modals/TimeLogFilterModal'; // NEW: Import the filter modal
 
 interface TimeLog {
   id: string;
@@ -44,7 +45,7 @@ function TimeLogPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>(); // Get projectId and taskId from URL
+  const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
 
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,19 +59,24 @@ function TimeLogPage() {
   const [formData, setFormData] = useState({
     id: '',
     employeeId: '',
-    employeeName: '', // For MasterSelectField display
-    startTime: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:MM
+    employeeName: '',
+    startTime: new Date().toISOString().slice(0, 16),
     endTime: '',
     durationMinutes: 0,
     notes: '',
   });
 
   const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
-  const [taskDetails, setTaskDetails] = useState<any>(null); // To display task name
+  const [taskDetails, setTaskDetails] = useState<any>(null);
 
-  const isEditMode = !!formData.id; // Check if formData.id exists for edit mode
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
+  const [filterCriteria, setFilterCriteria] = useState({
+    employee: '',
+    startDate: '',
+    endDate: '',
+    notes: '',
+  });
+  const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
   useEffect(() => {
     const initializePage = async () => {
@@ -86,7 +92,7 @@ function TimeLogPage() {
     if (currentCompany?.id && taskId) {
       initializePage();
     }
-  }, [currentCompany?.id, taskId, viewMode]);
+  }, [currentCompany?.id, taskId, viewMode, filterCriteria, numResultsToShow]);
 
   const fetchTaskDetails = async (id: string) => {
     try {
@@ -101,7 +107,7 @@ function TimeLogPage() {
     } catch (err: any) {
       showNotification(`Error fetching task details: ${err.message}`, 'error');
       console.error('Error fetching task details:', err);
-      navigate(`/project/${projectId}/tasks`); // Redirect if task not found
+      navigate(`/project/${projectId}/tasks`);
     }
   };
 
@@ -131,13 +137,30 @@ function TimeLogPage() {
           id, task_id, employee_id, start_time, end_time, duration_minutes, notes, created_at,
           employees ( first_name, last_name )
         `, { count: 'exact' })
-        .eq('task_id', id); // Filter by task_id
+        .eq('task_id', id);
 
       if (searchTerm) {
-        query = query.ilike('notes', `%${searchTerm}%`); // Search by notes for now
+        query = query.ilike('notes', `%${searchTerm}%`);
+      }
+
+      if (filterCriteria.employee && filterCriteria.employee !== 'all') {
+        query = query.eq('employee_id', filterCriteria.employee);
+      }
+      if (filterCriteria.startDate) {
+        query = query.gte('start_time', filterCriteria.startDate);
+      }
+      if (filterCriteria.endDate) {
+        query = query.lte('end_time', filterCriteria.endDate);
+      }
+      if (filterCriteria.notes) {
+        query = query.ilike('notes', `%${filterCriteria.notes}%`);
       }
 
       query = query.order('start_time', { ascending: false });
+
+      if (numResultsToShow !== 'all') {
+        query = query.limit(parseInt(numResultsToShow));
+      }
 
       const { data, error, count } = await query;
 
@@ -219,7 +242,7 @@ function TimeLogPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setLoading(true);
     try {
       const timeLogToSave = {
         task_id: taskId,
@@ -251,7 +274,7 @@ function TimeLogPage() {
       showNotification(`Failed to save time log: ${err.message}`, 'error');
       console.error('Save time log error:', err);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -265,7 +288,7 @@ function TimeLogPage() {
       durationMinutes: log.duration_minutes || 0,
       notes: log.notes || '',
     });
-    setViewMode('create'); // Use 'create' view for both new and edit forms
+    setViewMode('create');
   };
 
   const handleDeleteTimeLog = (logId: string) => {
@@ -294,6 +317,11 @@ function TimeLogPage() {
       setLoading(false);
       setTimeLogToDeleteId(null);
     }
+  };
+
+  const handleApplyFilters = (newFilters: typeof filterCriteria) => {
+    setFilterCriteria(newFilters);
+    setShowFilterModal(false);
   };
 
   const numResultsOptions = [
@@ -359,7 +387,7 @@ function TimeLogPage() {
                 type="number"
                 value={formData.durationMinutes.toString()}
                 onChange={(val) => handleInputChange('durationMinutes', parseFloat(val) || 0)}
-                readOnly // Calculated field
+                readOnly
               />
               <FormField
                 label="Notes"
@@ -373,8 +401,8 @@ function TimeLogPage() {
               <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} icon={<Save size={16} />}>
-                {isSubmitting ? 'Saving...' : 'Save Time Log'}
+              <Button type="submit" disabled={loading} icon={<Save size={16} />}>
+                {loading ? 'Saving...' : 'Save Time Log'}
               </Button>
             </div>
           </form>
@@ -398,6 +426,9 @@ function TimeLogPage() {
                 `}
               />
             </div>
+            <Button onClick={() => setShowFilterModal(true)} icon={<Filter size={16} />}>
+              Filter
+            </Button>
             <MasterSelectField
               label=""
               value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
@@ -425,29 +456,29 @@ function TimeLogPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration (Mins)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration (Mins)</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {timeLogs.map((log) => (
                     <tr key={log.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[120px] overflow-hidden text-ellipsis">
                         {log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {new Date(log.start_time).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {log.end_time ? new Date(log.end_time).toLocaleString() : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.duration_minutes || 0}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{log.notes || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{log.duration_minutes || 0}</td>
+                      <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[200px] overflow-hidden text-ellipsis">{log.notes || 'N/A'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                         <Button variant="ghost" size="sm" onClick={() => handleEditTimeLog(log)} title="Edit">
                           <Edit size={16} />
                         </Button>
@@ -471,6 +502,14 @@ function TimeLogPage() {
         title="Confirm Time Log Deletion"
         message="Are you sure you want to delete this time log? This action cannot be undone."
         confirmText="Yes, Delete Time Log"
+      />
+
+      <TimeLogFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onApplyFilters={handleApplyFilters}
+        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
       />
     </div>
   );

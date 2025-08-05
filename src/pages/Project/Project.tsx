@@ -3,16 +3,17 @@ import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Plus, Search, Filter, Users, Calendar, Clock, DollarSign, FileText, BarChart3, CheckCircle,
   TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown,
-  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, // Using PlusSquare for FAB icon
+  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, Mic, RefreshCw // Added Mic, RefreshCw
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
+import FormField from '../../components/UI/FormField'; // Added FormField for search input
 import { useTheme } from '../../contexts/ThemeContext';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'; // Import Link
 
 // NEW: Import Project sub-pages
 import ProjectListPage from './ProjectListPage';
@@ -58,9 +59,25 @@ function Project() {
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(''); // State for search input
+  const [isVoiceActive, setIsVoiceActive] = useState(false); // State for voice search
 
   // FAB state
   const [showFabMenu, setShowFabMenu] = useState(false);
+
+  // Define a set of distinct colors for tiles and pipeline sections
+  const moduleColors = [
+    { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
+    { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
+    { cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
+    { cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
+    { cardBg: 'bg-gradient-to-br from-teal-50 to-teal-100', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
+    { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
+    { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
+    { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
+    { cardBg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
+    { cardBg: 'bg-gradient-to-br from-cyan-50 to-cyan-100', textColor: 'text-cyan-800', iconBg: 'bg-cyan-500' },
+  ];
 
   useEffect(() => {
     if (currentCompany?.id) {
@@ -309,13 +326,48 @@ function Project() {
             Manage your projects, tasks, and time tracking
           </p>
         </div>
+        {/* MODIFIED: Search bar and refresh button */}
         <div className="flex space-x-2">
-          <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} />
-          <Button icon={<Plus size={16} />} onClick={() => navigate('/project/new')}>
-            New Project
-          </Button>
-          <Button variant="outline" icon={<Plus size={16} />}>
-            Quick Task
+          <div className="relative flex-1 max-w-md">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              placeholder="AI Search: 'Overdue projects', 'Tasks for John'..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && console.log('AI Search:', searchTerm)}
+              className={`
+                w-full pl-10 pr-14 py-2 border ${theme.inputBorder} rounded-lg
+                ${theme.inputBg} ${theme.textPrimary}
+                focus:ring-2 focus:ring-[${theme.hoverAccent}] focus:border-transparent
+                placeholder:text-gray-400
+              `}
+            />
+            <button
+              onClick={() => setIsVoiceActive(!isVoiceActive)}
+              className={`
+                absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors
+                ${
+                  isVoiceActive
+                    ? 'text-red-500 animate-pulse'
+                    : `text-gray-400 hover:text-[${theme.hoverAccent}]`
+                }
+              `}
+            >
+              <Mic size={16} />
+            </button>
+          </div>
+          <Button onClick={() => console.log('AI Search:', searchTerm)}>Search</Button>
+          <Button
+            variant="outline"
+            icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />}
+            onClick={() => fetchProjectData(currentCompany?.id || '')}
+            disabled={loading}
+          >
+            Refresh
           </Button>
         </div>
       </div>
@@ -354,70 +406,69 @@ function Project() {
                 </p>
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => { /* Navigate to detailed AI insights */ }}>View All Insights</Button>
+            <Button size="sm" variant="outline">View All Insights</Button>
           </div>
         </Card>
       )}
 
-      {/* Summary Tiles Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"> {/* MODIFIED: xl:grid-cols-6 */}
+      {/* Summary Tiles Section - MODIFIED */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"> {/* Adjusted grid for single row */}
         {[
-          { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500', filter: 'all' },
-          { name: 'Ongoing Projects', value: projectStats.inProgress, icon: Clock, cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500', filter: 'in_progress' },
-          { name: 'Completed', value: projectStats.completed, icon: CheckCircle, cardBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', textColor: 'text-emerald-800', iconBg: 'bg-emerald-500', filter: 'completed' },
-          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500', filter: 'overdue' },
-          { name: 'Recurring Jobs', value: projectStats.recurringJobs, icon: Zap, cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500', filter: 'recurring' },
-          { name: 'Upcoming Due (7 days)', value: projectStats.upcomingDue, icon: Calendar, cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500', filter: 'upcoming_due' },
+          { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, filter: 'all' },
+          { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, filter: 'in_progress' },
+          { name: 'Completed', value: projectStats.completed, icon: CheckCircle, filter: 'completed' },
+          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
+          { name: 'Recurring', value: projectStats.recurringJobs, icon: Zap, filter: 'recurring' },
+          { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, filter: 'upcoming_due' },
         ].map((tile, index) => {
           const Icon = tile.icon;
+          const colors = moduleColors[index % moduleColors.length]; // Use distinct colors
           return (
-            <Card
-              key={index}
-              hover
-              className={`
-                p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                ${tile.cardBg}
-                transform transition-all duration-300 ease-in-out
-                hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-              `}
-              onClick={() => navigate(`/project/list?status=${tile.filter}`)}
-              backgroundIcon={<Icon size={120} className={`text-gray-300 opacity-20`} />}
-            >
-              <div className="relative z-10">
-                <h3 className={`text-lg font-bold ${tile.textColor}`}>{tile.name}</h3>
-                <p className={`text-3xl font-extrabold mt-1 ${tile.textColor}`}>{tile.value}</p>
-              </div>
-              <div className="flex items-center justify-end mt-3 relative z-10">
-                <div className={`
-                  p-3 rounded-2xl shadow-md
-                  ${tile.iconBg} text-white
-                  group-hover:scale-125 transition-transform duration-300
-                `}>
-                  <Icon size={24} />
+            <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+              <Card
+                hover
+                className={`
+                  p-3 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                  ${colors.cardBg}
+                  transform transition-all duration-300 ease-in-out
+                  hover:translate-y-[-4px] hover:shadow-xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                `}
+                backgroundIcon={<Icon size={80} className={`text-gray-300 opacity-20`} />}
+              >
+                <div className="relative z-10">
+                  <h3 className={`text-base font-bold ${colors.textColor}`}>{tile.name}</h3>
+                  <p className={`text-2xl font-extrabold mt-1 ${colors.textColor}`}>{tile.value}</p>
                 </div>
-              </div>
-            </Card>
+                <div className="flex items-center justify-end mt-2 relative z-10">
+                  <div className={`
+                    p-2 rounded-xl shadow-md
+                    ${colors.iconBg} text-white
+                    group-hover:scale-110 transition-transform duration-300
+                  `}>
+                    <Icon size={20} />
+                  </div>
+                </div>
+              </Card>
+            </Link>
           );
         })}
       </div>
 
-      {/* Visual Project Pipeline (Kanban) */}
+      {/* Visual Project Pipeline - MODIFIED */}
       <Card className="p-6">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
-        {/* Note: For a true Kanban experience, horizontal scrolling is often necessary if there are many columns.
-            This layout ensures the overall page does not force a horizontal scrollbar,
-            while allowing the Kanban section itself to scroll if its content exceeds its container. */}
-        <div className="overflow-x-auto pb-4">
-          <div className="flex space-x-4 min-w-max">
-            {projectKanbanStatuses.map(statusCol => (
-              <div key={statusCol.id} className="w-72 flex-shrink-0 bg-gray-100 p-4 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-lg mb-3 flex items-center">
-                  <span className={`w-3 h-3 rounded-full mr-2 ${getStatusColor(statusCol.id).split(' ')[0].replace('bg-', 'bg-')}`} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"> {/* Adjusted grid for more columns */}
+          {projectKanbanStatuses.map((statusCol, colIndex) => {
+            const colors = moduleColors[colIndex % moduleColors.length]; // Use distinct colors for columns
+            return (
+              <div key={statusCol.id} className={`flex-shrink-0 p-4 rounded-lg shadow-sm ${colors.cardBg}`}> {/* Applied color to column */}
+                <h4 className={`font-semibold text-lg mb-3 flex items-center ${colors.textColor}`}> {/* Applied color to header */}
+                  <span className={`w-3 h-3 rounded-full mr-2 ${colors.iconBg.replace('bg-', 'bg-')}`} /> {/* Status indicator color */}
                   {statusCol.name} ({kanbanProjects[statusCol.id]?.length || 0})
                 </h4>
                 <div className="space-y-3 min-h-[100px]">
-                  {kanbanProjects[statusCol.id]?.map(project => (
-                    <Card key={project.id} className="p-3 cursor-grab" hover>
+                  {kanbanProjects[statusCol.id]?.slice(0, 5).map(project => ( /* Limited to 5 items */
+                    <Card key={project.id} className="p-3" hover>
                       <Link to={`/project/${project.id}/details`}>
                         <p className="font-medium text-gray-900">{project.project_name}</p>
                         <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p>
@@ -436,12 +487,9 @@ function Project() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-        <p className="text-sm text-gray-500 mt-4">
-          * Drag-and-drop functionality is a placeholder.
-        </p>
       </Card>
 
       {/* Quick Panels Section */}
@@ -496,19 +544,20 @@ function Project() {
         </Card>
       </div>
 
-      {/* Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) - MODIFIED */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setShowFabMenu(!showFabMenu)}
           className={`
-            w-16 h-16 rounded-full shadow-lg transition-all duration-300
+            w-14 h-14 rounded-full shadow-lg transition-all duration-300
             bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
             hover:scale-110 hover:shadow-xl
           `}
-          icon={<PlusSquare size={24} />}
+          icon={<Plus size={24} />} // Changed to simple Plus icon
         />
         {showFabMenu && (
-          <div className="absolute bottom-20 right-0 space-y-2">
+          <div className="absolute bottom-16 right-0 space-y-2"> {/* Adjusted position */}
+            <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} /> {/* AI Suggest moved here */}
             <Button
               variant="outline"
               className="w-full justify-start"
@@ -521,7 +570,7 @@ function Project() {
               variant="outline"
               className="w-full justify-start"
               icon={<Plus size={16} />}
-              onClick={() => { /* Logic to add quick task */ showNotification('Quick Task functionality is a placeholder.', 'info'); setShowFabMenu(false); }}
+              onClick={() => { showNotification('Quick Task functionality is a placeholder.', 'info'); setShowFabMenu(false); }}
             >
               Add Task
             </Button>
@@ -529,7 +578,7 @@ function Project() {
               variant="outline"
               className="w-full justify-start"
               icon={<Clock size={16} />}
-              onClick={() => { /* Logic to add time log */ showNotification('Add Time Log functionality is a placeholder.', 'info'); setShowFabMenu(false); }}
+              onClick={() => { showNotification('Add Time Log functionality is a placeholder.', 'info'); setShowFabMenu(false); }}
             >
               Add Time Log
             </Button>
