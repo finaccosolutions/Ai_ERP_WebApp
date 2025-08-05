@@ -10,7 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, useParams } => 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 function CampaignFormPage() {
   const { theme } = useTheme();

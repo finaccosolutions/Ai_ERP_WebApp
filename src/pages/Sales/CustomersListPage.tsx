@@ -9,7 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import MasterSelectField from '../../components/UI/MasterSelectField';
 
@@ -31,7 +31,8 @@ function CustomersListPage() {
   const { theme } = useTheme();
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
-  const navigate = useNavigate(); // Add this line
+  const navigate = useNavigate();
+  const location = useLocation(); // Initialize useLocation
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,8 +131,14 @@ function CustomersListPage() {
           <p className={theme.textSecondary}>Manage your customer profiles and details.</p>
         </div>
         <div className="flex space-x-2">
-          {/* Add this button */}
-          <Button variant="outline" onClick={() => navigate('/sales')} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
+          {/* Conditional Back button */}
+          <Button variant="outline" onClick={() => {
+            if (location.state?.fromCrm) { // Check if came from CRM
+              navigate('/crm');
+            } else {
+              navigate('/sales');
+            }
+          }} icon={<ArrowLeft size={16} />} className="text-gray-600 hover:text-gray-800">
             Back
           </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Customer Suggestions')} />
@@ -240,4 +247,3 @@ function CustomersListPage() {
 }
 
 export default CustomersListPage;
-

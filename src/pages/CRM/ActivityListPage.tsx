@@ -1,6 +1,6 @@
 // src/pages/CRM/ActivityListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Activity, Plus, Search, RefreshCw, Edit, Trash2, Calendar, Users, Mail, Phone } from 'lucide-react';
+import { Plus, Search, RefreshCw, Edit, Trash2, ArrowLeft } from 'lucide-react'; // Removed unused imports like Calendar, Users, Mail, Phone
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -10,6 +10,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
+import MasterSelectField from '../../components/UI/MasterSelectField'; // Corrected: Added missing import for MasterSelectField
 
 interface Activity {
   id: string;

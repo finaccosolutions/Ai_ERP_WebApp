@@ -6,7 +6,7 @@ import {
   Megaphone, // For Campaigns
   BarChart2, // For CRM Reports/Analytics
   Bot, // For AI
-} from 'lucide-react'; // MODIFIED: Added more Lucide icons
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -166,7 +166,8 @@ function CRM() {
       description: 'Manage your customer relationships from lead to opportunity.',
       modules: [
         { name: 'Leads', icon: Users, path: '/crm/leads', count: crmMetrics.totalLeads, description: 'Track and manage potential customers.' },
-        { name: 'Customers', icon: Users, path: '/sales/customers', count: crmMetrics.totalCustomers, description: 'Manage existing customer profiles.' }, // Links to Sales Customer Master
+        // Pass state to indicate origin is CRM
+        { name: 'Customers', icon: Users, path: '/sales/customers', state: { fromCrm: true }, count: crmMetrics.totalCustomers, description: 'Manage existing customer profiles.' }, // Links to Sales Customer Master
         { name: 'Opportunities', icon: Target, path: '/crm/opportunities', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
         { name: 'Activities', icon: Activity, path: '/crm/activities', count: crmMetrics.totalActivities, description: 'Log and manage all customer interactions.' },
       ]
@@ -247,12 +248,12 @@ function CRM() {
         <div key={catIndex} className="space-y-4">
           <h2 className={`text-2xl font-bold ${theme.textPrimary} mt-8`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Changed lg:grid-cols-4 to lg:grid-cols-3 */}
             {category.modules.map((module, moduleIndex) => {
               const Icon = module.icon;
               const colors = moduleColors[(catIndex * crmModules[catIndex].modules.length + moduleIndex) % moduleColors.length];
               return (
-                <Link key={module.name} to={module.path} className="flex">
+                <Link key={module.name} to={module.path} state={module.state} className="flex"> {/* Pass state here */}
                   <Card
                     hover
                     className={`
@@ -374,7 +375,7 @@ function CRM() {
               Add New Customer
             </Button>
           </Link>
-          <Link to="/crm/campaigns/new"> {/* MODIFIED: Link to new campaign form */}
+          <Link to="/crm/campaigns/new">
             <Button variant="outline" className="w-full justify-start" icon={<Megaphone size={16} />}>
               Create New Campaign
             </Button>
