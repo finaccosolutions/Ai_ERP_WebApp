@@ -1,12 +1,22 @@
+// src/pages/Project/Project.tsx
 import React from 'react';
 import { ClipboardCheck, Plus } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Routes, Route, Link, useLocation } from 'react-router-dom'; // ADDED: Imports for routing
+
+// NEW: Import Project sub-pages
+import ProjectListPage from './ProjectListPage';
+import ProjectFormPage from './ProjectFormPage';
+import TaskListPage from './TaskListPage';
+import TaskFormPage from './TaskFormPage';
+import TimeLogPage from './TimeLogPage';
 
 function Project() {
   const { theme } = useTheme();
+  const location = useLocation(); // ADDED: useLocation hook
 
   const projectStats = [
     { name: 'Total Projects', value: '0', icon: ClipboardCheck, color: 'bg-blue-500' },
@@ -14,6 +24,25 @@ function Project() {
     { name: 'Due Soon', value: '0', icon: ClipboardCheck, color: 'bg-orange-500' },
     { name: 'Completed', value: '0', icon: ClipboardCheck, color: 'bg-purple-500' },
   ];
+
+  // ADDED: Check if we are on the main Project dashboard page
+  const isMainProjectPage = location.pathname === '/project' || location.pathname === '/project/';
+
+  // ADDED: Conditional rendering for routing
+  if (!isMainProjectPage) {
+    return (
+      <Routes>
+        <Route path="/list" element={<ProjectListPage />} />
+        <Route path="/new" element={<ProjectFormPage />} />
+        <Route path="/edit/:id" element={<ProjectFormPage />} />
+        <Route path="/:projectId/tasks" element={<TaskListPage />} />
+        <Route path="/:projectId/tasks/new" element={<TaskFormPage />} />
+        <Route path="/:projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
+        <Route path="/:projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
+        {/* Add other project sub-routes here */}
+      </Routes>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -24,7 +53,9 @@ function Project() {
         </div>
         <div className="flex space-x-2">
           <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} />
-          <Button icon={<Plus size={16} />}>Create New Project</Button>
+          <Link to="/project/new"> {/* MODIFIED: Link to new project form */}
+            <Button icon={<Plus size={16} />}>Create New Project</Button>
+          </Link>
         </div>
       </div>
 
@@ -48,7 +79,12 @@ function Project() {
       </div>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Projects</h3>
+        <div className="flex justify-between items-center mb-4"> {/* ADDED: Flex container for header and link */}
+          <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
+          <Link to="/project/list" className="text-sm text-cyan-600 hover:text-cyan-800 flex items-center"> {/* ADDED: Link to project list */}
+            View All Projects <Plus size={16} className="ml-1" />
+          </Link>
+        </div>
         <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
           <p>No recent projects found. Create a new project to get started.</p>
         </div>

@@ -1,6 +1,6 @@
 // src/pages/CRM/LeadListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, Mail, Phone, RefreshCw, Edit, Trash2, ArrowLeft, Filter, Convert } from 'lucide-react';
+import { Plus, Search, Users, Mail, Phone, RefreshCw, Edit, Trash2, ArrowLeft, Filter, ArrowLeftRight } from 'lucide-react'; // MODIFIED: Changed 'Convert' to 'ArrowLeftRight'
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -199,8 +199,8 @@ function LeadListPage() {
 
       showNotification(`Lead "${lead.lead_name}" converted to customer successfully!`, 'success');
       fetchLeads(); // Refresh list
-      // Optionally navigate to the new customer's page or project creation
-      // navigate(`/sales/customers/edit/${newCustomer.id}`);
+      // MODIFIED: Navigate to the new customer's edit page in Sales module
+      navigate(`/sales/customers/edit/${newCustomer.id}`);
     } catch (err: any) {
       showNotification(`Failed to convert lead: ${err.message}`, 'error');
       console.error('Error converting lead:', err);
@@ -336,7 +336,7 @@ function LeadListPage() {
                       </Link>
                       {!lead.converted_customer_id && (
                         <Button variant="ghost" size="sm" onClick={() => handleConvertLead(lead)} title="Convert to Customer">
-                          <Convert size={16} />
+                          <ArrowLeftRight size={16} /> {/* MODIFIED: Changed 'Convert' to 'ArrowLeftRight' */}
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)} className="text-red-600 hover:text-red-800" title="Delete">

@@ -1,20 +1,34 @@
+// src/pages/CRM/CRM.tsx
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingUp, Phone, Mail, Plus, Calendar, Clock, Target, FileText, Activity, ChevronRight } from 'lucide-react';
+import {
+  Users, TrendingUp, Phone, Mail, Plus, Calendar, Clock, Target, FileText, Activity, ChevronRight,
+  ClipboardList, // For Activities List
+  Megaphone, // For Campaigns
+  BarChart2, // For CRM Reports/Analytics
+  Bot, // For AI
+} from 'lucide-react'; // MODIFIED: Added more Lucide icons
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Link, Routes, Route, useLocation } from 'react-router-dom'; // Import Routes, Route, useLocation
+import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
+import { useNotification } from '../../contexts/NotificationContext'; // Import useNotification
 
 // Import CRM sub-pages
-import LeadListPage from './LeadListPage'; // NEW
-import LeadFormPage from './LeadFormPage'; // NEW
+import LeadListPage from './LeadListPage';
+import LeadFormPage from './LeadFormPage';
+// NEW: Placeholder for Campaigns
+import CampaignListPage from './CampaignListPage';
+import CampaignFormPage from './CampaignFormPage';
+// NEW: Placeholder for Activities List
+import ActivityListPage from './ActivityListPage';
 
 function CRM() {
   const { theme } = useTheme();
   const { currentCompany, currentPeriod } = useCompany();
+  const { showNotification } = useNotification(); // Use showNotification
   const location = useLocation();
 
   const [crmMetrics, setCrmMetrics] = useState({
@@ -28,6 +42,8 @@ function CRM() {
     totalOpportunities: 0,
     pendingFollowUps: 0,
     overdueFollowUps: 0,
+    totalCampaigns: 0, // NEW: Metric for campaigns
+    totalActivities: 0, // NEW: Metric for activities
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
@@ -71,6 +87,20 @@ function CRM() {
         .eq('company_id', companyId);
       if (opportunitiesError) throw opportunitiesError;
 
+      // NEW: Fetch Total Campaigns
+      const { count: totalCampaigns, error: campaignsError } = await supabase
+        .from('campaigns')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId);
+      if (campaignsError) throw campaignsError;
+
+      // NEW: Fetch Total Activities
+      const { count: totalActivities, error: activitiesCountError } = await supabase
+        .from('activities')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId);
+      if (activitiesCountError) throw activitiesCountError;
+
       // Fetch Follow-up Activities
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('activities')
@@ -96,6 +126,8 @@ function CRM() {
         lostLeads,
         totalCustomers: totalCustomers || 0,
         totalOpportunities: totalOpportunities || 0,
+        totalCampaigns: totalCampaigns || 0, // NEW
+        totalActivities: totalActivities || 0, // NEW
         pendingFollowUps,
         overdueFollowUps,
       });
@@ -127,22 +159,45 @@ function CRM() {
     }
   };
 
-  const crmStats = [
-    { name: 'Total Leads', value: crmMetrics.totalLeads, icon: Users, color: 'bg-blue-500' },
-    { name: 'New Leads', value: crmMetrics.newLeads, icon: Plus, color: 'bg-sky-500' },
-    { name: 'Converted Leads', value: crmMetrics.convertedLeads, icon: TrendingUp, color: 'bg-green-500' },
-    { name: 'Total Customers', value: crmMetrics.totalCustomers, icon: Users, color: 'bg-purple-500' },
-    { name: 'Total Opportunities', value: crmMetrics.totalOpportunities, icon: Target, color: 'bg-orange-500' },
-    { name: 'Pending Follow-ups', value: crmMetrics.pendingFollowUps, icon: Calendar, color: 'bg-yellow-500' },
-    { name: 'Overdue Follow-ups', value: crmMetrics.overdueFollowUps, icon: Clock, color: 'bg-red-500' },
+  // NEW: Structured CRM Modules
+  const crmModules = [
+    {
+      title: 'Core CRM',
+      description: 'Manage your customer relationships from lead to opportunity.',
+      modules: [
+        { name: 'Leads', icon: Users, path: '/crm/leads', count: crmMetrics.totalLeads, description: 'Track and manage potential customers.' },
+        { name: 'Customers', icon: Users, path: '/sales/customers', count: crmMetrics.totalCustomers, description: 'Manage existing customer profiles.' }, // Links to Sales Customer Master
+        { name: 'Opportunities', icon: Target, path: '/crm/opportunities', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
+        { name: 'Activities', icon: Activity, path: '/crm/activities', count: crmMetrics.totalActivities, description: 'Log and manage all customer interactions.' },
+      ]
+    },
+    {
+      title: 'Marketing & Engagement',
+      description: 'Plan and execute marketing campaigns.',
+      modules: [
+        { name: 'Campaigns', icon: Megaphone, path: '/crm/campaigns', count: crmMetrics.totalCampaigns, description: 'Create and manage marketing campaigns.' },
+      ]
+    },
+    {
+      title: 'Analytics & Reports',
+      description: 'Gain insights into your CRM performance.',
+      modules: [
+        { name: 'CRM Reports', icon: BarChart2, path: '/crm/reports', count: 'N/A', description: 'Access various CRM performance reports.' },
+        { name: 'Sales Analysis', icon: TrendingUp, path: '/sales/analysis', count: 'N/A', description: 'Detailed sales performance insights.' }, // Links to Sales Analysis
+      ]
+    }
   ];
 
-  const leadStatusPipeline = [
-    { status: 'open', label: 'New', count: crmMetrics.newLeads, color: 'bg-blue-100 text-blue-800' },
-    { status: 'contacted', label: 'Contacted', count: crmMetrics.contactedLeads, color: 'bg-sky-100 text-sky-800' },
-    { status: 'qualified', label: 'Qualified', count: crmMetrics.qualifiedLeads, color: 'bg-emerald-100 text-emerald-800' },
-    { status: 'converted', label: 'Converted', count: crmMetrics.convertedLeads, color: 'bg-green-100 text-green-800' },
-    { status: 'lost', label: 'Lost', count: crmMetrics.lostLeads, color: 'bg-red-100 text-red-800' },
+  const moduleColors = [
+    { cardBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', textColor: 'text-emerald-800', iconBg: 'bg-emerald-500' },
+    { cardBg: 'bg-gradient-to-br from-sky-50 to-sky-100', textColor: 'text-sky-800', iconBg: 'bg-sky-500' },
+    { cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
+    { cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
+    { cardBg: 'bg-gradient-to-br from-teal-50 to-teal-100', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
+    { cardBg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
+    { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
+    { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
+    { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
   ];
 
   // Check if we are on the main CRM dashboard page
@@ -154,10 +209,14 @@ function CRM() {
         <Route path="/leads" element={<LeadListPage />} />
         <Route path="/leads/new" element={<LeadFormPage />} />
         <Route path="/leads/edit/:id" element={<LeadFormPage />} />
+        <Route path="/campaigns" element={<CampaignListPage />} /> {/* NEW */}
+        <Route path="/campaigns/new" element={<CampaignFormPage />} /> {/* NEW */}
+        <Route path="/campaigns/edit/:id" element={<CampaignFormPage />} /> {/* NEW */}
+        <Route path="/activities" element={<ActivityListPage />} /> {/* NEW */}
         {/* Add other CRM sub-routes here (e.g., opportunities, campaigns) */}
         <Route path="/customers/*" element={<div>CRM Customers Page</div>} /> {/* Link to Sales Customers for now */}
         <Route path="/opportunities/*" element={<div>CRM Opportunities Page</div>} />
-        <Route path="/activities/*" element={<div>CRM Activities Page</div>} />
+        <Route path="/reports/*" element={<div>CRM Reports Page</div>} />
       </Routes>
     );
   }
@@ -170,7 +229,7 @@ function CRM() {
             Customer Relationship Management
           </h1>
           <p className={theme.textSecondary}>
-            Manage leads, customers, opportunities, and communication
+            AI-powered customer management and sales growth
           </p>
         </div>
         <div className="flex space-x-2">
@@ -181,78 +240,63 @@ function CRM() {
         </div>
       </div>
 
-      {/* CRM Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
-        {crmStats.map((stat, index) => {
-          const Icon = stat.icon;
-          const colors = [
-            'bg-gradient-to-br from-blue-50 to-blue-100',
-            'bg-gradient-to-br from-sky-50 to-sky-100',
-            'bg-gradient-to-br from-green-50 to-green-100',
-            'bg-gradient-to-br from-purple-50 to-purple-100',
-            'bg-gradient-to-br from-orange-50 to-orange-100',
-            'bg-gradient-to-br from-yellow-50 to-yellow-100',
-            'bg-gradient-to-br from-red-50 to-red-100',
-          ];
-          const textColors = [
-            'text-blue-800',
-            'text-sky-800',
-            'text-green-800',
-            'text-purple-800',
-            'text-orange-800',
-            'text-yellow-800',
-            'text-red-800',
-          ];
-          const iconBgs = [
-            'bg-blue-500',
-            'bg-sky-500',
-            'bg-green-500',
-            'bg-purple-500',
-            'bg-orange-500',
-            'bg-yellow-500',
-            'bg-red-500',
-          ];
+      {/* CRM Metrics - Simplified and integrated into modules below */}
 
-          return (
-            <Card key={stat.name} hover className={`p-6 ${colors[index % colors.length]}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm ${textColors[index % textColors.length]}`}>{stat.name}</p>
-                  <p className={`text-2xl font-bold ${textColors[index % textColors.length]}`}>{loadingMetrics ? '...' : stat.value}</p>
-                </div>
-                <div className={`p-3 ${iconBgs[index % iconBgs.length]} ${theme.borderRadius}`}>
-                  <Icon size={24} className="text-white" />
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+      {/* CRM Modules Section */}
+      {crmModules.map((category, catIndex) => (
+        <div key={catIndex} className="space-y-4">
+          <h2 className={`text-2xl font-bold ${theme.textPrimary} mt-8`}>{category.title}</h2>
+          <p className={theme.textSecondary}>{category.description}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {category.modules.map((module, moduleIndex) => {
+              const Icon = module.icon;
+              const colors = moduleColors[(catIndex * crmModules[catIndex].modules.length + moduleIndex) % moduleColors.length];
+              return (
+                <Link key={module.name} to={module.path} className="flex">
+                  <Card
+                    hover
+                    className={`
+                      p-6 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                      ${colors.cardBg}
+                      transform transition-all duration-300 ease-in-out
+                      hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                    `}
+                    backgroundIcon={<Icon size={120} className={`text-gray-300 opacity-20`} />} // Watermarked icon
+                  >
+                    <div className="relative z-10">
+                      <h3
+                        className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                      >
+                        {module.name}
+                      </h3>
+                      <p className={`text-sm ${theme.textMuted}`}>
+                        {module.description}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-3 relative z-10">
+                      <p className={`text-2xl font-bold ${colors.textColor}`}>
+                        {loadingMetrics ? '...' : module.count}
+                      </p>
+                      <div
+                        className={`
+                          p-3 rounded-2xl shadow-md
+                          ${colors.iconBg} text-white
+                          group-hover:scale-125 transition-transform duration-300
+                        `}
+                      >
+                        <Icon size={24} className="text-white" />
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
-      {/* Leads Pipeline & Quick Actions */}
+      {/* Recent Activities & Follow-ups */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Leads Pipeline</h3>
-            <Link to="/crm/leads" className="text-sm text-cyan-600 hover:text-cyan-800 flex items-center">
-              View All Leads <ChevronRight size={16} />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {leadStatusPipeline.map((stage, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">{stage.label}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs rounded-full ${stage.color}`}>
-                  {loadingMetrics ? '...' : stage.count} Leads
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Recent Activities / Follow-ups */}
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Recent Activities</h3>
@@ -286,25 +330,53 @@ function CRM() {
             )}
           </div>
         </Card>
+
+        {/* Leads Pipeline */}
+        <Card className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Leads Pipeline</h3>
+            <Link to="/crm/leads" className="text-sm text-cyan-600 hover:text-cyan-800 flex items-center">
+              View All Leads <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {[
+              { status: 'open', label: 'New', count: crmMetrics.newLeads, color: 'bg-blue-100 text-blue-800' },
+              { status: 'contacted', label: 'Contacted', count: crmMetrics.contactedLeads, color: 'bg-sky-100 text-sky-800' },
+              { status: 'qualified', label: 'Qualified', count: crmMetrics.qualifiedLeads, color: 'bg-emerald-100 text-emerald-800' },
+              { status: 'converted', label: 'Converted', count: crmMetrics.convertedLeads, color: 'bg-green-100 text-green-800' },
+              { status: 'lost', label: 'Lost', count: crmMetrics.lostLeads, color: 'bg-red-100 text-red-800' },
+            ].map((stage, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{stage.label}</p>
+                </div>
+                <span className={`px-2 py-1 text-xs rounded-full ${stage.color}`}>
+                  {loadingMetrics ? '...' : stage.count} Leads
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       {/* Quick Access Buttons */}
       <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Access</h3>
+        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link to="/crm/leads/new">
             <Button className="w-full justify-start" icon={<Plus size={16} />}>
               Add New Lead
             </Button>
           </Link>
-          <Link to="/sales/customers/new"> {/* Link to Sales module's customer form */}
+          <Link to="/sales/customers/new">
             <Button variant="outline" className="w-full justify-start" icon={<Users size={16} />}>
               Add New Customer
             </Button>
           </Link>
-          <Link to="/project/new"> {/* Link to Project module's project form */}
-            <Button variant="outline" className="w-full justify-start" icon={<FileText size={16} />}>
-              Create New Project
+          <Link to="/crm/campaigns/new"> {/* MODIFIED: Link to new campaign form */}
+            <Button variant="outline" className="w-full justify-start" icon={<Megaphone size={16} />}>
+              Create New Campaign
             </Button>
           </Link>
           <Link to="/crm/activities/new">
