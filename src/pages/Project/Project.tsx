@@ -1,9 +1,9 @@
 // src/pages/Project/Project.tsx
 import React, { useState, useEffect } from 'react';
 import {
-  ClipboardCheck, Plus, Search, Filter, Users, Calendar, Clock, DollarSign, FileText,
+  ClipboardCheck, Plus, Search, Filter, Users, Calendar, Clock, DollarSign, FileText, BarChart3, CheckCircle,
   TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown,
-  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain,
+  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, // Using PlusSquare for FAB icon
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -282,7 +282,7 @@ function Project() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
       </div>
     );
@@ -299,7 +299,7 @@ function Project() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
+      {/* Enhanced Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
           <h1 className={`text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-transparent bg-clip-text drop-shadow-lg`}>
@@ -324,7 +324,7 @@ function Project() {
       <Card className="p-4">
         <div className="flex items-center space-x-4">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search projects..."
@@ -360,46 +360,53 @@ function Project() {
       )}
 
       {/* Summary Tiles Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"> {/* MODIFIED: xl:grid-cols-6 */}
         {[
-          { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, color: 'from-blue-500 to-blue-600', filter: 'all' },
-          { name: 'Ongoing Projects', value: projectStats.inProgress, icon: Clock, color: 'from-green-500 to-green-600', filter: 'in_progress' },
-          { name: 'Completed', value: projectStats.completed, icon: CheckCircle, color: 'from-emerald-500 to-emerald-600', filter: 'completed' },
-          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, color: 'from-red-500 to-red-600', filter: 'overdue' },
-          { name: 'Recurring Jobs', value: projectStats.recurringJobs, icon: Zap, color: 'from-purple-500 to-purple-600', filter: 'recurring' },
-          { name: 'Upcoming Due (7 days)', value: projectStats.upcomingDue, icon: Calendar, color: 'from-orange-500 to-orange-600', filter: 'upcoming_due' },
-        ].map((tile, index) => (
-          <Card
-            key={index}
-            hover
-            className={`
-              p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-              ${tile.color} text-white
-              transform transition-all duration-300 ease-in-out
-              hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-            `}
-            onClick={() => navigate(`/project/list?status=${tile.filter}`)}
-          >
-            <div className="relative z-10">
-              <h3 className="text-lg font-bold">{tile.name}</h3>
-              <p className="text-3xl font-extrabold mt-1">{tile.value}</p>
-            </div>
-            <div className="flex items-center justify-end mt-3 relative z-10">
-              <div className={`
-                p-3 rounded-2xl shadow-md
-                bg-white/20 text-white
-                group-hover:scale-125 transition-transform duration-300
-              `}>
-                <tile.icon size={24} />
+          { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500', filter: 'all' },
+          { name: 'Ongoing Projects', value: projectStats.inProgress, icon: Clock, cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500', filter: 'in_progress' },
+          { name: 'Completed', value: projectStats.completed, icon: CheckCircle, cardBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100', textColor: 'text-emerald-800', iconBg: 'bg-emerald-500', filter: 'completed' },
+          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500', filter: 'overdue' },
+          { name: 'Recurring Jobs', value: projectStats.recurringJobs, icon: Zap, cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500', filter: 'recurring' },
+          { name: 'Upcoming Due (7 days)', value: projectStats.upcomingDue, icon: Calendar, cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500', filter: 'upcoming_due' },
+        ].map((tile, index) => {
+          const Icon = tile.icon;
+          return (
+            <Card
+              key={index}
+              hover
+              className={`
+                p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                ${tile.cardBg}
+                transform transition-all duration-300 ease-in-out
+                hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+              `}
+              onClick={() => navigate(`/project/list?status=${tile.filter}`)}
+              backgroundIcon={<Icon size={120} className={`text-gray-300 opacity-20`} />}
+            >
+              <div className="relative z-10">
+                <h3 className={`text-lg font-bold ${tile.textColor}`}>{tile.name}</h3>
+                <p className={`text-3xl font-extrabold mt-1 ${tile.textColor}`}>{tile.value}</p>
               </div>
-            </div>
-          </Card>
-        ))}
+              <div className="flex items-center justify-end mt-3 relative z-10">
+                <div className={`
+                  p-3 rounded-2xl shadow-md
+                  ${tile.iconBg} text-white
+                  group-hover:scale-125 transition-transform duration-300
+                `}>
+                  <Icon size={24} />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Visual Project Pipeline (Kanban) */}
       <Card className="p-6">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
+        {/* Note: For a true Kanban experience, horizontal scrolling is often necessary if there are many columns.
+            This layout ensures the overall page does not force a horizontal scrollbar,
+            while allowing the Kanban section itself to scroll if its content exceeds its container. */}
         <div className="overflow-x-auto pb-4">
           <div className="flex space-x-4 min-w-max">
             {projectKanbanStatuses.map(statusCol => (
@@ -498,7 +505,7 @@ function Project() {
             bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
             hover:scale-110 hover:shadow-xl
           `}
-          icon={<Plus size={24} />}
+          icon={<PlusSquare size={24} />}
         />
         {showFabMenu && (
           <div className="absolute bottom-20 right-0 space-y-2">
