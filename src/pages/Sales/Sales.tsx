@@ -77,21 +77,20 @@ function Sales() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [salesMetrics, setSalesMetrics] = useState({
-    customers: { count: '0' },
-    quotations: { count: '0', totalAmount: '0' },
-    salesOrders: { count: '0', totalAmount: '0' },
-    salesInvoices: { count: '0', totalAmount: '0' },
-    receipts: { count: '0', totalAmount: '0' },
-    creditNotes: { count: '0', totalAmount: '0' },
-    salesReturns: { count: '0', totalAmount: '0' },
-    priceLists: { count: '0' },
-    customerOutstanding: { count: '0', totalAmount: '0' },
-    customerAgingReport: { count: '0', totalAmount: '0' },
-    salesAnalysis: { count: '0' },
-    salesRegister: { count: '0' },
-    customerWiseSalesSummary: { count: '0' },
-    deliveryChallans: { count: '0' },
-    customerGroups: { count: '0' },
+    totalItems: '0', // Placeholder for items count
+    totalCustomers: '0',
+    totalQuotations: '0',
+    totalSalesOrders: '0',
+    totalSalesInvoices: '0',
+    totalReceipts: '0',
+    totalCreditNotes: '0',
+    totalSalesReturns: '0',
+    totalPriceLists: '0',
+    totalCustomerOutstanding: '0',
+    totalDeliveryChallans: '0',
+    totalCustomerGroups: '0',
+    totalSalesAmount: '0',
+    totalOutstandingAmount: '0',
   });
   const [recentSalesData, setRecentSalesData] = useState<any[]>([]);
   const [salesAiInsights, setSalesAiInsights] = useState<any[]>([]);
@@ -125,81 +124,50 @@ function Sales() {
     console.log('Sales.tsx: fetchSalesData called with companyId:', companyId); // ADDED LOG
     setIsLoadingSalesData(true);
     try {
-      // Base query for sales invoices
-      let salesInvoicesQuery = supabase
-        .from('sales_invoices')
-        .select('id, invoice_no, total_amount, invoice_date, status, customers(name)', { count: 'exact' })
-        .eq('company_id', companyId);
+      // --- START MODIFICATION FOR PERFORMANCE ---
+      // Query the materialized view for aggregated metrics
+      const { data: kpis, error: kpisError } = await supabase
+        .from('company_sales_kpis') // Query the materialized view
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
 
-      console.log('Sales.tsx: Initiating salesInvoicesQuery...'); // ADDED LOG
-      const { data: salesInvoicesData, count: salesInvoicesCount, error: salesInvoicesError } = await salesInvoicesQuery;
-      
-      if (salesInvoicesError) {
-        console.error('Sales.tsx: salesInvoicesQuery error:', salesInvoicesError); // MODIFIED LOG
-        throw salesInvoicesError;
+      if (kpisError) {
+        console.error('Sales.tsx: Error fetching KPIs from materialized view:', kpisError);
+        throw kpisError;
       }
-      console.log('Sales.tsx: salesInvoicesQuery result - data:', salesInvoicesData, 'error:', salesInvoicesError); // ADDED LOG
-
-      // Fetch other counts (simplified, not applying filters to all for brevity)
-      // --- START MODIFICATION ---
-      const { count: customersCount, error: customersError } = await supabase.from('customers').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      if (customersError) console.error('Sales.tsx: Error fetching customers count:', customersError);
-
-      const { count: priceListsCount, error: priceListsError } = await supabase.from('price_lists').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      if (priceListsError) console.error('Sales.tsx: Error fetching price lists count:', priceListsError);
-
-      const { count: customerGroupsCount, error: customerGroupsError } = await supabase.from('customer_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      if (customerGroupsError) console.error('Sales.tsx: Error fetching customer groups count:', customerGroupsError);
-
-      const { count: quotationsCount, data: quotationsData, error: quotationsError } = await supabase.from('quotations').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      if (quotationsError) console.error('Sales.tsx: Error fetching quotations data:', quotationsError);
-
-      const { count: salesOrdersCount, data: salesOrdersData, error: salesOrdersError } = await supabase.from('sales_orders').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      if (salesOrdersError) console.error('Sales.tsx: Error fetching sales orders data:', salesOrdersError);
-
-      const { count: receiptsCount, data: receiptsData, error: receiptsError } = await supabase.from('receipts').select('amount', { count: 'exact' }).eq('company_id', companyId);
-      if (receiptsError) console.error('Sales.tsx: Error fetching receipts data:', receiptsError);
-
-      const { count: creditNotesCount, data: creditNotesData, error: creditNotesError } = await supabase.from('sales_invoices').select('total_amount', { count: 'exact' }).eq('company_id', companyId).eq('status', 'credit_note');
-      if (creditNotesError) console.error('Sales.tsx: Error fetching credit notes data:', creditNotesError);
-
-      const { count: salesReturnsCount, data: salesReturnsData, error: salesReturnsError } = await supabase.from('sales_returns').select('total_amount', { count: 'exact' }).eq('company_id', companyId);
-      if (salesReturnsError) console.error('Sales.tsx: Error fetching sales returns data:', salesReturnsError);
-
-      const { count: deliveryChallansCount, error: deliveryChallansError } = await supabase.from('delivery_challans').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      if (deliveryChallansError) console.error('Sales.tsx: Error fetching delivery challans count:', deliveryChallansError);
-      // --- END MODIFICATION ---
-
-      // Calculate total amounts for metrics
-      const totalQuotationsAmount = quotationsData?.reduce((sum, q) => sum + (q.total_amount || 0), 0) || 0;
-      const totalSalesOrdersAmount = salesOrdersData?.reduce((sum, so) => sum + (so.total_amount || 0), 0) || 0;
-      const totalReceiptsAmount = receiptsData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-      const totalCreditNotesAmount = creditNotesData?.reduce((sum, cn) => sum + (cn.total_amount || 0), 0) || 0;
-      const totalSalesReturnsAmount = salesReturnsData?.reduce((sum, sr) => sum + (sr.total_amount || 0), 0) || 0;
-      const totalSalesInvoicesAmount = salesInvoicesData?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
-      const totalCustomerOutstandingAmount = salesInvoicesData?.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0) || 0;
-
 
       setSalesMetrics({
-        customers: { count: customersCount?.toString() || '0' },
-        quotations: { count: quotationsCount?.toString() || '0', totalAmount: totalQuotationsAmount.toLocaleString() },
-        salesOrders: { count: salesOrdersCount?.toString() || '0', totalAmount: totalSalesOrdersAmount.toLocaleString() },
-        salesInvoices: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalSalesInvoicesAmount.toLocaleString() },
-        receipts: { count: receiptsCount?.toString() || '0', totalAmount: totalReceiptsAmount.toLocaleString() },
-        creditNotes: { count: creditNotesCount?.toString() || '0', totalAmount: totalCreditNotesAmount.toLocaleString() },
-        salesReturns: { count: salesReturnsCount?.toString() || '0', totalAmount: totalSalesReturnsAmount.toLocaleString() },
-        priceLists: { count: priceListsCount?.toString() || '0' },
-        customerOutstanding: { count: salesInvoicesCount?.toString() || '0', totalAmount: totalCustomerOutstandingAmount.toLocaleString() },
-        customerAgingReport: { count: salesInvoicesCount?.toString() || '0', totalAmount: salesInvoicesCount?.toString() || '0' },
-        salesAnalysis: { count: salesInvoicesCount?.toString() || '0' },
-        salesRegister: { count: salesInvoicesCount?.toString() || '0' },
-        customerWiseSalesSummary: { count: customersCount?.toString() || '0' },
-        deliveryChallans: { count: deliveryChallansCount?.toString() || '0' },
-        customerGroups: { count: customerGroupsCount?.toString() || '0' },
+        totalItems: 'N/A', // This metric is not in the example KPI view, would need to be added or fetched separately
+        totalCustomers: kpis?.total_customers?.toString() || '0',
+        totalQuotations: kpis?.total_quotations?.toString() || '0',
+        totalSalesOrders: kpis?.total_sales_orders?.toString() || '0',
+        totalSalesInvoices: kpis?.total_sales_invoices?.toString() || '0',
+        totalReceipts: kpis?.total_receipts?.toString() || '0',
+        totalCreditNotes: kpis?.total_credit_notes?.toString() || '0',
+        totalSalesReturns: kpis?.total_sales_returns?.toString() || '0',
+        totalPriceLists: kpis?.total_price_lists?.toString() || '0',
+        totalCustomerOutstanding: kpis?.total_outstanding_amount?.toLocaleString() || '0',
+        totalDeliveryChallans: kpis?.total_delivery_challans?.toString() || '0',
+        totalCustomerGroups: kpis?.total_customer_groups?.toString() || '0',
+        totalSalesAmount: kpis?.total_sales_invoices_amount?.toLocaleString() || '0',
+        totalOutstandingAmount: kpis?.total_outstanding_amount?.toLocaleString() || '0',
       });
 
-      // Update recent sales data based on filtered invoices
-      setRecentSalesData(salesInvoicesData.map((inv: any) => ({
+      // For recent transactions, you might still query the main tables, but with limits
+      const { data: recentInvoices, error: recentInvoicesError } = await supabase
+        .from('sales_invoices')
+        .select('id, invoice_no, total_amount, invoice_date, status, customers(name)')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(5); // Limit to only recent ones
+
+      if (recentInvoicesError) {
+        console.error('Sales.tsx: Error fetching recent invoices:', recentInvoicesError);
+        throw recentInvoicesError;
+      }
+
+      setRecentSalesData(recentInvoices.map((inv: any) => ({
         type: 'invoice',
         id: inv.id,
         refNo: inv.invoice_no,
@@ -209,6 +177,8 @@ function Sales() {
         status: inv.status,
         description: `Invoice ${inv.invoice_no} to ${inv.customers?.name || 'N/A'}`
       })));
+
+      // --- END MODIFICATION FOR PERFORMANCE ---
 
     } catch (error) {
       console.error('Error fetching sales data:', error); // ENSURED LOG IS PRESENT
@@ -305,13 +275,13 @@ function Sales() {
       title: 'Transactions',
       description: 'Manage your daily sales activities from quotations to invoices and payments.',
       modules: [
-        { name: 'Sales Invoices', description: 'Generate and manage invoices', icon: FileText, path: '/sales/invoices', count: salesMetrics.salesInvoices.count, totalAmount: salesMetrics.salesInvoices.totalAmount },
-        { name: 'Sales Returns', description: 'Process customer returns', icon: ArrowLeftRight, path: '/sales/returns', count: salesMetrics.salesReturns.count, totalAmount: salesMetrics.salesReturns.totalAmount },
-        { name: 'Credit Notes', description: 'Issue credit for returns/adjustments', icon: FileBadge, path: '/sales/credit-notes', count: salesMetrics.creditNotes.count, totalAmount: salesMetrics.creditNotes.totalAmount },
-        { name: 'Receipts', description: 'Record customer payments', icon: CreditCard, path: '/sales/receipts', count: salesMetrics.receipts.count, totalAmount: salesMetrics.receipts.totalAmount },
-        { name: 'Sales Quotations', description: 'Create and track sales quotes', icon: FileText, path: '/sales/quotations', count: salesMetrics.quotations.count, totalAmount: salesMetrics.quotations.totalAmount },
-        { name: 'Sales Orders', description: 'Process customer orders', icon: ShoppingCart, path: '/sales/orders', count: salesMetrics.salesOrders.count, totalAmount: salesMetrics.salesOrders.totalAmount },
-        { name: 'Delivery Challans', description: 'Manage goods delivery', icon: PackageOpen, path: '/sales/delivery-challans', count: salesMetrics.deliveryChallans.count, totalAmount: null },
+        { name: 'Sales Invoices', description: 'Generate and manage invoices', icon: FileText, path: '/sales/invoices', count: salesMetrics.totalSalesInvoices, totalAmount: salesMetrics.totalSalesAmount },
+        { name: 'Sales Returns', description: 'Process customer returns', icon: ArrowLeftRight, path: '/sales/returns', count: salesMetrics.totalSalesReturns, totalAmount: salesMetrics.totalSalesReturns },
+        { name: 'Credit Notes', description: 'Issue credit for returns/adjustments', icon: FileBadge, path: '/sales/credit-notes', count: salesMetrics.totalCreditNotes, totalAmount: salesMetrics.totalCreditNotes },
+        { name: 'Receipts', description: 'Record customer payments', icon: CreditCard, path: '/sales/receipts', count: salesMetrics.totalReceipts, totalAmount: salesMetrics.totalReceipts },
+        { name: 'Sales Quotations', description: 'Create and track sales quotes', icon: FileText, path: '/sales/quotations', count: salesMetrics.totalQuotations, totalAmount: salesMetrics.totalQuotations },
+        { name: 'Sales Orders', description: 'Process customer orders', icon: ShoppingCart, path: '/sales/orders', count: salesMetrics.totalSalesOrders, totalAmount: salesMetrics.totalSalesOrders },
+        { name: 'Delivery Challans', description: 'Manage goods delivery', icon: PackageOpen, path: '/sales/delivery-challans', count: salesMetrics.totalDeliveryChallans, totalAmount: null },
       ]
     },
     {
@@ -319,9 +289,9 @@ function Sales() {
       title: 'Masters',
       description: 'Maintain customer profiles and define pricing strategies.',
       modules: [
-        { name: 'Customer Master', description: 'Define and manage all products and services.', icon: Users, path: '/sales/customers', count: salesMetrics.customers.count, totalAmount: null },
-        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.customerGroups.count, totalAmount: null },
-        { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.priceLists.count, totalAmount: null },
+        { name: 'Customer Master', description: 'Define and manage all products and services.', icon: Users, path: '/sales/customers', count: salesMetrics.totalCustomers, totalAmount: null },
+        { name: 'Customer Groups', description: 'Categorize customers into groups', icon: UserRoundCog, path: '/sales/customer-groups', count: salesMetrics.totalCustomerGroups, totalAmount: null },
+        { name: 'Sales Price List / Discount Rules', description: 'Define pricing and discounts', icon: Tag, path: '/sales/price-list', count: salesMetrics.totalPriceLists, totalAmount: null },
       ]
     },
     {
@@ -329,11 +299,11 @@ function Sales() {
       title: 'Reports',
       description: 'Gain insights into sales performance and financial outstanding.',
       modules: [
-        { name: 'Customer Outstanding', description: 'Track pending customer payments', icon: UserCheck, path: '/sales/outstanding', count: salesMetrics.customerOutstanding.count, totalAmount: salesMetrics.customerOutstanding.totalAmount },
-        { name: 'Customer Aging Report', description: 'Analyze overdue receivables', icon: CalendarCheck, path: '/sales/aging-report', count: salesMetrics.customerAgingReport.count, totalAmount: null },
-        { name: 'Sales Analysis', description: 'Detailed sales performance insights', icon: PieChart, path: '/sales/analysis', count: salesMetrics.salesAnalysis.count, totalAmount: null },
-        { name: 'Sales Register', description: 'View all sales transactions', icon: BookOpenText, path: '/sales/register', count: salesMetrics.salesRegister.count, totalAmount: null },
-        { name: 'Customer-wise Sales Summary', description: 'Summarize sales by customer', icon: BarChart3, path: '/sales/customer-summary', count: salesMetrics.customerWiseSalesSummary.count, totalAmount: null },
+        { name: 'Customer Outstanding', description: 'Track pending customer payments', icon: UserCheck, path: '/sales/outstanding', count: salesMetrics.totalCustomerOutstanding, totalAmount: salesMetrics.totalOutstandingAmount },
+        { name: 'Customer Aging Report', description: 'Analyze overdue receivables', icon: CalendarCheck, path: '/sales/aging-report', count: salesMetrics.totalCustomerOutstanding, totalAmount: null },
+        { name: 'Sales Analysis', description: 'Detailed sales performance insights', icon: PieChart, path: '/sales/analysis', count: salesMetrics.totalSalesInvoices, totalAmount: null },
+        { name: 'Sales Register', description: 'View all sales transactions', icon: BookOpenText, path: '/sales/register', count: salesMetrics.totalSalesInvoices, totalAmount: null },
+        { name: 'Customer-wise Sales Summary', description: 'Summarize sales by customer', icon: BarChart3, path: '/sales/customer-summary', count: salesMetrics.totalCustomers, totalAmount: null },
       ]
     }
   ];
@@ -544,7 +514,7 @@ function Sales() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
           <h1
             className={`text-3xl font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-transparent bg-clip-text drop-shadow-lg`}
@@ -635,8 +605,8 @@ function Sales() {
               flex-1 px-6 py-3 text-sm font-semibold transition-all duration-300 ease-in-out
               ${
                 activeSalesTab === category.title
-                  ? `bg-blue-600 text-white shadow-lg transform scale-105 rounded-lg` // Solid background for active
-                  : `bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg` // Subtle background for inactive
+                  ? `bg-blue-600 text-white shadow-lg transform scale-105 rounded-t-lg rounded-b-none` // MODIFIED: Tab styling
+                  : `bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg`
               }
             `}
           >
@@ -653,7 +623,7 @@ function Sales() {
         >
           <Card
             className={`
-            p-6 space-y-4 rounded-lg
+            p-6 space-y-4 rounded-t-none rounded-b-lg // MODIFIED: Card styling
             border-t-4 ${getActiveTabBorderColor(category.title)}
             bg-white shadow-lg
           `}
@@ -696,7 +666,7 @@ function Sales() {
                       </div>
                       <div className="flex items-center justify-between mt-3 relative z-10">
                         <p className={`text-xl font-bold ${colors.textColor}`}>
-                          {module.count}
+                          {isLoadingSalesData ? '...' : module.count}
                         </p>
                         {module.totalAmount && (
                           <p className={`text-md font-semibold ${colors.textColor}`}>
@@ -740,7 +710,11 @@ function Sales() {
             </div>
           </div>
           <div className="space-y-3">
-            {recentSalesData.length > 0 ? (
+            {isLoadingSalesData ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            ) : recentSalesData.length > 0 ? (
               recentSalesData.map((item) => (
                 <div
                   key={item.id}
@@ -866,3 +840,4 @@ function Sales() {
 }
 
 export default Sales;
+

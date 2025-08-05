@@ -58,50 +58,42 @@ function CRM() {
   const fetchCrmMetrics = async (companyId: string, periodStartDate: string, periodEndDate: string) => {
     setLoadingMetrics(true);
     try {
-      // Fetch Lead Counts by Status
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('status', { count: 'exact' })
-        .eq('company_id', companyId);
+      // Query the materialized view for aggregated metrics
+      const { data: kpis, error: kpisError } = await supabase
+        .from('company_crm_kpis') // Query the materialized view
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
 
-      if (leadsError) throw leadsError;
+      if (kpisError) {
+        console.error('CRM.tsx: Error fetching KPIs from materialized view:', kpisError);
+        // Fallback or show error to user
+        setCrmMetrics({
+          totalLeads: 0, newLeads: 0, contactedLeads: 0, qualifiedLeads: 0, convertedLeads: 0, lostLeads: 0,
+          totalCustomers: 0, totalOpportunities: 0, pendingFollowUps: 0, overdueFollowUps: 0,
+          totalCampaigns: 0, totalActivities: 0,
+        });
+      } else {
+        setCrmMetrics({
+          totalLeads: kpis?.total_leads || 0,
+          newLeads: kpis?.open_leads || 0,
+          contactedLeads: kpis?.contacted_leads || 0,
+          qualifiedLeads: kpis?.qualified_leads || 0,
+          convertedLeads: kpis?.converted_leads || 0,
+          lostLeads: kpis?.lost_leads || 0,
+          totalCustomers: kpis?.total_customers || 0,
+          totalOpportunities: kpis?.total_opportunities || 0,
+          totalCampaigns: kpis?.total_campaigns || 0,
+          totalActivities: kpis?.total_activities || 0,
+          // pendingFollowUps and overdueFollowUps might still need a separate query
+          // if they are time-sensitive and not easily aggregated in a static MV.
+          // For now, keeping the existing logic for these two.
+          pendingFollowUps: 0, // Placeholder, will be updated by activitiesData filter
+          overdueFollowUps: 0, // Placeholder, will be updated by activitiesData filter
+        });
+      }
 
-      const totalLeads = leadsData.length;
-      const newLeads = leadsData.filter((lead: any) => lead.status === 'open').length;
-      const contactedLeads = leadsData.filter((lead: any) => lead.status === 'contacted').length;
-      const qualifiedLeads = leadsData.filter((lead: any) => lead.status === 'qualified').length;
-      const convertedLeads = leadsData.filter((lead: any) => lead.status === 'converted').length;
-      const lostLeads = leadsData.filter((lead: any) => lead.status === 'lost').length;
-
-      // Fetch Total Customers
-      const { count: totalCustomers, error: customersError } = await supabase
-        .from('customers')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId);
-      if (customersError) throw customersError;
-
-      // Fetch Total Opportunities
-      const { count: totalOpportunities, error: opportunitiesError } = await supabase
-        .from('opportunities')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId);
-      if (opportunitiesError) throw opportunitiesError;
-
-      // NEW: Fetch Total Campaigns
-      const { count: totalCampaigns, error: campaignsError } = await supabase
-        .from('campaigns')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId);
-      if (campaignsError) throw campaignsError;
-
-      // NEW: Fetch Total Activities
-      const { count: totalActivities, error: activitiesCountError } = await supabase
-        .from('activities')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId);
-      if (activitiesCountError) throw activitiesCountError;
-
-      // Fetch Follow-up Activities
+      // Fetch Follow-up Activities (still needed for time-sensitive pending/overdue)
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('activities')
         .select('activity_date, status', { count: 'exact' })
@@ -117,20 +109,12 @@ function CRM() {
       const pendingFollowUps = activitiesData.filter((activity: any) => activity.activity_date >= today).length;
       const overdueFollowUps = activitiesData.filter((activity: any) => activity.activity_date < today).length;
 
-      setCrmMetrics({
-        totalLeads,
-        newLeads,
-        contactedLeads,
-        qualifiedLeads,
-        convertedLeads,
-        lostLeads,
-        totalCustomers: totalCustomers || 0,
-        totalOpportunities: totalOpportunities || 0,
-        totalCampaigns: totalCampaigns || 0, // NEW
-        totalActivities: totalActivities || 0, // NEW
+      // Update state with follow-up data
+      setCrmMetrics(prev => ({
+        ...prev,
         pendingFollowUps,
         overdueFollowUps,
-      });
+      }));
 
     } catch (error) {
       console.error('Error fetching CRM metrics:', error);

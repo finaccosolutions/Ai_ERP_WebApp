@@ -82,48 +82,48 @@ function Inventory() {
   const fetchInventoryData = async (companyId: string) => {
     setIsLoadingInventoryData(true);
     try {
-      // Fetch counts for metrics
-      const { count: totalItemsCount } = await supabase.from('items').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: totalWarehousesCount } = await supabase.from('warehouses').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: batchesTrackedCount } = await supabase.from('batch_master').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: itemGroupsCount } = await supabase.from('item_groups').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: itemCategoriesCount } = await supabase.from('item_categories').select('count', { count: 'exact', head: true }).eq('company_id', companyId); // NEW: Fetch Item Categories count
-      
-      // Fetch count for units of measure (both company-specific and global)
-      const { count: unitsOfMeasureCount } = await supabase
-        .from('units_of_measure')
-        .select('count', { count: 'exact', head: true })
-        .or(`company_id.eq.${companyId},is_system_defined.eq.true`); // NEW: Fetch both
-      
-      // Placeholder for low stock items (requires more complex query)
-      const lowStockItemsCount = 0; // To be implemented
+      // Query the materialized view for aggregated metrics
+      const { data: kpis, error: kpisError } = await supabase
+        .from('company_inventory_kpis') // Query the materialized view
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
 
-      // Placeholder for total stock value (requires stock ledger/valuation)
-      const totalStockValue = 0; // To be implemented
+      if (kpisError) {
+        console.error('Inventory.tsx: Error fetching KPIs from materialized view:', kpisError);
+        // Fallback or show error to user
+        setInventoryMetrics({
+          totalItems: 'N/A',
+          lowStockItems: 'N/A', // Will be 0 from MV unless custom logic added
+          totalWarehouses: 'N/A',
+          totalStockValue: 'N/A', // Will be 0 from MV unless custom logic added
+          stockAdjustments: 'N/A',
+          stockTransfers: 'N/A',
+          goodsReceipts: 'N/A',
+          goodsIssues: 'N/A',
+          batchesTracked: 'N/A',
+          itemGroups: 'N/A',
+          itemCategories: 'N/A',
+          unitsOfMeasure: 'N/A',
+        });
+      } else {
+        setInventoryMetrics({
+          totalItems: kpis?.total_items?.toString() || '0',
+          lowStockItems: kpis?.low_stock_items?.toString() || '0',
+          totalWarehouses: kpis?.total_warehouses?.toString() || '0',
+          totalStockValue: kpis?.total_stock_value?.toLocaleString() || '0',
+          stockAdjustments: kpis?.total_stock_adjustments?.toString() || '0',
+          stockTransfers: kpis?.total_stock_transfers?.toString() || '0',
+          goodsReceipts: kpis?.total_goods_receipts?.toString() || '0',
+          goodsIssues: kpis?.total_goods_issues?.toString() || '0',
+          batchesTracked: kpis?.total_batches_tracked?.toString() || '0',
+          itemGroups: kpis?.total_item_groups?.toString() || '0',
+          itemCategories: kpis?.total_item_categories?.toString() || '0',
+          unitsOfMeasure: kpis?.total_units_of_measure?.toString() || '0',
+        });
+      }
 
-      // Placeholder for stock transaction counts
-      const { count: stockAdjustmentsCount } = await supabase.from('stock_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'stock_adjustment');
-      const { count: stockTransfersCount } = await supabase.from('stock_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'material_transfer');
-      const { count: goodsReceiptsCount } = await supabase.from('goods_receipts').select('count', { count: 'exact', head: true }).eq('company_id', companyId);
-      const { count: goodsIssuesCount } = await supabase.from('stock_entries').select('count', { count: 'exact', head: true }).eq('company_id', companyId).eq('entry_type', 'material_issue');
-
-
-      setInventoryMetrics({
-        totalItems: totalItemsCount?.toString() || '0',
-        lowStockItems: lowStockItemsCount.toString(),
-        totalWarehouses: totalWarehousesCount?.toString() || '0',
-        totalStockValue: totalStockValue.toLocaleString(),
-        stockAdjustments: stockAdjustmentsCount?.toString() || '0',
-        stockTransfers: stockTransfersCount?.toString() || '0',
-        goodsReceipts: goodsReceiptsCount?.toString() || '0',
-        goodsIssues: goodsIssuesCount?.toString() || '0',
-        batchesTracked: batchesTrackedCount?.toString() || '0',
-        itemGroups: itemGroupsCount?.toString() || '0',
-        itemCategories: itemCategoriesCount?.toString() || '0', // NEW: Set Item Categories count
-        unitsOfMeasure: unitsOfMeasureCount?.toString() || '0', // NEW: Set Units of Measure count
-      });
-
-      // Fetch recent stock activities (e.g., last 5 stock entries)
+      // Fetch recent stock activities (e.g., last 5 stock entries) - still from main table for detail
       const { data: recentEntries, error: recentEntriesError } = await supabase
         .from('stock_entries')
         .select(`
@@ -550,7 +550,7 @@ function Inventory() {
                       </div>
                       <div className="flex items-center justify-between mt-3 relative z-10">
                         <p className={`text-xl font-bold ${colors.textColor}`}>
-                          {module.count}
+                          {isLoadingInventoryData ? '...' : module.count}
                         </p>
                         {module.totalAmount && (
                           <p className={`text-md font-semibold ${colors.textColor}`}>
@@ -704,7 +704,7 @@ function Inventory() {
             className="w-full justify-start"
             icon={<Package size={16} />}
           >
-            Import Inventory Data
+            Import Data
           </Button>
         </div>
       </Card>
@@ -713,3 +713,4 @@ function Inventory() {
 }
 
 export default Inventory;
+
