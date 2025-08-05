@@ -11,6 +11,7 @@ import {
   ClipboardList, // Icon for Other Details
   Briefcase, // General icon for company/business info
   ArrowRight, // For next tab navigation
+  ClipboardCheck, // NEW: Icon for Project
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -69,6 +70,9 @@ interface CustomerFormData {
   ifscCode: string;
   // NEW: Tax Registration Type
   taxRegistrationType: string;
+  // NEW: Project Linkage
+  projectId: string; // Added projectId
+  projectName: string; // Added projectName for MasterSelectField display
 }
 
 function CustomerFormPage() {
@@ -117,12 +121,16 @@ function CustomerFormPage() {
     ifscCode: '',
     // NEW: Tax Registration Type
     taxRegistrationType: '',
+    // NEW: Project Linkage
+    projectId: '',
+    projectName: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [customerGroups, setCustomerGroups] = useState<{ id: string; name: string }[]>([]);
   const [priceLists, setPriceLists] = useState<{ id: string; name: string }[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]); // NEW: State for available projects
 
   const [selectedBillingCountry, setSelectedBillingCountry] = useState<string>('');
   const [selectedShippingCountry, setSelectedShippingCountry] = useState<string>('');
@@ -167,6 +175,7 @@ function CustomerFormPage() {
     if (currentCompany?.id) {
       fetchCustomerGroups();
       fetchPriceLists();
+      fetchAvailableProjects(); // NEW: Fetch available projects
 
       // Auto-fill country based on company's country for new customers
       if (isNewCustomer) {
@@ -268,12 +277,31 @@ function CustomerFormPage() {
     }
   };
 
+  // NEW: Fetch available projects
+  const fetchAvailableProjects = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, project_name')
+        .eq('company_id', currentCompany?.id)
+        .order('project_name', { ascending: true });
+      if (error) throw error;
+      setAvailableProjects(data.map(p => ({ id: p.id, name: p.project_name })) || []);
+    } catch (error: any) {
+      console.error('CustomerFormPage: Caught error fetching available projects:', error);
+    }
+  };
+
   const fetchCustomerData = async (customerId: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select(`
+          *,
+          projects ( project_name )
+        `) // NEW: Select project_name
         .eq('id', customerId)
         .eq('company_id', currentCompany?.id)
         .single();
@@ -318,7 +346,7 @@ function CustomerFormPage() {
           website: data.website || '',
           taxId: data.tax_id || '',
           pan: data.pan || '',
-          gstin: data.gstin || '',
+          gstin: data.gstin || '', // GSTIN is not compulsory at DB level
           billingAddress: data.billing_address || { street1: '', street2: '', city: '', state: '', country: '', zipCode: '' },
           shippingAddress: data.shipping_address || { street1: '', street2: '', city: '', state: '', country: '', zipCode: '' },
           creditLimit: data.credit_limit || 0,
@@ -335,6 +363,9 @@ function CustomerFormPage() {
           ifscCode: data.ifsc_code || '',
           // NEW: Tax Registration Type
           taxRegistrationType: data.tax_registration_type || '',
+          // NEW: Project Linkage
+          projectId: data.project_id || '', // Set projectId
+          projectName: data.projects?.project_name || '', // Set projectName
         });
         setSelectedBillingCountry(data.billing_address?.country || '');
         setSelectedShippingCountry(data.shipping_address?.country || '');
@@ -465,6 +496,8 @@ function CustomerFormPage() {
         ifsc_code: formData.ifscCode || null,
         // NEW: Tax Registration Type
         tax_registration_type: formData.taxRegistrationType || null,
+        // NEW: Project Linkage
+        project_id: formData.projectId || null, // Save projectId
       };
 
 
@@ -645,6 +678,24 @@ function CustomerFormPage() {
     // Update the typed name state to reflect the selected option
     // This is important because the MasterSelectField's value is now controlled by typedCustomerGroupName
     setTypedCustomerGroupName(name);
+  };
+
+  // NEW: Handle Project selection
+  const handleProjectSelect = (id: string, name: string) => {
+    setFormData(prev => ({ ...prev, projectId: id, projectName: name }));
+  };
+
+  // NEW: Handle F2 press on Project field
+  const handleProjectF2 = (currentSearchTerm: string) => {
+    // Logic to navigate to Project creation page, pre-filling project name
+    navigate('/project/new', {
+      state: {
+        fromCustomerForm: true,
+        initialProjectName: currentSearchTerm.trim(),
+        customerFormData: formData, // Pass current form data to preserve it
+        returnPath: location.pathname,
+      }
+    });
   };
 
   // Get tax registration types based on country
@@ -1184,6 +1235,18 @@ function CustomerFormPage() {
                   onChange={(val) => handleInputChange('notes', val)}
                   placeholder="Any additional notes about the customer"
                   readOnly={viewOnly}
+                />
+                {/* NEW: Project Linkage Field */}
+                <MasterSelectField
+                  label="Linked Project (Optional)"
+                  value={formData.projectName}
+                  onValueChange={(val) => handleInputChange('projectName', val)}
+                  onSelect={(id, name) => handleInputChange('projectId', id)}
+                  options={availableProjects.map(p => ({ id: p.id, name: p.name }))}
+                  placeholder="Select or create a project"
+                  readOnly={viewOnly}
+                  allowCreation={true}
+                  onF2Press={handleProjectF2} // Allow F2 to create new project
                 />
               </div>
             </>

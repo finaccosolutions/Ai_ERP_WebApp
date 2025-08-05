@@ -1,11 +1,13 @@
-import React from 'react';
-import { Shield, FileText, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
+// src/pages/Compliance/Compliance.tsx
+import React, { useState } from 'react'; // MODIFIED: Added useState
+import { Shield, FileText, AlertTriangle, CheckCircle, Plus, Calendar } from 'lucide-react'; // MODIFIED: Added Calendar
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
+import FormField from '../../components/UI/FormField'; // MODIFIED: Added FormField
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCompany } from '../../contexts/CompanyContext';
-import { COUNTRIES } from '../../constants/geoData'; // Import COUNTRIES
+import { COUNTRIES } from '../../constants/geoData';
 
 function Compliance() {
   const { theme } = useTheme();
@@ -63,6 +65,33 @@ function Compliance() {
     upcomingDeadlines.push({ title: 'VAT Declaration', due: '2024-05-10', priority: 'high' });
   }
 
+  // MODIFIED: State for recurring task form
+  const [showRecurringTaskForm, setShowRecurringTaskForm] = useState(false);
+  const [recurringTaskData, setRecurringTaskData] = useState({
+    taskName: '',
+    taskType: '',
+    description: '',
+    dueDate: '',
+    priority: 'medium',
+    recurrenceFrequency: '',
+    recurrenceDueDate: '',
+  });
+
+  const handleRecurringTaskChange = (field: string, value: any) => {
+    setRecurringTaskData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveRecurringTask = () => {
+    console.log('Saving recurring task:', recurringTaskData);
+    // Logic to save to compliance_tasks table
+    // You would typically call a Supabase insert here
+    setShowRecurringTaskForm(false);
+    setRecurringTaskData({
+      taskName: '', taskType: '', description: '', dueDate: '', priority: 'medium',
+      recurrenceFrequency: '', recurrenceDueDate: ''
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -73,6 +102,10 @@ function Compliance() {
         <div className="flex space-x-2">
           <AIButton variant="suggest" onSuggest={() => console.log('AI Compliance Suggestions')} />
           <Button icon={<Plus size={16} />}>File Return</Button>
+          {/* MODIFIED: Button to show recurring task form */}
+          <Button icon={<Calendar size={16} />} onClick={() => setShowRecurringTaskForm(true)}>
+            Add Recurring Task
+          </Button>
         </div>
       </div>
 
@@ -94,6 +127,82 @@ function Compliance() {
           );
         })}
       </div>
+
+      {/* MODIFIED: Recurring Task Form */}
+      {showRecurringTaskForm && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Recurring Compliance Task</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="Task Name"
+              value={recurringTaskData.taskName}
+              onChange={(val) => handleRecurringTaskChange('taskName', val)}
+              placeholder="e.g., GSTR-1 Filing"
+              required
+            />
+            <FormField
+              label="Task Type"
+              value={recurringTaskData.taskType}
+              onChange={(val) => handleRecurringTaskChange('taskType', val)}
+              placeholder="e.g., Tax Filing, Audit"
+            />
+            <FormField
+              label="Description"
+              value={recurringTaskData.description}
+              onChange={(val) => handleRecurringTaskChange('description', val)}
+              placeholder="Detailed description of the task"
+              className="md:col-span-2"
+            />
+            <FormField
+              label="Due Date (First Instance)"
+              type="date"
+              value={recurringTaskData.dueDate}
+              onChange={(val) => handleRecurringTaskChange('dueDate', val)}
+              required
+            />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Priority</label>
+              <select
+                value={recurringTaskData.priority}
+                onChange={(e) => handleRecurringTaskChange('priority', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Recurrence Frequency</label>
+              <select
+                value={recurringTaskData.recurrenceFrequency}
+                onChange={(e) => handleRecurringTaskChange('recurrenceFrequency', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            {recurringTaskData.recurrenceFrequency && (
+              <FormField
+                label="Recurrence Due Date (e.g., 10 for 10th of month)"
+                value={recurringTaskData.recurrenceDueDate}
+                onChange={(val) => handleRecurringTaskChange('recurrenceDueDate', val)}
+                placeholder="e.g., 10, 20, 31"
+              />
+            )}
+          </div>
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowRecurringTaskForm(false)}>Cancel</Button>
+            <Button onClick={handleSaveRecurringTask}>Save Recurring Task</Button>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Deadlines</h3>

@@ -244,16 +244,18 @@ function CRM() {
       {/* CRM Metrics - Simplified and integrated into modules below */}
 
       {/* CRM Modules Section */}
+      {/* CRM Modules Section */}
       {crmModules.map((category, catIndex) => (
         <div key={catIndex} className="space-y-4">
           <h2 className={`text-2xl font-bold ${theme.textPrimary} mt-8`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Changed lg:grid-cols-4 to lg:grid-cols-3 */}
+          {/* MODIFIED: Change lg:grid-cols-3 to lg:grid-cols-4 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {category.modules.map((module, moduleIndex) => {
               const Icon = module.icon;
               const colors = moduleColors[(catIndex * crmModules[catIndex].modules.length + moduleIndex) % moduleColors.length];
               return (
-                <Link key={module.name} to={module.path} state={module.state} className="flex"> {/* Pass state here */}
+                <Link key={module.name} to={module.path} state={module.state} className="flex">
                   <Card
                     hover
                     className={`

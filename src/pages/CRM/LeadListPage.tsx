@@ -1,6 +1,6 @@
 // src/pages/CRM/LeadListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Users, Mail, Phone, RefreshCw, Edit, Trash2, ArrowLeft, Filter, ArrowLeftRight } from 'lucide-react'; // MODIFIED: Changed 'Convert' to 'ArrowLeftRight'
+import { Plus, Search, Users, Mail, Phone, RefreshCw, Edit, Trash2, ArrowLeft, Filter, ArrowLeftRight, Calendar, User, Tag } from 'lucide-react'; // MODIFIED: Added Calendar, User, Tag for filters
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -26,6 +26,8 @@ interface Lead {
   created_at: string;
   next_contact_date: string | null;
   converted_customer_id: string | null;
+  lead_owner_id: string | null; // MODIFIED: Added lead_owner_id
+  employees?: { first_name: string; last_name: string } | null; // MODIFIED: Added employees for owner
 }
 
 function LeadListPage() {
@@ -42,22 +44,25 @@ function LeadListPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [leadToDeleteId, setLeadToDeleteId] = useState<string | null>(null);
 
+  // MODIFIED: Added more filter criteria
   const [filterCriteria, setFilterCriteria] = useState({
     name: '',
     status: 'all',
     sourceId: '',
-    priority: 'all',
-    startDate: '',
-    endDate: '',
+    ownerId: '', // MODIFIED: Added ownerId
+    nextContactDateBefore: '', // MODIFIED: Added nextContactDateBefore
+    nextContactDateAfter: '', // MODIFIED: Added nextContactDateAfter
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
   const [availableSources, setAvailableSources] = useState<{ id: string; name: string }[]>([]);
+  const [availableOwners, setAvailableOwners] = useState<{ id: string; name: string }[]>([]); // MODIFIED: Added availableOwners
 
   useEffect(() => {
     if (currentCompany?.id) {
       fetchLeads();
       fetchLeadSources(currentCompany.id);
+      fetchLeadOwners(currentCompany.id); // MODIFIED: Fetch lead owners
     }
   }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm]);
 
@@ -69,7 +74,8 @@ function LeadListPage() {
         .from('leads')
         .select(`
           id, lead_name, company_name, email, phone, mobile, status, created_at, next_contact_date, converted_customer_id,
-          lead_sources ( name )
+          lead_sources ( name ),
+          employees ( first_name, last_name ) // MODIFIED: Join employees for lead owner
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -86,12 +92,14 @@ function LeadListPage() {
       if (filterCriteria.sourceId) {
         query = query.eq('lead_source_id', filterCriteria.sourceId);
       }
-      // Priority filter not directly supported by current schema, would need custom logic or schema update
-      if (filterCriteria.startDate) {
-        query = query.gte('created_at', filterCriteria.startDate);
+      if (filterCriteria.ownerId) { // MODIFIED: Apply owner filter
+        query = query.eq('lead_owner_id', filterCriteria.ownerId);
       }
-      if (filterCriteria.endDate) {
-        query = query.lte('created_at', filterCriteria.endDate);
+      if (filterCriteria.nextContactDateBefore) { // MODIFIED: Apply next contact date filters
+        query = query.lte('next_contact_date', filterCriteria.nextContactDateBefore);
+      }
+      if (filterCriteria.nextContactDateAfter) { // MODIFIED: Apply next contact date filters
+        query = query.gte('next_contact_date', filterCriteria.nextContactDateAfter);
       }
 
       query = query.order('created_at', { ascending: false });
@@ -124,6 +132,21 @@ function LeadListPage() {
       setAvailableSources(data || []);
     } catch (err: any) {
       console.error('Error fetching lead sources:', err);
+    }
+  };
+
+  // MODIFIED: Fetch lead owners (employees)
+  const fetchLeadOwners = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name')
+        .eq('company_id', companyId)
+        .eq('status', 'active');
+      if (error) throw error;
+      setAvailableOwners(data.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}` })) || []);
+    } catch (err: any) {
+      console.error('Error fetching lead owners:', err);
     }
   };
 
@@ -199,8 +222,8 @@ function LeadListPage() {
 
       showNotification(`Lead "${lead.lead_name}" converted to customer successfully!`, 'success');
       fetchLeads(); // Refresh list
-      // MODIFIED: Navigate to the new customer's edit page in Sales module
-      navigate(`/sales/customers/edit/${newCustomer.id}`);
+      // MODIFIED: Navigate to the new customer's edit page in Sales module, passing state to indicate origin
+      navigate(`/sales/customers/edit/${newCustomer.id}`, { state: { fromCrm: true } });
     } catch (err: any) {
       showNotification(`Failed to convert lead: ${err.message}`, 'error');
       console.error('Error converting lead:', err);
@@ -252,7 +275,7 @@ function LeadListPage() {
               `}
             />
           </div>
-          {/* Filter options can be expanded into a modal or dropdown */}
+          {/* MODIFIED: Added more filter fields */}
           <div className="flex items-center space-x-2">
             <select
               value={filterCriteria.status}
@@ -270,6 +293,42 @@ function LeadListPage() {
               <option value="converted">Converted</option>
               <option value="lost">Lost</option>
             </select>
+            <MasterSelectField
+              label=""
+              value={availableSources.find(src => src.id === filterCriteria.sourceId)?.name || ''}
+              onValueChange={(val) => setFilterCriteria(prev => ({ ...prev, sourceId: val }))}
+              onSelect={(id) => setFilterCriteria(prev => ({ ...prev, sourceId: id }))}
+              options={availableSources}
+              placeholder="Source"
+              className="w-32"
+            />
+            <MasterSelectField
+              label=""
+              value={availableOwners.find(owner => owner.id === filterCriteria.ownerId)?.name || ''}
+              onValueChange={(val) => setFilterCriteria(prev => ({ ...prev, ownerId: val }))}
+              onSelect={(id) => setFilterCriteria(prev => ({ ...prev, ownerId: id }))}
+              options={availableOwners}
+              placeholder="Owner"
+              className="w-32"
+            />
+            <FormField
+              label=""
+              type="date"
+              value={filterCriteria.nextContactDateAfter}
+              onChange={(val) => setFilterCriteria(prev => ({ ...prev, nextContactDateAfter: val }))}
+              placeholder="Next Contact After"
+              icon={<Calendar size={16} />}
+              className="w-40"
+            />
+            <FormField
+              label=""
+              type="date"
+              value={filterCriteria.nextContactDateBefore}
+              onChange={(val) => setFilterCriteria(prev => ({ ...prev, nextContactDateBefore: val }))}
+              placeholder="Next Contact Before"
+              icon={<Calendar size={16} />}
+              className="w-40"
+            />
             <MasterSelectField
               label=""
               value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
@@ -303,6 +362,7 @@ function LeadListPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th> {/* MODIFIED: Added Owner column */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Contact</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -316,6 +376,7 @@ function LeadListPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.email || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.phone || lead.mobile || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.lead_sources?.name || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.employees ? `${lead.employees.first_name} ${lead.employees.last_name}` : 'N/A'}</td> {/* MODIFIED: Display owner */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         lead.status === 'open' ? 'bg-blue-100 text-blue-800' :
@@ -336,7 +397,7 @@ function LeadListPage() {
                       </Link>
                       {!lead.converted_customer_id && (
                         <Button variant="ghost" size="sm" onClick={() => handleConvertLead(lead)} title="Convert to Customer">
-                          <ArrowLeftRight size={16} /> {/* MODIFIED: Changed 'Convert' to 'ArrowLeftRight' */}
+                          <ArrowLeftRight size={16} />
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)} className="text-red-600 hover:text-red-800" title="Delete">

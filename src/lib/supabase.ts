@@ -320,6 +320,7 @@ export interface Database {
           // New fields for tax and other ledger entries
           tax_details: any | null; // JSONB to store dynamic tax rows
           other_ledger_entries: any | null; // JSONB to store other ledger entries
+          project_id: string | null; // NEW: Added project_id
         };
         Insert: {
           id?: string;
@@ -343,6 +344,7 @@ export interface Database {
           updated_at?: string;
           tax_details?: any | null;
           other_ledger_entries?: any | null;
+          project_id?: string | null; // NEW: Added project_id
         };
         Update: {
           id?: string;
@@ -366,6 +368,7 @@ export interface Database {
           updated_at?: string;
           tax_details?: any | null;
           other_ledger_entries?: any | null;
+          project_id?: string | null; // NEW: Added project_id
         };
       };
       sales_invoice_items: {
@@ -1082,6 +1085,175 @@ export interface Database {
           updated_at?: string;
         };
       };
+      purchase_invoices: { // NEW: Added purchase_invoices table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          bill_no: string;
+          vendor_id: string | null;
+          order_id: string | null;
+          grn_id: string | null;
+          bill_date: string;
+          due_date: string | null;
+          vendor_invoice_no: string | null;
+          vendor_invoice_date: string | null;
+          status: string | null;
+          notes: string | null;
+          subtotal: number | null;
+          total_tax: number | null;
+          total_amount: number | null;
+          paid_amount: number | null;
+          outstanding_amount: number | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          project_id: string | null; // NEW: Added project_id
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          bill_no: string;
+          vendor_id?: string | null;
+          order_id?: string | null;
+          grn_id?: string | null;
+          bill_date?: string;
+          due_date?: string | null;
+          vendor_invoice_no?: string | null;
+          vendor_invoice_date?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          subtotal?: number | null;
+          total_tax?: number | null;
+          total_amount?: number | null;
+          paid_amount?: number | null;
+          outstanding_amount?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string | null; // NEW: Added project_id
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          bill_no?: string;
+          vendor_id?: string | null;
+          order_id?: string | null;
+          grn_id?: string | null;
+          bill_date?: string;
+          due_date?: string | null;
+          vendor_invoice_no?: string | null;
+          vendor_invoice_date?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          subtotal?: number | null;
+          total_tax?: number | null;
+          total_amount?: number | null;
+          paid_amount?: number | null;
+          outstanding_amount?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string | null; // NEW: Added project_id
+        };
+      };
+      compliance_tasks: { // NEW: Added recurrence fields
+        Row: {
+          id: string;
+          company_id: string | null;
+          task_name: string;
+          task_type: string;
+          description: string | null;
+          due_date: string;
+          priority: string | null;
+          status: string | null;
+          assigned_to: string | null;
+          completed_by: string | null;
+          completed_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          recurrence_frequency: string | null; // NEW
+          recurrence_due_date: string | null; // NEW
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          task_name: string;
+          task_type: string;
+          description?: string | null;
+          due_date: string;
+          priority?: string | null;
+          status?: string | null;
+          assigned_to?: string | null;
+          completed_by?: string | null;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          recurrence_frequency?: string | null; // NEW
+          recurrence_due_date?: string | null; // NEW
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          task_name?: string;
+          task_type?: string;
+          description?: string | null;
+          due_date?: string;
+          priority?: string | null;
+          status?: string | null;
+          assigned_to?: string | null;
+          completed_by?: string | null;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          recurrence_frequency?: string | null; // NEW
+          recurrence_due_date?: string | null; // NEW
+        };
+      };
+      document_attachments: { // NEW: Added document_attachments table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          reference_type: string;
+          reference_id: string;
+          file_name: string;
+          file_path: string;
+          file_size: number | null;
+          mime_type: string | null;
+          description: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          reference_type: string;
+          reference_id: string;
+          file_name: string;
+          file_path: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          reference_type?: string;
+          reference_id?: string;
+          file_name?: string;
+          file_path?: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }
+
