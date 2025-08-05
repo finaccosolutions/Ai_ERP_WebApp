@@ -15,7 +15,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  ClipboardCheck // NEW: Import ClipboardCheck icon for Project module
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
@@ -32,6 +33,7 @@ const menuItems = [
   { icon: Calculator, label: 'Accounting', path: '/accounting', color: 'from-orange-500 to-orange-600' },
   { icon: Package, label: 'Inventory', path: '/inventory', color: 'from-teal-500 to-teal-600' },
   { icon: Factory, label: 'Manufacturing', path: '/manufacturing', color: 'from-indigo-500 to-indigo-600' },
+  { icon: ClipboardCheck, label: 'Project', path: '/project', color: 'from-pink-500 to-pink-600' }, // NEW: Project Module
   { icon: BarChart3, label: 'Reports', path: '/reports', color: 'from-red-500 to-red-600' },
   { icon: Shield, label: 'Compliance', path: '/compliance', color: 'from-yellow-500 to-yellow-600' },
   { icon: UserCheck, label: 'HR & Payroll', path: '/hr', color: 'from-pink-500 to-pink-600' },

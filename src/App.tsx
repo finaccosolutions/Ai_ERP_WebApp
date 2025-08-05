@@ -19,6 +19,7 @@ import Compliance from './pages/Compliance/Compliance';
 import HR from './pages/HR/HR';
 import CRM from './pages/CRM/CRM';
 import Admin from './pages/Admin/Admin'; // Admin module entry
+import Project from './pages/Project/Project'; // NEW: Import Project module
 import { useAuth } from './hooks/useAuth';
 import CompanySetup from './pages/Company/CompanySetup';
 import CompanySettings from './pages/Company/CompanySettings';
@@ -106,6 +107,7 @@ function AppContent() {
           <Route path="/compliance/*" element={<Compliance />} />
           <Route path="/hr/*" element={<HR />} />
           <Route path="/crm/*" element={<CRM />} />
+          <Route path="/project/*" element={<Project />} /> {/* NEW: Project Module Route */}
           {/* Conditional Admin Route */}
           <Route 
             path="/admin/*" 
@@ -154,3 +156,4 @@ function App() {
 }
 
 export default App;
+

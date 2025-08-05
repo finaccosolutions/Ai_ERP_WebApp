@@ -747,6 +747,341 @@ export interface Database {
           updated_at?: string;
         };
       };
+      leads: { // EXISTING: Leads table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          lead_name: string;
+          company_name: string | null;
+          email: string | null;
+          phone: string | null;
+          mobile: string | null;
+          website: string | null;
+          lead_source_id: string | null;
+          territory_id: string | null;
+          status: string | null;
+          lead_owner_id: string | null;
+          annual_revenue: number | null;
+          no_of_employees: number | null;
+          industry: string | null;
+          address: any | null;
+          notes: string | null;
+          next_contact_date: string | null;
+          converted_customer_id: string | null;
+          converted_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          lead_name: string;
+          company_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          mobile?: string | null;
+          website?: string | null;
+          lead_source_id?: string | null;
+          territory_id?: string | null;
+          status?: string | null;
+          lead_owner_id?: string | null;
+          annual_revenue?: number | null;
+          no_of_employees?: number | null;
+          industry?: string | null;
+          address?: any | null;
+          notes?: string | null;
+          next_contact_date?: string | null;
+          converted_customer_id?: string | null;
+          converted_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          lead_name?: string;
+          company_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          mobile?: string | null;
+          website?: string | null;
+          lead_source_id?: string | null;
+          territory_id?: string | null;
+          status?: string | null;
+          lead_owner_id?: string | null;
+          annual_revenue?: number | null;
+          no_of_employees?: number | null;
+          industry?: string | null;
+          address?: any | null;
+          notes?: string | null;
+          next_contact_date?: string | null;
+          converted_customer_id?: string | null;
+          converted_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      lead_sources: { // EXISTING: Lead Sources table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          name: string;
+          description: string | null;
+          is_active: boolean | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          name: string;
+          description?: string | null;
+          is_active?: boolean | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          name?: string;
+          description?: string | null;
+          is_active?: boolean | null;
+          created_at?: string;
+        };
+      };
+      opportunities: { // EXISTING: Opportunities table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          opportunity_name: string;
+          customer_id: string | null;
+          lead_id: string | null;
+          opportunity_owner_id: string | null;
+          opportunity_amount: number | null;
+          probability: number | null;
+          stage: string | null;
+          expected_close_date: string | null;
+          actual_close_date: string | null;
+          next_step: string | null;
+          description: string | null;
+          competitor: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          opportunity_name: string;
+          customer_id?: string | null;
+          lead_id?: string | null;
+          opportunity_owner_id?: string | null;
+          opportunity_amount?: number | null;
+          probability?: number | null;
+          stage?: string | null;
+          expected_close_date?: string | null;
+          actual_close_date?: string | null;
+          next_step?: string | null;
+          description?: string | null;
+          competitor?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          opportunity_name?: string;
+          customer_id?: string | null;
+          lead_id?: string | null;
+          opportunity_owner_id?: string | null;
+          opportunity_amount?: number | null;
+          probability?: number | null;
+          stage?: string | null;
+          expected_close_date?: string | null;
+          actual_close_date?: string | null;
+          next_step?: string | null;
+          description?: string | null;
+          competitor?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      projects: { // NEW: Projects table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          project_name: string;
+          customer_id: string | null;
+          start_date: string;
+          due_date: string;
+          billing_type: string | null;
+          assigned_staff_id: string | null;
+          status: string | null;
+          description: string | null;
+          is_recurring: boolean | null;
+          recurrence_frequency: string | null;
+          recurrence_due_date: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          project_name: string;
+          customer_id?: string | null;
+          start_date: string;
+          due_date: string;
+          billing_type?: string | null;
+          assigned_staff_id?: string | null;
+          status?: string | null;
+          description?: string | null;
+          is_recurring?: boolean | null;
+          recurrence_frequency?: string | null;
+          recurrence_due_date?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          project_name?: string;
+          customer_id?: string | null;
+          start_date?: string;
+          due_date?: string;
+          billing_type?: string | null;
+          assigned_staff_id?: string | null;
+          status?: string | null;
+          description?: string | null;
+          is_recurring?: boolean | null;
+          recurrence_frequency?: string | null;
+          recurrence_due_date?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      tasks: { // NEW: Tasks table definition
+        Row: {
+          id: string;
+          project_id: string | null;
+          task_name: string;
+          assigned_to_id: string | null;
+          status: string | null;
+          due_date: string | null;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id?: string | null;
+          task_name: string;
+          assigned_to_id?: string | null;
+          status?: string | null;
+          due_date?: string | null;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string | null;
+          task_name?: string;
+          assigned_to_id?: string | null;
+          status?: string | null;
+          due_date?: string | null;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      time_logs: { // NEW: Time Logs table definition
+        Row: {
+          id: string;
+          task_id: string | null;
+          employee_id: string | null;
+          start_time: string;
+          end_time: string | null;
+          duration_minutes: number | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id?: string | null;
+          employee_id?: string | null;
+          start_time: string;
+          end_time?: string | null;
+          duration_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string | null;
+          employee_id?: string | null;
+          start_time?: string;
+          end_time?: string | null;
+          duration_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
+      activities: { // UPDATED: Activities table definition
+        Row: {
+          id: string;
+          company_id: string | null;
+          activity_type: string;
+          subject: string;
+          description: string | null;
+          activity_date: string;
+          activity_time: string | null;
+          duration_minutes: number | null;
+          status: string | null;
+          priority: string | null;
+          assigned_to_id: string | null;
+          reference_type: string | null; // NEW
+          reference_id: string | null; // NEW
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          activity_type: string;
+          subject: string;
+          description?: string | null;
+          activity_date?: string;
+          activity_time?: string | null;
+          duration_minutes?: number | null;
+          status?: string | null;
+          priority?: string | null;
+          assigned_to_id?: string | null;
+          reference_type?: string | null; // NEW
+          reference_id?: string | null; // NEW
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          activity_type?: string;
+          subject?: string;
+          description?: string | null;
+          activity_date?: string;
+          activity_time?: string | null;
+          duration_minutes?: number | null;
+          status?: string | null;
+          priority?: string | null;
+          assigned_to_id?: string | null;
+          reference_type?: string | null; // NEW
+          reference_id?: string | null; // NEW
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
