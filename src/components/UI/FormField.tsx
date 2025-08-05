@@ -65,8 +65,8 @@ const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
             fieldName={label}
             fieldValue={value}
             context={context}
-            onSuggestion={onAISuggestion}
-            onTeach={onAITeach}
+            onAISuggestion={onAISuggestion}
+            onAITeach={onAITeach}
           />
         )}
       </div>

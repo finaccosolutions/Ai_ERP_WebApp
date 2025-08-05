@@ -24,11 +24,13 @@ type MasterSelectFieldProps = {
   readOnly?: boolean;
   allowCreation?: boolean;
   onNewValueConfirmed?: (value: string, fieldIndex?: number, masterType?: string) => void;
-  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>; // Add onKeyDown prop
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   fieldIndex?: number;
   masterType?: string;
-  onF2Press?: (currentSearchTerm: string) => void; // NEW: Add onF2Press prop
+  onF2Press?: (currentSearchTerm: string) => void;
+  displayValue?: string;
+  disableTyping?: boolean; // NEW: Prop to disable typing and filtering
 };
 
 export interface MasterSelectFieldRef {
@@ -40,10 +42,9 @@ export interface MasterSelectFieldRef {
   focus: () => void;
 }
 
-// Use forwardRef to pass the ref to the internal input element
 const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>(({
   label,
-  value, // The ID from parent state
+  value,
   onValueChange,
   onSelect,
   options,
@@ -55,33 +56,35 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
   readOnly = false,
   allowCreation = false,
   onNewValueConfirmed,
-  onKeyDown, // Destructure onKeyDown
+  onKeyDown,
   onBlur,
   fieldIndex,
   masterType,
-  onF2Press, // NEW: Destructure onF2Press
-}, ref) => { // Accept ref
+  onF2Press,
+  displayValue,
+  disableTyping = false, // NEW: Default to false
+}, ref) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const [internalSearchTerm, setInternalSearchTerm] = useState(''); // Text displayed in input
+  const [internalSearchTerm, setInternalSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync internalSearchTerm with the name corresponding to the `value` prop (ID)
-  // This useEffect should only run when the `value` prop changes from the parent,
-  // and the internalSearchTerm doesn't already reflect that selection.
   useEffect(() => {
-    const selectedOption = options.find(opt => opt.id === value);
-    if (selectedOption && selectedOption.name !== internalSearchTerm) {
-      setInternalSearchTerm(selectedOption.name);
-    } else if (!selectedOption && value === '' && internalSearchTerm !== '') {
-      // If parent clears value, and internalSearchTerm is not already empty, clear it.
-      setInternalSearchTerm('');
+    if (displayValue !== undefined) {
+      setInternalSearchTerm(displayValue);
+    } else {
+      const selectedOption = options.find(opt => opt.id === value);
+      if (selectedOption && selectedOption.name !== internalSearchTerm) {
+        setInternalSearchTerm(selectedOption.name);
+      } else if (!selectedOption && value === '' && internalSearchTerm !== '') {
+        setInternalSearchTerm('');
+      }
     }
-  }, [value, options]); // Depend on value and options
+  }, [value, options, displayValue]);
 
   useImperativeHandle(ref, () => ({
     getSearchTerm: () => internalSearchTerm,
@@ -102,15 +105,18 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
     }
   }));
 
-  const filteredOptions = options.filter(option =>
-    option && (option.name || '').toLowerCase().includes(internalSearchTerm.toLowerCase())
-  );
+  // NEW: Conditional filtering logic
+  const filteredOptions = disableTyping
+    ? options // If typing is disabled, always show all options
+    : options.filter(option =>
+        option && (option.name || '').toLowerCase().includes(internalSearchTerm.toLowerCase())
+      );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInternalSearchTerm(e.target.value);
-    setIsOpen(true); // Open dropdown on typing
-    // Do NOT call onValueChange here. It's only called on explicit selection.
-    // This allows the user to type freely without immediately updating the parent's ID state.
+    if (!disableTyping) { // Only update search term if typing is allowed
+      setInternalSearchTerm(e.target.value);
+    }
+    setIsOpen(true);
   };
 
   const handleInternalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -146,19 +152,19 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
         }
       } else {
         setIsOpen(false);
-        inputRef.current?.blur(); // Allow parent's onKeyDown to proceed to next field
+        inputRef.current?.blur();
       }
-    } else if (e.key === 'F2' && onF2Press) { // NEW: Handle F2 press
+    } else if (e.key === 'F2' && onF2Press) {
       e.preventDefault();
-      onF2Press(internalSearchTerm.trim()); // Pass current search term
-      setIsOpen(false); // Close dropdown on F2 press
+      onF2Press(internalSearchTerm.trim());
+      setIsOpen(false);
     }
   };
 
   const handleOptionClick = (option: Option) => {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     setInternalSearchTerm(option.name);
-    onValueChange(option.id); // Update parent's ID state
+    onValueChange(option.id);
     onSelect(option.id, option.name, option);
     setIsOpen(false);
     inputRef.current?.focus();
@@ -168,29 +174,22 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
     blurTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
       const typedText = internalSearchTerm.trim();
-      const selectedOption = options.find(opt => opt.id === value); // Option corresponding to parent's ID
+      const selectedOption = options.find(opt => opt.id === value);
 
       if (typedText === '') {
-        // If input is empty, clear parent's value
         onValueChange('');
         setInternalSearchTerm('');
       } else if (selectedOption && selectedOption.name.toLowerCase() === typedText.toLowerCase()) {
-        // If typed text matches the currently selected option, do nothing (it's already selected)
-        // This handles case where user types the selected value again
+        // Value is already correctly set and displayed
       } else {
-        // User typed something, but it's not the currently selected option
         const matchingOption = options.find(opt => opt.name.toLowerCase() === typedText.toLowerCase());
         if (matchingOption) {
-          // If typed text matches an existing option, select it
           onValueChange(matchingOption.id);
           onSelect(matchingOption.id, matchingOption.name, matchingOption);
-          setInternalSearchTerm(matchingOption.name); // Ensure display is exact match
+          setInternalSearchTerm(matchingOption.name);
         } else {
-          // If typed text does not match any existing option, clear parent's value and internal text
           onValueChange('');
           setInternalSearchTerm('');
-          // Optionally, show a notification that the value is invalid
-          // showNotification('Invalid selection. Please choose from the list or create a new one.', 'error');
         }
       }
       if (onBlur) onBlur(e);
@@ -219,23 +218,22 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
         <input
           ref={inputRef}
           type="text"
-          value={internalSearchTerm}
+          value={displayValue !== undefined ? displayValue : internalSearchTerm}
           onChange={handleInputChange}
-          onFocus={() => { setIsOpen(true); inputRef.current?.select(); }}
+          onFocus={() => { setIsOpen(true); setHighlightedIndex(-1); inputRef.current?.select(); }}
           onKeyDown={handleInternalKeyDown}
           onBlur={handleBlur}
           placeholder={placeholder}
           required={required}
-          disabled={disabled}
-          readOnly={readOnly}
+          readOnly={readOnly || disableTyping} // NEW: Make readOnly if disableTyping is true
           className={`
             w-full pl-10 pr-3 py-2.5 border ${theme.inputBorder}
             ${theme.borderRadius} ${theme.isDark ? theme.inputBg : 'bg-white'} ${theme.textPrimary}
             focus:ring-2 focus:${theme.inputFocus} focus:border-transparent
             transition-all duration-300 hover:border-[${theme.hoverAccent}]
             placeholder:${theme.textMuted}
-            ${error ? 'border-red-500 ring-2 ring-red-200' : ''}
-            ${readOnly ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
+            ${error ? 'border-red-500 ring-2 ring-2 ring-red-200' : ''}
+            ${readOnly || disableTyping ? 'bg-gray-100 dark:bg-gray-750 cursor-not-allowed' : ''}
           `}
         />
         <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -252,7 +250,9 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
       {isOpen && filteredOptions.length > 0 && (
         <DropdownPortal style={getDropdownPosition()}>
           <div ref={dropdownRef} className={`mt-1 ${theme.isDark ? 'bg-gray-700' : 'bg-blue-50'} border ${theme.borderColor}
-            ${theme.borderRadius} ${theme.shadowLevel} max-h-60 overflow-y-auto`}>
+            ${theme.borderRadius} ${theme.shadowLevel} max-h-60 overflow-y-auto min-w-max`} // NEW: Added min-w-max
+            style={{ width: getDropdownPosition().width }}
+            >
             {filteredOptions.map((option, index) => (
               <button
                 key={option.id}
@@ -264,7 +264,7 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
                   ${index === highlightedIndex ? (theme.isDark ? 'bg-gray-600' : 'bg-blue-200') : ''}
                   flex items-center justify-between`}
               >
-                <span>{option.name}</span>
+                <span>{option.flag ? `${option.flag} ${option.name} (${option.dialCode})` : option.name}</span>
                 {option.is_system_defined && (
                   <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                     System
@@ -282,4 +282,3 @@ const MasterSelectField = forwardRef<HTMLInputElement, MasterSelectFieldProps>((
 });
  
 export default MasterSelectField;
-

@@ -1,21 +1,21 @@
 // src/pages/Auth/Login.tsx
-import React, { useState } from 'react';
-import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe, CheckCircle } from 'lucide-react'; // Import CheckCircle
+import React, { useState, useEffect } from 'react';
+import { Building, Mail, Lock, Bot, User, Eye, EyeOff, Phone, Globe, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Button from '../../components/UI/Button';
 import FormField from '../../components/UI/FormField';
 import Card from '../../components/UI/Card';
-import MasterSelectField from '../../components/UI/MasterSelectField'; // Import MasterSelectField
-import { getPhoneCountryCodes } from '../../constants/geoData'; // Import getPhoneCountryCodes
-import { supabase } from '../../lib/supabase'; // Import supabase
+import MasterSelectField from '../../components/UI/MasterSelectField';
+import { COUNTRIES_PHONE_CODES } from '../../constants/allCountryPhoneCodes'; // Import allCountryPhoneCodes
+import { supabase } from '../../lib/supabase';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(getPhoneCountryCodes()[0]); // Default to first country
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES_PHONE_CODES[0]);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,11 +23,37 @@ function Login() {
   const [showPasswordText, setShowPasswordText] = useState(false);
   const [showConfirmPasswordText, setShowConfirmPasswordText] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
-  const [showForgotPasswordForm, setShowForgotPasswordForm] = useState(false); // New state for forgot password form
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(''); // New state for forgot password email
+  const [showForgotPasswordForm, setShowForgotPasswordForm] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
 
   const { login, signUp } = useAuth();
   const { theme } = useTheme();
+
+  // NEW: Effect to auto-select country based on user's location (conceptual)
+  // In a real application, you would use a geo-IP service here.
+  // For this environment, direct geo-IP lookup is not possible.
+  // This is a placeholder to illustrate where such logic would go.
+  useEffect(() => {
+    // Example: You would typically make an API call to a geo-IP service
+    // fetch('https://ipapi.co/json/')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     const userCountryCode = data.country_code; // e.g., "US"
+    //     const foundCountry = COUNTRIES_PHONE_CODES.find(c => c.code === userCountryCode);
+    //     if (foundCountry) {
+    //       setSelectedCountry(foundCountry);
+    //     }
+    //   })
+    //   .catch(err => console.log("Error fetching geo-IP data:", err));
+
+    // For now, it defaults to the first country in the list (India in allCountryPhoneCodes.ts)
+    // or you can set a specific default if needed:
+    // const defaultCountry = COUNTRIES_PHONE_CODES.find(c => c.code === 'US');
+    // if (defaultCountry) {
+    //   setSelectedCountry(defaultCountry);
+    // }
+  }, []);
+
 
   const validateForm = () => {
     if (!email || !password) {
@@ -66,7 +92,7 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setShowVerificationMessage(false); // Hide verification message on new submission
+    setShowVerificationMessage(false);
 
     if (!validateForm()) {
       return;
@@ -81,13 +107,11 @@ function Login() {
         success = await signUp(email, password, fullName, mobile);
         if (success) {
           setError('');
-          setShowVerificationMessage(true); // Show verification message
-          // Clear form fields after successful sign-up
+          setShowVerificationMessage(true);
           setPassword('');
           setConfirmPassword('');
           setFullName('');
           setMobile('');
-          // Optionally switch to login mode after successful sign-up
           setIsSignUp(false);
         } else {
           setError('Sign up failed. Please try again.');
@@ -125,7 +149,7 @@ function Login() {
     setIsLoading(true);
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/reset-password`, // Redirect to your reset password page
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (resetError) {
@@ -134,7 +158,7 @@ function Login() {
       } else {
         setShowVerificationMessage(true);
         setError('');
-        setForgotPasswordEmail(''); // Clear email after sending
+        setForgotPasswordEmail('');
       }
     } catch (err: any) {
       console.error('Unexpected forgot password error:', err);
@@ -147,14 +171,14 @@ function Login() {
   const switchMode = () => {
     setIsSignUp(!isSignUp);
     setError('');
-    setShowVerificationMessage(false); // Hide verification message when switching modes
-    setShowForgotPasswordForm(false); // Hide forgot password form when switching modes
+    setShowVerificationMessage(false);
+    setShowForgotPasswordForm(false);
     setPassword('');
     setConfirmPassword('');
     setFullName('');
     setMobile('');
-    setEmail(''); // Clear email when switching modes
-    setForgotPasswordEmail(''); // Clear forgot password email
+    setEmail('');
+    setForgotPasswordEmail('');
   };
 
   return (
@@ -359,15 +383,31 @@ function Login() {
                       </label>
                       <div className="flex items-stretch">
                         {/* Country Selector using MasterSelectField */}
-                        <div className="w-32 flex-shrink-0">
+                        <div className="w-24 flex-shrink-0"> {/* Adjusted width to w-24 */}
                           <MasterSelectField
-                            label="" // No label needed for this part
-                            value={selectedCountry.dialCode}
-                            onValueChange={(val) => {}} // Not directly typing into this
-                            onSelect={(id, name, data) => setSelectedCountry(data)}
-                            options={getPhoneCountryCodes()}
+                            label=""
+                            value={selectedCountry.code}
+                            displayValue={`${selectedCountry.flag} ${selectedCountry.dialCode}`} // Display flag and dial code
+                            onValueChange={(val) => {
+                              // This is called when typing, but we want to filter by name
+                              // Find the country by code to update selectedCountry
+                              const foundCountry = COUNTRIES_PHONE_CODES.find(c => c.code === val);
+                              if (foundCountry) {
+                                setSelectedCountry(foundCountry);
+                              }
+                            }}
+                            onSelect={(id, name, data) => {
+                              // On selection, update the selected country state
+                              setSelectedCountry(data);
+                            }}
+                            options={COUNTRIES_PHONE_CODES.map(country => ({
+                              id: country.code,
+                              name: `${country.flag} ${country.name} (${country.dialCode})`, // Full name for dropdown list
+                              ...country
+                            }))}
                             placeholder="Code"
                             className="h-full"
+                            disableTyping={false} // Set to false to enable typing and filtering
                           />
                         </div>
                         
@@ -396,13 +436,13 @@ function Login() {
                   <div className="space-y-2">
                     <FormField
                       label="Password"
-                      type="password" // Set type to password, visibility handled by FormField
+                      type="password"
                       value={password}
                       onChange={setPassword}
                       placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
                       required
                       icon={<Lock size={18} className="text-gray-400" />}
-                      showToggleVisibility={true} // Enable toggle
+                      showToggleVisibility={true}
                       onToggleVisibility={() => setShowPasswordText(!showPasswordText)}
                       isPasswordVisible={showPasswordText}
                     />
@@ -418,13 +458,13 @@ function Login() {
                     <div className="space-y-2">
                       <FormField
                         label="Confirm Password"
-                        type="password" // Set type to password, visibility handled by FormField
+                        type="password"
                         value={confirmPassword}
                         onChange={setConfirmPassword}
                         placeholder="Confirm your password"
                         required
                         icon={<Lock size={18} className="text-gray-400" />}
-                        showToggleVisibility={true} // Enable toggle
+                        showToggleVisibility={true}
                         onToggleVisibility={() => setShowConfirmPasswordText(!showConfirmPasswordText)}
                         isPasswordVisible={showConfirmPasswordText}
                       />
@@ -479,8 +519,8 @@ function Login() {
                       type="button"
                       onClick={() => {
                         setShowForgotPasswordForm(true);
-                        setError(''); // Clear any login errors
-                        setShowVerificationMessage(false); // Clear any verification messages
+                        setError('');
+                        setShowVerificationMessage(false);
                       }}
                       className="text-blue-600 hover:text-blue-800 font-semibold text-sm transition-colors duration-200 hover:underline"
                     >
