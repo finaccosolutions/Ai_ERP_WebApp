@@ -25,6 +25,7 @@ import CompanySettings from './pages/Company/CompanySettings';
 import CompanyManagement from './pages/Company/CompanyManagement'; // Import CompanyManagement
 import { useCompany } from './contexts/CompanyContext'; // Import useCompany
 import ConfirmationModal from './components/UI/ConfirmationModal'; // Import ConfirmationModal
+import ResetPassword from './pages/Auth/ResetPassword'; // Import ResetPassword
 
 // Import new User-related pages
 import ProfilePage from './pages/User/ProfilePage';
@@ -54,7 +55,13 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <Login />;
+    // If not authenticated, only allow access to Login and ResetPassword pages
+    return (
+      <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Login />} /> {/* Catch all other routes and redirect to Login */}
+      </Routes>
+    );
   } 
  
   // If companies are still loading, show a loading indicator
@@ -110,6 +117,8 @@ function AppContent() {
             <Route path="settings" element={<UserSettingsPage />} />
             <Route path="ai-preferences" element={<AIPreferencesPage />} />
           </Route>
+          {/* Add the ResetPassword route here as well, in case user is logged in and navigates to it */}
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </Layout>
 
@@ -144,4 +153,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
