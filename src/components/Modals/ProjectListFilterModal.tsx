@@ -18,7 +18,7 @@ interface ProjectListFilterModalProps {
     customer: string;
     assignedStaff: string;
     status: string;
-    billingType: string;
+    projectCategory: string; // Changed from billingType
     startDate: string;
     endDate: string;
     isRecurring: string;
@@ -42,6 +42,7 @@ function ProjectListFilterModal({
 
   const [availableCustomers, setAvailableCustomers] = React.useState<{ id: string; name: string }[]>([]);
   const [availableStaff, setAvailableStaff] = React.useState<{ id: string; name: string }[]>([]);
+  const [availableProjectCategories, setAvailableProjectCategories] = React.useState<{ id: string; name: string }[]>([]); // NEW
 
   React.useEffect(() => {
     if (currentCompany?.id) {
@@ -68,6 +69,16 @@ function ProjectListFilterModal({
         .order('first_name', { ascending: true });
       if (employeesError) throw employeesError;
       setAvailableStaff(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}` })) || []);
+
+      // NEW: Fetch Project Categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('project_categories')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .order('name', { ascending: true });
+      if (categoriesError) throw categoriesError;
+      setAvailableProjectCategories(categoriesData || []);
+
     } catch (err) {
       console.error('Error fetching master data for filter:', err);
     }
@@ -80,7 +91,7 @@ function ProjectListFilterModal({
       customer: '',
       assignedStaff: '',
       status: 'all',
-      billingType: 'all',
+      projectCategory: '', // Changed from billingType
       startDate: '',
       endDate: '',
       isRecurring: 'all',
@@ -91,7 +102,7 @@ function ProjectListFilterModal({
 
   const handleAISuggestFilter = async () => {
     try {
-      const aiPrompt = `Suggest relevant filters for project lists based on common project management needs. Consider customer, assigned staff, status, billing type, date ranges, and recurrence. Provide suggestions in a structured format.`;
+      const aiPrompt = `Suggest relevant filters for project lists based on common project management needs. Consider customer, assigned staff, status, project category, date ranges, and recurrence. Provide suggestions in a structured format.`;
       const aiResponse = await suggestWithAI({ query: aiPrompt, context: 'project_list_filters' });
 
       if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0) {
@@ -115,13 +126,6 @@ function ProjectListFilterModal({
     { id: 'completed', name: 'Completed' },
     { id: 'billed', name: 'Billed' },
     { id: 'closed', name: 'Closed' },
-  ];
-
-  const billingTypes = [
-    { id: 'all', name: 'All Billing Types' },
-    { id: 'fixed_price', name: 'Fixed Price' },
-    { id: 'time_based', name: 'Time & Material' },
-    { id: 'recurring', name: 'Recurring' },
   ];
 
   return (
@@ -175,13 +179,13 @@ function ProjectListFilterModal({
               options={projectStatuses}
               placeholder="Select Status"
             />
-            <MasterSelectField
-              label="Billing Type"
-              value={billingTypes.find(type => type.id === filters.billingType)?.name || ''}
-              onValueChange={(val) => onFilterChange('billingType', val)}
-              onSelect={(id) => onFilterChange('billingType', id)}
-              options={billingTypes}
-              placeholder="Select Billing Type"
+            <MasterSelectField // NEW: Project Category Filter
+              label="Project Category"
+              value={availableProjectCategories.find(cat => cat.id === filters.projectCategory)?.name || ''}
+              onValueChange={(val) => onFilterChange('projectCategory', val)}
+              onSelect={(id) => onFilterChange('projectCategory', id)}
+              options={[{ id: 'all', name: 'All Categories' }, ...availableProjectCategories]}
+              placeholder="Select Category"
             />
             <FormField
               label="Start Date"

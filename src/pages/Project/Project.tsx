@@ -13,7 +13,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'; // Import Link
+import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom'; // Import Link
 
 // NEW: Import Project sub-pages
 import ProjectListPage from './ProjectListPage';
@@ -22,18 +22,19 @@ import TaskListPage from './TaskListPage';
 import TaskFormPage from './TaskFormPage';
 import TimeLogPage from './TimeLogPage';
 import ProjectDetailPage from './ProjectDetailPage';
+import ProjectCategoryFormPage from './ProjectCategoryFormPage'; // NEW
+import ProjectCategoryListPage from './ProjectCategoryListPage'; // NEW
 
 interface ProjectData {
   id: string;
   project_name: string;
   customer_id: string | null;
   start_date: string;
-  due_date: string;
+  actual_due_date: string; // Changed from due_date
   status: string;
   progress_percentage: number | null;
-  is_recurring: boolean | null;
-  recurrence_frequency: string | null;
-  recurrence_due_date: string | null;
+  project_category_id: string | null; // NEW
+  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null; // NEW
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
@@ -94,7 +95,8 @@ function Project() {
         .select(`
           *,
           customers ( name ),
-          project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name )
+          project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
+          project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `)
         .eq('company_id', companyId);
 
@@ -126,7 +128,7 @@ function Project() {
         if (project.status === 'in_progress') inProgress++;
         if (project.status === 'completed' || project.status === 'billed' || project.status === 'closed') completed++;
 
-        const dueDate = project.due_date ? new Date(project.due_date) : null;
+        const dueDate = project.actual_due_date ? new Date(project.actual_due_date) : null; // Changed to actual_due_date
         if (dueDate && dueDate < today && project.status !== 'completed' && project.status !== 'billed' && project.status !== 'closed') {
           overdue++;
         }
@@ -134,7 +136,7 @@ function Project() {
           upcomingDue++;
         }
 
-        if (project.is_recurring) recurringJobs++;
+        if (project.project_categories?.is_recurring_category) recurringJobs++; // Changed to project_categories
 
         if (kanbanCols[project.status]) {
           kanbanCols[project.status].push(project);
@@ -165,11 +167,12 @@ function Project() {
         .from('projects')
         .select(`
           *,
-          customers ( name )
+          customers ( name ),
+          project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `)
         .eq('company_id', companyId)
-        .eq('is_recurring', true)
-        .order('recurrence_due_date', { ascending: true })
+        .eq('project_categories.is_recurring_category', true) // Filter by category recurrence
+        .order('actual_due_date', { ascending: true }) // Changed to actual_due_date
         .limit(10);
 
       if (error) throw error;
@@ -293,6 +296,9 @@ function Project() {
         <Route path="/:projectId/tasks/new" element={<TaskFormPage />} />
         <Route path="/:projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
         <Route path="/:projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
+        <Route path="/categories" element={<ProjectCategoryListPage />} /> {/* NEW */}
+        <Route path="/categories/new" element={<ProjectCategoryFormPage />} /> {/* NEW */}
+        <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} /> {/* NEW */}
       </Routes>
     );
   }
@@ -455,8 +461,8 @@ function Project() {
                           <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-1.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
                         </div>
                         <span className="text-xs text-gray-500 mt-1 block">{project.progress_percentage || 0}% Complete</span>
-                        {project.due_date && (
-                          <p className="text-xs text-gray-500 mt-1">Due: {project.due_date} ({calculateDaysLeft(project.due_date)})</p>
+                        {project.actual_due_date && ( // Changed to actual_due_date
+                          <p className="text-xs text-gray-500 mt-1">Due: {project.actual_due_date} ({calculateDaysLeft(project.actual_due_date)})</p> // Changed to actual_due_date
                         )}
                       </Link>
                     </Card>
@@ -490,7 +496,7 @@ function Project() {
                   <div>
                     <p className="font-medium text-gray-900">{job.project_name}</p>
                     <p className="text-sm text-gray-600">
-                      {job.customers?.name || 'N/A'} • Due: {job.recurrence_due_date} ({job.recurrence_frequency})
+                      {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency}) {/* Changed to actual_due_date and project_categories */}
                     </p>
                   </div>
                   <Button size="sm" variant="outline">View</Button>
@@ -535,8 +541,8 @@ function Project() {
           icon={<Plus size={24} />} // Changed to simple Plus icon
         />
         {showFabMenu && (
-          <div className="absolute bottom-16 right-0 space-y-2"> {/* Adjusted position */}
-            <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} /> {/* AI Suggest moved here */}
+          <div className="absolute bottom-16 right-0 space-y-2">
+            <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} />
             <Button
               variant="outline"
               className="w-full justify-start"
@@ -548,10 +554,10 @@ function Project() {
             <Button
               variant="outline"
               className="w-full justify-start"
-              icon={<Plus size={16} />}
-              onClick={() => { showNotification('Quick Task functionality is a placeholder.', 'info'); setShowFabMenu(false); }}
+              icon={<Layers size={16} />}
+              onClick={() => { navigate('/project/categories/new'); setShowFabMenu(false); }}
             >
-              Add Task
+              Add Category
             </Button>
             <Button
               variant="outline"

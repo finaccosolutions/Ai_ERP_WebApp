@@ -19,23 +19,22 @@ interface Project {
   project_name: string;
   customer_id: string | null;
   start_date: string;
-  due_date: string;
+  actual_due_date: string; // Changed from due_date
   status: string;
   assigned_staff_id: string | null;
   created_at: string;
   reference_no: string | null;
-  category_type: string | null;
+  project_category_id: string | null; // Changed from category_type
   expected_value: number | null;
   project_owner_id: string | null;
   progress_percentage: number | null;
   last_recurrence_created_at: string | null;
-  is_recurring: boolean | null;
-  recurrence_frequency: string | null;
-  recurrence_due_date: string | null;
-  // Joined data
+  // Removed is_recurring, recurrence_frequency, recurrence_due_date, billing_type
+  // These are now part of project_categories
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
+  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null; // NEW: Joined project_categories
 }
 
 function ProjectListPage() {
@@ -58,7 +57,7 @@ function ProjectListPage() {
     customer: searchParams.get('customer') || '',
     assignedStaff: searchParams.get('assignedStaff') || '',
     status: searchParams.get('status') || 'all',
-    billingType: searchParams.get('billingType') || 'all',
+    projectCategory: searchParams.get('projectCategory') || '', // Changed from billingType
     startDate: searchParams.get('startDate') || '',
     endDate: searchParams.get('endDate') || '',
     isRecurring: searchParams.get('isRecurring') || 'all',
@@ -73,7 +72,7 @@ function ProjectListPage() {
       customer: searchParams.get('customer') || '',
       assignedStaff: searchParams.get('assignedStaff') || '',
       status: searchParams.get('status') || 'all',
-      billingType: searchParams.get('billingType') || 'all',
+      projectCategory: searchParams.get('projectCategory') || '', // Changed from billingType
       startDate: searchParams.get('startDate') || '',
       endDate: searchParams.get('endDate') || '',
       isRecurring: searchParams.get('isRecurring') || 'all',
@@ -97,7 +96,8 @@ function ProjectListPage() {
           *,
           customers ( name ),
           project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
-          assigned_staff:employees!projects_assigned_staff_id_fkey ( first_name, last_name )
+          assigned_staff:employees!projects_assigned_staff_id_fkey ( first_name, last_name ),
+          project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -114,17 +114,17 @@ function ProjectListPage() {
       if (currentFilters.status !== 'all') {
         query = query.eq('status', currentFilters.status);
       }
-      if (currentFilters.billingType !== 'all') {
-        query = query.eq('billing_type', currentFilters.billingType);
+      if (currentFilters.projectCategory) { // Changed from billingType
+        query = query.eq('project_category_id', currentFilters.projectCategory);
       }
       if (currentFilters.startDate) {
         query = query.gte('start_date', currentFilters.startDate);
       }
       if (currentFilters.endDate) {
-        query = query.lte('due_date', currentFilters.endDate);
+        query = query.lte('actual_due_date', currentFilters.endDate); // Changed to actual_due_date
       }
       if (currentFilters.isRecurring !== 'all') {
-        query = query.eq('is_recurring', currentFilters.isRecurring === 'true');
+        query = query.eq('project_categories.is_recurring_category', currentFilters.isRecurring === 'true'); // Filter by category recurrence
       }
 
       const today = new Date().toISOString().split('T')[0];
@@ -133,12 +133,12 @@ function ProjectListPage() {
       const next7DaysISO = next7Days.toISOString().split('T')[0];
 
       if (currentFilters.overdue === 'true') {
-        query = query.lte('due_date', today)
+        query = query.lte('actual_due_date', today) // Changed to actual_due_date
                      .not('status', 'in', '("completed", "billed", "closed")');
       }
       if (currentFilters.upcoming_due === 'true') {
-        query = query.gte('due_date', today)
-                     .lte('due_date', next7DaysISO)
+        query = query.gte('actual_due_date', today) // Changed to actual_due_date
+                     .lte('actual_due_date', next7DaysISO) // Changed to actual_due_date
                      .not('status', 'in', '("completed", "billed", "closed")');
       }
 
@@ -304,11 +304,11 @@ function ProjectListPage() {
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Name</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th> {/* Changed from Owner */}
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Complete</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Recurrence</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Billing Type</th> {/* NEW */}
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -321,9 +321,9 @@ function ProjectListPage() {
                       </Link>
                     </td>
                     <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis">{project.customers?.name || 'N/A'}</td>
-                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">{project.project_owner ? `${project.project_owner.first_name} ${project.project_owner.last_name}` : 'N/A'}</td>
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">{project.project_categories?.name || 'N/A'}</td> {/* Changed from Owner */}
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {project.start_date} - {project.due_date}
+                      {project.start_date} - {project.actual_due_date} {/* Changed to actual_due_date */}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
@@ -337,7 +337,7 @@ function ProjectListPage() {
                       <span className="text-xs mt-1 block">{calculateProgress(project)}%</span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {project.is_recurring ? `${project.recurrence_due_date} (${project.recurrence_frequency})` : 'N/A'}
+                      {project.project_categories?.billing_type.replace(/_/g, ' ') || 'N/A'} {/* NEW */}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/edit/${project.id}`}>

@@ -24,6 +24,16 @@ interface EmployeeOption {
   name: string; // Combined for display
 }
 
+interface ProjectCategoryOption { // NEW
+  id: string;
+  name: string;
+  is_recurring_category: boolean;
+  recurrence_frequency: string | null;
+  recurrence_due_day: number | null;
+  recurrence_due_month: number | null;
+  billing_type: string;
+}
+
 function ProjectFormPage() {
   const { theme } = useTheme();
   const { currentCompany } = useCompany();
@@ -38,23 +48,21 @@ function ProjectFormPage() {
     customerId: '',
     customerName: '', // For MasterSelectField display
     referenceNo: '', // NEW: Reference No / Contract No
-    categoryType: '', // NEW: Category / Type
+    projectCategoryId: '', // Changed from categoryType
+    projectCategoryName: '', // For MasterSelectField display
     projectOwnerId: '', // NEW: Project Owner
     projectOwnerName: '', // For MasterSelectField display
     assignedTeamMembers: [] as string[], // NEW: Assigned Team Members (array of employee IDs)
     startDate: '',
-    dueDate: '',
+    actualDueDate: '', // Changed from dueDate
     expectedValue: 0, // NEW: Expected Value / Contract Amount
-    billingType: 'fixed_price',
     status: 'not_started',
     description: '',
-    isRecurring: false,
-    recurrenceFrequency: '',
-    recurrenceDueDate: '',
   });
 
   const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>([]);
   const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
+  const [availableProjectCategories, setAvailableProjectCategories] = useState<ProjectCategoryOption[]>([]); // NEW
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,9 +112,17 @@ function ProjectFormPage() {
       if (employeesError) throw employeesError;
       setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}`, first_name: emp.first_name, last_name: emp.last_name })) || []);
 
+      // NEW: Fetch Project Categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('project_categories')
+        .select('*')
+        .eq('company_id', companyId);
+      if (categoriesError) throw categoriesError;
+      setAvailableProjectCategories(categoriesData || []);
+
     } catch (error) {
       console.error('Error fetching master data:', error);
-      showNotification('Failed to load customers or employees.', 'error');
+      showNotification('Failed to load customers, employees, or project categories.', 'error');
     }
   };
 
@@ -118,7 +134,8 @@ function ProjectFormPage() {
           *,
           customers ( name ),
           project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
-          project_team_members ( employee_id, employees ( first_name, last_name ) )
+          project_team_members ( employee_id, employees ( first_name, last_name ) ),
+          project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `)
         .eq('id', projectId)
         .eq('company_id', currentCompany?.id)
@@ -133,19 +150,16 @@ function ProjectFormPage() {
           customerId: data.customer_id || '',
           customerName: data.customers?.name || '',
           referenceNo: data.reference_no || '',
-          categoryType: data.category_type || '',
+          projectCategoryId: data.project_category_id || '', // Changed from categoryType
+          projectCategoryName: data.project_categories?.name || '', // For MasterSelectField display
           projectOwnerId: data.project_owner_id || '',
           projectOwnerName: data.project_owner ? `${data.project_owner.first_name} ${data.project_owner.last_name}` : '',
           assignedTeamMembers: data.project_team_members?.map(tm => tm.employee_id) || [],
           startDate: data.start_date,
-          dueDate: data.due_date,
+          actualDueDate: data.actual_due_date, // Changed from due_date
           expectedValue: data.expected_value || 0,
-          billingType: data.billing_type,
           status: data.status,
           description: data.description || '',
-          isRecurring: data.is_recurring,
-          recurrenceFrequency: data.is_recurring ? data.recurrence_frequency || '' : '',
-          recurrenceDueDate: data.is_recurring ? data.recurrence_due_date || '' : '',
         });
       }
     } catch (err: any) {
@@ -163,6 +177,14 @@ function ProjectFormPage() {
     setFormData(prev => ({ ...prev, customerId: id, customerName: name }));
   };
 
+  const handleProjectCategorySelect = (id: string, name: string, data: ProjectCategoryOption) => { // NEW
+    setFormData(prev => ({ ...prev, projectCategoryId: id, projectCategoryName: name }));
+    // Automatically set billing type from category if it's not already set or if category changes
+    if (data.billing_type && formData.billingType === 'fixed_price') { // Only auto-set if default
+      setFormData(prev => ({ ...prev, billingType: data.billing_type }));
+    }
+  };
+
   const handleProjectOwnerSelect = (id: string, name: string) => {
     setFormData(prev => ({ ...prev, projectOwnerId: id, projectOwnerName: name }));
   };
@@ -178,19 +200,16 @@ function ProjectFormPage() {
       customerId: '',
       customerName: '',
       referenceNo: '',
-      categoryType: '',
+      projectCategoryId: '',
+      projectCategoryName: '',
       projectOwnerId: '',
       projectOwnerName: '',
       assignedTeamMembers: [],
       startDate: '',
-      dueDate: '',
+      actualDueDate: '',
       expectedValue: 0,
-      billingType: 'fixed_price',
       status: 'not_started',
       description: '',
-      isRecurring: false,
-      recurrenceFrequency: '',
-      recurrenceDueDate: '',
     });
   };
 
@@ -203,22 +222,24 @@ function ProjectFormPage() {
       showNotification('Start Date is required.', 'error');
       return false;
     }
-    if (!formData.dueDate) {
-      showNotification('Due Date is required.', 'error');
+    if (!formData.projectCategoryId) { // NEW: Project Category is required
+      showNotification('Project Category is required.', 'error');
       return false;
     }
-    if (new Date(formData.startDate) > new Date(formData.dueDate)) {
-      showNotification('Due Date cannot be before Start Date.', 'error');
-      return false;
+
+    const selectedCategory = availableProjectCategories.find(cat => cat.id === formData.projectCategoryId);
+
+    if (!selectedCategory?.is_recurring_category) { // If not a recurring category, actual_due_date is required
+      if (!formData.actualDueDate) {
+        showNotification('Due Date is required for non-recurring projects.', 'error');
+        return false;
+      }
+      if (new Date(formData.startDate) > new Date(formData.actualDueDate)) {
+        showNotification('Due Date cannot be before Start Date.', 'error');
+        return false;
+      }
     }
-    if (formData.isRecurring && !formData.recurrenceFrequency) {
-      showNotification('Recurrence Frequency is required for recurring projects.', 'error');
-      return false;
-    }
-    if (formData.isRecurring && !formData.recurrenceDueDate) {
-      showNotification('Recurrence Due Date is required for recurring projects.', 'error');
-      return false;
-    }
+    
     return true;
   };
 
@@ -237,17 +258,13 @@ function ProjectFormPage() {
         project_name: formData.projectName,
         customer_id: formData.customerId || null,
         reference_no: formData.referenceNo || null,
-        category_type: formData.categoryType || null,
+        project_category_id: formData.projectCategoryId || null, // Changed from category_type
         project_owner_id: formData.projectOwnerId || null,
         start_date: formData.startDate,
-        due_date: formData.dueDate,
+        actual_due_date: formData.actualDueDate || null, // Changed from due_date, set to null if not required by category
         expected_value: formData.expectedValue,
-        billing_type: formData.billingType,
         status: formData.status,
         description: formData.description || null,
-        is_recurring: formData.isRecurring,
-        recurrence_frequency: formData.isRecurring ? formData.recurrenceFrequency || null : null,
-        recurrence_due_date: formData.isRecurring ? formData.recurrenceDueDate || null : null,
         created_by: (await supabase.auth.getUser()).data.user?.id || null,
       };
 
@@ -293,29 +310,6 @@ function ProjectFormPage() {
     }
   };
 
-  const categoryTypes = [
-    { id: 'gst_filing', name: 'GST Filing' },
-    { id: 'audit', name: 'Audit' },
-    { id: 'installation', name: 'Installation' },
-    { id: 'amc_service', name: 'AMC Service' },
-    { id: 'software_project', name: 'Software Project' },
-    { id: 'other', name: 'Other' },
-  ];
-
-  const billingTypes = [
-    { id: 'fixed_price', name: 'Fixed Price' },
-    { id: 'time_based', name: 'Time & Material' },
-    { id: 'recurring', name: 'Recurring' },
-  ];
-
-  const recurrenceFrequencies = [
-    { id: 'daily', name: 'Daily' },
-    { id: 'weekly', name: 'Weekly' },
-    { id: 'monthly', name: 'Monthly' },
-    { id: 'quarterly', name: 'Quarterly' },
-    { id: 'yearly', name: 'Yearly' },
-  ];
-
   const projectStatuses = [
     { id: 'not_started', name: 'Not Started' },
     { id: 'in_progress', name: 'In Progress' },
@@ -324,6 +318,9 @@ function ProjectFormPage() {
     { id: 'billed', name: 'Billed' },
     { id: 'closed', name: 'Closed' },
   ];
+
+  const selectedCategory = availableProjectCategories.find(cat => cat.id === formData.projectCategoryId);
+  const isRecurringCategorySelected = selectedCategory?.is_recurring_category;
 
   return (
     <div className="space-y-6">
@@ -375,12 +372,15 @@ function ProjectFormPage() {
                 placeholder="e.g., PO-12345, CON-XYZ"
               />
               <MasterSelectField
-                label="Category / Type"
-                value={categoryTypes.find(type => type.id === formData.categoryType)?.name || ''}
-                onValueChange={(val) => handleInputChange('categoryType', val)}
-                onSelect={(id) => handleInputChange('categoryType', id)}
-                options={categoryTypes}
-                placeholder="Select Category"
+                label="Project Category" // Changed from Category / Type
+                value={formData.projectCategoryName}
+                onValueChange={(val) => handleInputChange('projectCategoryName', val)}
+                onSelect={handleProjectCategorySelect}
+                options={availableProjectCategories}
+                placeholder="Select Project Category"
+                required
+                allowCreation={true} // Allow creating new categories
+                onNewValueConfirmed={(name) => navigate('/project/categories/new', { state: { initialName: name } })}
               />
               <MasterSelectField
                 label="Project Owner / Assigned Manager"
@@ -413,27 +413,22 @@ function ProjectFormPage() {
                 onChange={(val) => handleInputChange('startDate', val)}
                 required
               />
-              <FormField
-                label="Due Date"
-                type="date"
-                value={formData.dueDate}
-                onChange={(val) => handleInputChange('dueDate', val)}
-                required
-              />
+              {/* Conditional Due Date based on category recurrence */}
+              {!isRecurringCategorySelected && (
+                <FormField
+                  label="Due Date" // Changed from Due Date
+                  type="date"
+                  value={formData.actualDueDate}
+                  onChange={(val) => handleInputChange('actualDueDate', val)}
+                  required={!isRecurringCategorySelected}
+                />
+              )}
               <FormField
                 label="Expected Value / Contract Amount"
                 type="number"
                 value={formData.expectedValue.toString()}
                 onChange={(val) => handleInputChange('expectedValue', parseFloat(val) || 0)}
                 icon={<DollarSign size={18} />}
-              />
-              <MasterSelectField
-                label="Billing Type"
-                value={billingTypes.find(type => type.id === formData.billingType)?.name || ''}
-                onValueChange={(val) => handleInputChange('billingType', val)}
-                onSelect={(id) => handleInputChange('billingType', id)}
-                options={billingTypes}
-                placeholder="Select Billing Type"
               />
               <MasterSelectField
                 label="Status"
@@ -451,37 +446,6 @@ function ProjectFormPage() {
                 className="md:col-span-2"
               />
             </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-              <Calendar size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-              Recurrence (Optional)
-            </h3>
-            <div className="flex items-center space-x-3 mb-4">
-              <input type="checkbox" id="isRecurring" checked={formData.isRecurring} onChange={(e) => handleInputChange('isRecurring', e.target.checked)} className="w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]" />
-              <label htmlFor="isRecurring" className={`text-sm font-medium ${theme.textPrimary}`}>Is Recurring Project</label>
-            </div>
-            {formData.isRecurring && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MasterSelectField
-                  label="Frequency"
-                  value={recurrenceFrequencies.find(freq => freq.id === formData.recurrenceFrequency)?.name || ''}
-                  onValueChange={(val) => handleInputChange('recurrenceFrequency', val)}
-                  onSelect={(id) => handleInputChange('recurrenceFrequency', id)}
-                  options={recurrenceFrequencies}
-                  placeholder="Select Frequency"
-                  required
-                />
-                <FormField
-                  label="Due day/date (e.g., 11 for 11th of month)"
-                  value={formData.recurrenceDueDate}
-                  onChange={(val) => handleInputChange('recurrenceDueDate', val)}
-                  placeholder="e.g., 11, 25, or a specific date"
-                  required
-                />
-              </div>
-            )}
           </Card>
 
           {/* Attachments Section (Placeholder - actual implementation would involve Supabase Storage) */}

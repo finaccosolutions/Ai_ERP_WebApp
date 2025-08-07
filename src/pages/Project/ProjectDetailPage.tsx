@@ -20,17 +20,13 @@ interface Project {
   project_name: string;
   customer_id: string | null;
   start_date: string;
-  due_date: string;
-  billing_type: string;
-  assigned_staff_id: string | null;
+  actual_due_date: string; // Changed from due_date
   status: string;
+  assigned_staff_id: string | null;
   description: string | null;
-  is_recurring: boolean;
-  recurrence_frequency: string | null;
-  recurrence_due_date: string | null;
+  project_category_id: string | null; // Changed from is_recurring
   created_at: string;
   reference_no: string | null;
-  category_type: string | null;
   expected_value: number | null;
   project_owner_id: string | null;
   progress_percentage: number | null;
@@ -38,6 +34,7 @@ interface Project {
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
+  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null; // NEW: Joined project_categories
 }
 
 interface ProjectActivity {
@@ -79,7 +76,8 @@ function ProjectDetailPage() {
           *,
           customers ( name ),
           project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
-          assigned_staff:employees!projects_assigned_staff_id_fkey ( first_name, last_name )
+          assigned_staff:employees!projects_assigned_staff_id_fkey ( first_name, last_name ),
+          project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `)
         .eq('id', projectId)
         .eq('company_id', currentCompany?.id)
@@ -225,7 +223,7 @@ function ProjectDetailPage() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Due Date</p>
-            <p className="font-medium text-gray-900">{project.due_date} ({calculateDaysLeft(project.due_date)})</p>
+            <p className="font-medium text-gray-900">{project.actual_due_date} ({calculateDaysLeft(project.actual_due_date)})</p>
           </div>
         </div>
         {/* Progress Bar */}
@@ -287,8 +285,8 @@ function ProjectDetailPage() {
                 <p className="font-medium text-gray-900">{project.reference_no || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Category / Type</p>
-                <p className="font-medium text-gray-900">{project.category_type || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Project Category</p>
+                <p className="font-medium text-gray-900">{project.project_categories?.name || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Project Owner</p>
@@ -304,7 +302,7 @@ function ProjectDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Due Date</p>
-                <p className="font-medium text-gray-900">{project.due_date}</p>
+                <p className="font-medium text-gray-900">{project.actual_due_date}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Expected Value</p>
@@ -312,7 +310,7 @@ function ProjectDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Billing Type</p>
-                <p className="font-medium text-gray-900">{project.billing_type.replace(/_/g, ' ')}</p>
+                <p className="font-medium text-gray-900">{project.project_categories?.billing_type.replace(/_/g, ' ') || 'N/A'}</p>
               </div>
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-500">Description / Scope of Work</p>
@@ -320,11 +318,14 @@ function ProjectDetailPage() {
               </div>
             </div>
 
-            {project.is_recurring && (
+            {project.project_categories?.is_recurring_category && (
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <h4 className={`text-md font-semibold ${theme.textPrimary} mb-2`}>Recurrence Details</h4>
-                <p className="text-sm text-gray-500">Frequency: <span className="font-medium text-gray-900">{project.recurrence_frequency}</span></p>
-                <p className="text-sm text-gray-500">Next Due: <span className="font-medium text-gray-900">{project.recurrence_due_date}</span></p>
+                <p className="text-sm text-gray-500">Frequency: <span className="font-medium text-gray-900">{project.project_categories.recurrence_frequency}</span></p>
+                <p className="text-sm text-gray-500">Due Day: <span className="font-medium text-gray-900">{project.project_categories.recurrence_due_day}</span></p>
+                {project.project_categories.recurrence_due_month && (
+                  <p className="text-sm text-gray-500">Due Month: <span className="font-medium text-gray-900">{project.project_categories.recurrence_due_month}</span></p>
+                )}
                 <p className="text-sm text-gray-500">Last Auto-Created: <span className="font-medium text-gray-900">{project.last_recurrence_created_at ? new Date(project.last_recurrence_created_at).toLocaleDateString() : 'N/A'}</span></p>
               </div>
             )}

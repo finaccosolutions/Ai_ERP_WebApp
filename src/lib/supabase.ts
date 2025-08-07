@@ -540,7 +540,7 @@ export interface Database {
             state?: string;
             country?: string;
             zipCode?: string;
-          } | null;
+          };
           shipping_address?: {
             street1?: string;
             street2?: string;
@@ -548,7 +548,7 @@ export interface Database {
             state?: string;
             country?: string;
             zipCode?: string;
-          } | null;
+          };
           credit_limit?: number | null;
           credit_days?: number | null;
           price_list_id?: string | null;
@@ -913,19 +913,15 @@ export interface Database {
           project_name: string;
           customer_id: string | null;
           start_date: string;
-          due_date: string;
-          billing_type: string | null;
+          actual_due_date: string; // Renamed from due_date
+          project_category_id: string | null; // NEW: Added project_category_id
           assigned_staff_id: string | null;
           status: string | null;
           description: string | null;
-          is_recurring: boolean | null;
-          recurrence_frequency: string | null;
-          recurrence_due_date: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
           reference_no: string | null;
-          category_type: string | null;
           expected_value: number | null;
           project_owner_id: string | null;
           progress_percentage: number | null;
@@ -937,19 +933,15 @@ export interface Database {
           project_name: string;
           customer_id?: string | null;
           start_date: string;
-          due_date: string;
-          billing_type?: string | null;
+          actual_due_date: string; // Renamed from due_date
+          project_category_id?: string | null; // NEW: Added project_category_id
           assigned_staff_id?: string | null;
           status?: string | null;
           description?: string | null;
-          is_recurring?: boolean | null;
-          recurrence_frequency?: string | null;
-          recurrence_due_date?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          category_type?: string | null;
           expected_value?: number | null;
           project_owner_id?: string | null;
           progress_percentage?: number | null;
@@ -961,23 +953,60 @@ export interface Database {
           project_name?: string;
           customer_id?: string | null;
           start_date?: string;
-          due_date?: string;
-          billing_type?: string | null;
+          actual_due_date?: string; // Renamed from due_date
+          project_category_id?: string | null; // NEW: Added project_category_id
           assigned_staff_id?: string | null;
           status?: string | null;
           description?: string | null;
-          is_recurring?: boolean | null;
-          recurrence_frequency?: string | null;
-          recurrence_due_date?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          category_type?: string | null;
           expected_value?: number | null;
           project_owner_id?: string | null;
           progress_percentage?: number | null;
           last_recurrence_created_at?: string | null;
+        };
+      };
+      project_categories: { // NEW: Added project_categories table definition
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          description: string | null;
+          is_recurring_category: boolean;
+          recurrence_frequency: string | null;
+          recurrence_due_day: number | null;
+          recurrence_due_month: number | null;
+          billing_type: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          description?: string | null;
+          is_recurring_category?: boolean;
+          recurrence_frequency?: string | null;
+          recurrence_due_day?: number | null;
+          recurrence_due_month?: number | null;
+          billing_type?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          description?: string | null;
+          is_recurring_category?: boolean;
+          recurrence_frequency?: string | null;
+          recurrence_due_day?: number | null;
+          recurrence_due_month?: number | null;
+          billing_type?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       tasks: { // NEW: Tasks table definition
@@ -1358,3 +1387,4 @@ export interface Database {
     };
   };
 }
+
