@@ -29,8 +29,8 @@ interface Project {
   project_owner_id: string | null;
   progress_percentage: number | null;
   last_recurrence_created_at: string | null;
-  // Removed is_recurring, recurrence_frequency, recurrence_due_date, billing_type
-  // These are now part of project_categories
+  priority: string | null; // ADDED: priority
+  tags: string[] | null; // ADDED: tags
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
@@ -48,7 +48,6 @@ function ProjectListPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalProjectsCount, setTotalProjectsCount] = useState(0);
-
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
 
@@ -63,6 +62,8 @@ function ProjectListPage() {
     isRecurring: searchParams.get('isRecurring') || 'all',
     overdue: searchParams.get('overdue') || 'false',
     upcoming_due: searchParams.get('upcoming_due') || 'false',
+    priority: searchParams.get('priority') || 'all', // ADDED: priority filter
+    tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [], // ADDED: tags filter
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
 
@@ -78,6 +79,8 @@ function ProjectListPage() {
       isRecurring: searchParams.get('isRecurring') || 'all',
       overdue: searchParams.get('overdue') || 'false',
       upcoming_due: searchParams.get('upcoming_due') || 'false',
+      priority: searchParams.get('priority') || 'all', // ADDED
+      tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [], // ADDED
     };
     setFilterCriteria(newFilterCriteria);
 
@@ -140,6 +143,12 @@ function ProjectListPage() {
         query = query.gte('actual_due_date', today) // Changed to actual_due_date
                      .lte('actual_due_date', next7DaysISO) // Changed to actual_due_date
                      .not('status', 'in', '("completed", "billed", "closed")');
+      }
+      if (currentFilters.priority !== 'all') { // ADDED: priority filter
+        query = query.eq('priority', currentFilters.priority);
+      }
+      if (currentFilters.tags && currentFilters.tags.length > 0) { // ADDED: tags filter
+        query = query.overlaps('tags', currentFilters.tags);
       }
 
       query = query.order('created_at', { ascending: false });
@@ -226,7 +235,13 @@ function ProjectListPage() {
     setSearchParams(prev => {
       for (const key in newFilters) {
         const value = newFilters[key as keyof typeof newFilters];
-        if (value === 'all' || value === '' || value === 'false') {
+        if (Array.isArray(value)) { // Handle array for tags
+          if (value.length > 0) {
+            prev.set(key, value.join(','));
+          } else {
+            prev.delete(key);
+          }
+        } else if (value === 'all' || value === '' || value === 'false') {
           prev.delete(key);
         } else {
           prev.set(key, value);
@@ -309,6 +324,8 @@ function ProjectListPage() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Complete</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Billing Type</th> {/* NEW */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th> {/* ADDED */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th> {/* ADDED */}
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -338,6 +355,12 @@ function ProjectListPage() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {project.project_categories?.billing_type.replace(/_/g, ' ') || 'N/A'} {/* NEW */}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"> {/* ADDED: Priority */}
+                      {project.priority ? project.priority.charAt(0).toUpperCase() + project.priority.slice(1) : 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis"> {/* ADDED: Tags */}
+                      {project.tags && project.tags.length > 0 ? project.tags.join(', ') : 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/edit/${project.id}`}>

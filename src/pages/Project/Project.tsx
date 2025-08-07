@@ -38,6 +38,9 @@ interface ProjectData {
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
+  priority: string | null; // ADDED: priority
+  tags: string[] | null; // ADDED: tags
+  expected_value: number | null; // ADDED: expected_value
 }
 
 function Project() {
@@ -57,6 +60,8 @@ function Project() {
     customerWise: 0, // NEW
     categoryWise: 0, // NEW
     nonRecurring: 0, // NEW
+    totalFixedPriceValue: 0, // ADDED: Total Fixed Price Value
+    totalTimeBasedValue: 0, // ADDED: Total Time Based Value
   });
   const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({});
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
@@ -93,6 +98,38 @@ function Project() {
   const fetchProjectData = async (companyId: string) => {
     setLoading(true);
     try {
+      // MODIFIED: Query the materialized view for aggregated metrics
+      const { data: kpis, error: kpisError } = await supabase
+        .from('company_project_kpis') // Query the materialized view
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
+
+      if (kpisError) {
+        console.error('Project.tsx: Error fetching KPIs from materialized view:', kpisError);
+        // Fallback or show error to user
+        setProjectStats({
+          totalProjects: 0, inProgress: 0, completed: 0, overdue: 0,
+          recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
+          nonRecurring: 0, totalFixedPriceValue: 0, totalTimeBasedValue: 0,
+        });
+      } else {
+        setProjectStats({
+          totalProjects: kpis?.total_projects || 0,
+          inProgress: kpis?.projects_in_progress || 0,
+          completed: kpis?.projects_completed || 0,
+          overdue: 0, // Needs separate calculation or specific MV field
+          recurringJobs: kpis?.total_recurring_projects || 0,
+          upcomingDue: 0, // Needs separate calculation or specific MV field
+          customerWise: 0, // Needs specific MV field
+          categoryWise: 0, // Needs specific MV field
+          nonRecurring: kpis?.total_one_time_projects || 0,
+          totalFixedPriceValue: kpis?.total_fixed_price_value || 0, // ADDED
+          totalTimeBasedValue: kpis?.total_time_based_value || 0, // ADDED
+        });
+      }
+
+      // MODIFIED: Fetch projects for Kanban and detailed stats (overdue, upcoming due)
       const { data: projects, error } = await supabase
         .from('projects')
         .select(`
@@ -109,15 +146,10 @@ function Project() {
       const next7Days = new Date();
       next7Days.setDate(today.getDate() + 7);
 
-      let totalProjects = 0;
-      let inProgress = 0;
-      let completed = 0;
-      let overdue = 0;
-      let recurringJobs = 0;
-      let upcomingDue = 0;
-      let customerWise = 0; // NEW
-      let categoryWise = 0; // NEW
-      let nonRecurring = 0; // NEW
+      let overdueCount = 0;
+      let upcomingDueCount = 0;
+      let customerWiseCount = 0;
+      let categoryWiseCount = 0;
 
       const kanbanCols: Record<string, ProjectData[]> = {
         not_started: [],
@@ -129,44 +161,30 @@ function Project() {
       };
 
       projects.forEach(project => {
-        totalProjects++;
-
-        if (project.status === 'in_progress') inProgress++;
-        if (project.status === 'completed' || project.status === 'billed' || project.status === 'closed') completed++;
-
-        const dueDate = project.actual_due_date ? new Date(project.actual_due_date) : null; // Changed to actual_due_date
+        const dueDate = project.actual_due_date ? new Date(project.actual_due_date) : null;
         if (dueDate && dueDate < today && project.status !== 'completed' && project.status !== 'billed' && project.status !== 'closed') {
-          overdue++;
+          overdueCount++;
         }
         if (dueDate && dueDate >= today && dueDate <= next7Days && project.status !== 'completed' && project.status !== 'billed' && project.status !== 'closed') {
-          upcomingDue++;
+          upcomingDueCount++;
         }
 
-        if (project.project_categories?.is_recurring_category) {
-          recurringJobs++;
-        } else {
-          nonRecurring++;
-        }
-
-        if (project.customer_id) customerWise++; // Count projects with a customer
-        if (project.project_category_id) categoryWise++; // Count projects with a category
+        if (project.customer_id) customerWiseCount++;
+        if (project.project_category_id) categoryWiseCount++;
 
         if (kanbanCols[project.status]) {
           kanbanCols[project.status].push(project);
         }
       });
 
-      setProjectStats({
-        totalProjects,
-        inProgress,
-        completed,
-        overdue,
-        recurringJobs,
-        upcomingDue,
-        customerWise, // NEW
-        categoryWise, // NEW
-        nonRecurring, // NEW
-      });
+      // Update specific stats that are not in the MV or require client-side logic
+      setProjectStats(prev => ({
+        ...prev,
+        overdue: overdueCount,
+        upcomingDue: upcomingDueCount,
+        customerWise: customerWiseCount,
+        categoryWise: categoryWiseCount,
+      }));
       setKanbanProjects(kanbanCols);
 
     } catch (err: any) {
@@ -207,6 +225,8 @@ function Project() {
           { type: 'alert', title: 'Projects Nearing Deadline', message: `${projectStats.upcomingDue} projects are due in the next 7 days. Review their progress.`, confidence: 'high', impact: 'high', actionable: true, action: 'View Upcoming Projects' },
           { type: 'suggestion', title: 'Overdue Project Follow-up', message: `You have ${projectStats.overdue} overdue projects. Consider sending automated reminders to customers or re-assigning tasks.`, confidence: 'high', impact: 'high', actionable: true, action: 'View Overdue Projects' },
           { type: 'trend', title: 'Project Completion Rate', message: 'Your project completion rate has improved by 15% this quarter. Keep up the good work!', confidence: 'medium', impact: 'low', actionable: false },
+          { type: 'info', title: 'Fixed Price Project Value', message: `Total expected value from fixed-price projects: ₹${projectStats.totalFixedPriceValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
+          { type: 'info', title: 'Time-Based Project Value', message: `Total expected value from time-based projects: ₹${projectStats.totalTimeBasedValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
         ]
       };
 
@@ -425,6 +445,8 @@ function Project() {
           { name: 'Non-Recurring', value: projectStats.nonRecurring, icon: Calendar, filter: 'isRecurring=false' }, // NEW
           { name: 'Customer-wise', value: projectStats.customerWise, icon: Users, filter: 'customerWise=true' }, // NEW
           { name: 'Category-wise', value: projectStats.categoryWise, icon: Layers, filter: 'categoryWise=true' }, // NEW
+          { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, filter: 'billingType=fixed_price' }, // ADDED
+          { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, filter: 'billingType=time_based' }, // ADDED
         ].map((tile, index) => {
           const Icon = tile.icon;
           const colors = moduleColors[index % moduleColors.length]; // Use distinct colors
@@ -488,7 +510,7 @@ function Project() {
                       </Link>
                     </Card>
                   ))}
-                  {kanbanProjects[statusCol.id]?.length === 0 && (
+                  {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length === 0 && (
                     <div className="text-center text-gray-400 text-sm py-8">No projects</div>
                   )}
                   {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length > 5 && (

@@ -1,6 +1,6 @@
 // src/pages/Project/TaskFormPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, FileText } from 'lucide-react';
+import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, FileText, Clock, Tag } from 'lucide-react'; // ADDED Clock, Tag
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -36,6 +36,7 @@ function TaskFormPage() {
     dueDate: '',
     priority: 'medium', // NEW: Priority
     description: '',
+    estimatedDurationMinutes: 0, // ADDED: estimatedDurationMinutes
   });
 
   const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
@@ -59,7 +60,7 @@ function TaskFormPage() {
       setLoading(false);
     };
 
-    if (currentCompany?.id && projectId) {
+    if (currentCompany?.id) {
       initializeForm();
     }
   }, [currentCompany?.id, projectId, taskId, isEditMode]);
@@ -122,6 +123,7 @@ function TaskFormPage() {
           dueDate: data.due_date || '',
           priority: data.priority || 'medium',
           description: data.description || '',
+          estimatedDurationMinutes: data.estimated_duration_minutes || 0, // ADDED
         });
       }
     } catch (err: any) {
@@ -150,6 +152,7 @@ function TaskFormPage() {
       dueDate: '',
       priority: 'medium',
       description: '',
+      estimatedDurationMinutes: 0, // ADDED
     });
   };
 
@@ -168,6 +171,11 @@ function TaskFormPage() {
     }
     if (new Date(formData.startDate) > new Date(formData.dueDate)) {
       showNotification('Due Date cannot be before Start Date.', 'error');
+      return false;
+    }
+    // ADDED: Validation for estimatedDurationMinutes
+    if (formData.estimatedDurationMinutes < 0) {
+      showNotification('Estimated Duration cannot be negative.', 'error');
       return false;
     }
     return true;
@@ -192,6 +200,7 @@ function TaskFormPage() {
         due_date: formData.dueDate,
         priority: formData.priority,
         description: formData.description || null,
+        estimated_duration_minutes: formData.estimatedDurationMinutes, // ADDED
       };
 
       if (formData.id) {
@@ -271,7 +280,7 @@ function TaskFormPage() {
                 label="Assigned To"
                 value={formData.assignedToName}
                 onValueChange={(val) => handleInputChange('assignedToName', val)}
-                onSelect={handleEmployeeSelect}
+                onSelect={(id) => handleEmployeeSelect(id, availableEmployees.find(emp => emp.id === id)?.name || '')} // MODIFIED: Pass name to handleEmployeeSelect
                 options={availableEmployees}
                 placeholder="Assign Employee (Optional)"
               />
@@ -304,6 +313,13 @@ function TaskFormPage() {
                 value={formData.dueDate}
                 onChange={(val) => handleInputChange('dueDate', val)}
                 required
+              />
+              <FormField // ADDED: Estimated Duration
+                label="Estimated Duration (Minutes)"
+                type="number"
+                value={formData.estimatedDurationMinutes.toString()}
+                onChange={(val) => handleInputChange('estimatedDurationMinutes', parseFloat(val) || 0)}
+                icon={<Clock size={18} />}
               />
               <FormField
                 label="Description"

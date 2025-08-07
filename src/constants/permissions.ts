@@ -209,5 +209,12 @@ export const ALL_PERMISSIONS = {
     log_time: 'Log Time on Tasks',
     read_time_logs: 'View Time Logs',
     project_reports: 'Access Project Reports',
+    milestone_management: { // ADDED: Milestone permissions
+      create: 'Create Milestones',
+      read: 'View Milestones',
+      update: 'Edit Milestones',
+      delete: 'Delete Milestones',
+    },
   },
 };
+

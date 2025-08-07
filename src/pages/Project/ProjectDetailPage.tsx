@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft, ClipboardCheck, Users, Calendar, DollarSign, FileText,
   Clock, MessageSquare, CheckCircle, XCircle, TrendingUp,
-  Download, Edit, Trash2, Plus, Shield,
+  Download, Edit, Trash2, Plus, Shield, Tag, Info // ADDED Tag, Info
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -31,6 +31,8 @@ interface Project {
   project_owner_id: string | null;
   progress_percentage: number | null;
   last_recurrence_created_at: string | null;
+  priority: string | null; // ADDED: priority
+  tags: string[] | null; // ADDED: tags
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
@@ -46,6 +48,15 @@ interface ProjectActivity {
   users?: { full_name: string } | null; // Assuming user_profiles join
 }
 
+interface Milestone { // ADDED: Milestone interface
+  id: string;
+  milestone_name: string;
+  due_date: string;
+  status: string;
+  completed_date: string | null;
+  notes: string | null;
+}
+
 function ProjectDetailPage() {
   const { theme } = useTheme();
   const { id: projectId } = useParams<{ id: string }>();
@@ -55,6 +66,7 @@ function ProjectDetailPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [activities, setActivities] = useState<ProjectActivity[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]); // ADDED: Milestones state
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -64,6 +76,7 @@ function ProjectDetailPage() {
     if (projectId && currentCompany?.id) {
       fetchProjectDetails();
       fetchProjectActivities();
+      fetchMilestones(); // ADDED: Fetch milestones
     }
   }, [projectId, currentCompany?.id]);
 
@@ -110,6 +123,22 @@ function ProjectDetailPage() {
       setActivities(data || []);
     } catch (err: any) {
       console.error('Error fetching project activities:', err);
+    }
+  };
+
+  // ADDED: Fetch Milestones function
+  const fetchMilestones = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+      setMilestones(data || []);
+    } catch (err: any) {
+      console.error('Error fetching milestones:', err);
     }
   };
 
@@ -166,6 +195,17 @@ function ProjectDetailPage() {
     if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
     if (diffDays === 0) return 'Due today';
     return `${diffDays} days left`;
+  };
+
+  // ADDED: getMilestoneStatusColor
+  const getMilestoneStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'planned': return 'bg-blue-100 text-blue-800';
+      case 'achieved': return 'bg-green-100 text-green-800';
+      case 'delayed': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   if (loading) {
@@ -249,6 +289,12 @@ function ProjectDetailPage() {
           Tasks
         </button>
         <button
+          className={`px-4 py-2 text-sm font-medium ${activeTab === 'milestones' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`} // ADDED: Milestones Tab
+          onClick={() => setActiveTab('milestones')}
+        >
+          Milestones
+        </button>
+        <button
           className={`px-4 py-2 text-sm font-medium ${activeTab === 'timesheet' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
           onClick={() => setActiveTab('timesheet')}
         >
@@ -312,6 +358,24 @@ function ProjectDetailPage() {
                 <p className="text-sm text-gray-500">Billing Type</p>
                 <p className="font-medium text-gray-900">{project.project_categories?.billing_type.replace(/_/g, ' ') || 'N/A'}</p>
               </div>
+              <div> {/* ADDED: Priority */}
+                <p className="text-sm text-gray-500">Priority</p>
+                <p className="font-medium text-gray-900">{project.priority ? project.priority.charAt(0).toUpperCase() + project.priority.slice(1) : 'N/A'}</p>
+              </div>
+              <div> {/* ADDED: Tags */}
+                <p className="text-sm text-gray-500">Tags</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {project.tags && project.tags.length > 0 ? (
+                    project.tags.map((tag, index) => (
+                      <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500">N/A</span>
+                  )}
+                </div>
+              </div>
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-500">Description / Scope of Work</p>
                 <p className="font-medium text-gray-900">{project.description || 'N/A'}</p>
@@ -363,6 +427,38 @@ function ProjectDetailPage() {
             <Link to={`/project/${project.id}/tasks/new`}>
               <Button className="mt-4 ml-2" icon={<Plus size={16} />}>Add New Task</Button>
             </Link>
+          </Card>
+        )}
+
+        {/* ADDED: Milestones Tab Content */}
+        {activeTab === 'milestones' && (
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Milestones</h3>
+              <Button icon={<Plus size={16} />}>Add Milestone</Button> {/* Placeholder for Add Milestone */}
+            </div>
+            {milestones.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No milestones defined for this project.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {milestones.map((milestone) => (
+                  <div key={milestone.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-900">{milestone.milestone_name}</p>
+                      <p className="text-sm text-gray-600">Due: {milestone.due_date}</p>
+                      {milestone.completed_date && (
+                        <p className="text-xs text-gray-500">Completed: {milestone.completed_date}</p>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getMilestoneStatusColor(milestone.status)}`}>
+                      {milestone.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 

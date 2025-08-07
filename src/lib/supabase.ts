@@ -270,32 +270,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      users_companies: {
-        Row: {
-          id: string;
-          user_id: string;
-          company_id: string;
-          role_id: string | null;
-          is_active: boolean;
-          joined_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          company_id: string;
-          role_id?: string | null;
-          is_active?: boolean;
-          joined_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          company_id?: string;
-          role_id?: string | null;
-          is_active?: boolean;
-          joined_at?: string;
-        };
-      };
       sales_invoices: {
         Row: {
           id: string;
@@ -922,10 +896,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
           reference_no: string | null;
-          expected_value: number | null;
+          expected_value: number | null; // NEW: Added expected_value
           project_owner_id: string | null;
           progress_percentage: number | null;
           last_recurrence_created_at: string | null;
+          priority: string | null; // NEW: Added priority
+          tags: string[] | null; // NEW: Added tags
         };
         Insert: {
           id?: string;
@@ -933,7 +909,7 @@ export interface Database {
           project_name: string;
           customer_id?: string | null;
           start_date: string;
-          actual_due_date: string; // Renamed from due_date
+          actual_due_date?: string; // Renamed from due_date
           project_category_id?: string | null; // NEW: Added project_category_id
           assigned_staff_id?: string | null;
           status?: string | null;
@@ -942,10 +918,12 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          expected_value?: number | null;
+          expected_value?: number | null; // NEW: Added expected_value
           project_owner_id?: string | null;
           progress_percentage?: number | null;
           last_recurrence_created_at?: string | null;
+          priority?: string | null; // NEW: Added priority
+          tags?: string[] | null; // NEW: Added tags
         };
         Update: {
           id?: string;
@@ -962,10 +940,12 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          expected_value?: number | null;
+          expected_value?: number | null; // NEW: Added expected_value
           project_owner_id?: string | null;
           progress_percentage?: number | null;
           last_recurrence_created_at?: string | null;
+          priority?: string | null; // NEW: Added priority
+          tags?: string[] | null; // NEW: Added tags
         };
       };
       project_categories: { // NEW: Added project_categories table definition
@@ -1022,6 +1002,7 @@ export interface Database {
           updated_at: string;
           start_date: string | null;
           priority: string | null;
+          estimated_duration_minutes: number | null; // NEW: Added estimated_duration_minutes
         };
         Insert: {
           id?: string;
@@ -1035,6 +1016,7 @@ export interface Database {
           updated_at?: string;
           start_date?: string | null;
           priority?: string | null;
+          estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
         };
         Update: {
           id?: string;
@@ -1048,6 +1030,7 @@ export interface Database {
           updated_at?: string;
           start_date?: string | null;
           priority?: string | null;
+          estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
         };
       };
       time_logs: { // NEW: Time Logs table definition
@@ -1384,7 +1367,43 @@ export interface Database {
           created_at?: string;
         };
       };
+      milestones: { // NEW: Added milestones table definition
+        Row: {
+          id: string;
+          project_id: string;
+          milestone_name: string;
+          due_date: string;
+          status: string;
+          completed_date: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          milestone_name: string;
+          due_date: string;
+          status?: string;
+          completed_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          milestone_name?: string;
+          due_date?: string;
+          status?: string;
+          completed_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
+
 

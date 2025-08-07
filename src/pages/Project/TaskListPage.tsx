@@ -1,6 +1,6 @@
 // src/pages/Project/TaskListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ClipboardCheck, Edit, Trash2, RefreshCw, ArrowLeft, Filter, Users, Calendar, Clock } from 'lucide-react';
+import { Plus, Search, ClipboardCheck, Edit, Trash2, RefreshCw, ArrowLeft, Filter, Users, Calendar, Clock, Tag } from 'lucide-react'; // ADDED Tag
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -25,6 +25,7 @@ interface Task {
   priority: string | null;
   description: string | null;
   created_at: string;
+  estimated_duration_minutes: number | null; // ADDED
   // Joined data
   employees?: { first_name: string; last_name: string } | null;
   projects?: { project_name: string } | null;
@@ -89,7 +90,7 @@ function TaskListPage() {
       let query = supabase
         .from('tasks')
         .select(`
-          id, project_id, task_name, assigned_to_id, status, start_date, due_date, priority, description, created_at,
+          id, project_id, task_name, assigned_to_id, status, start_date, due_date, priority, description, created_at, estimated_duration_minutes,
           employees ( first_name, last_name )
         `, { count: 'exact' })
         .eq('project_id', id);
@@ -270,6 +271,7 @@ function TaskListPage() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Duration (Mins)</th> {/* ADDED */}
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -292,6 +294,9 @@ function TaskListPage() {
                       <span className={`font-medium ${getPriorityColor(task.priority || 'medium')}`}>
                         {task.priority || 'N/A'}
                       </span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"> {/* ADDED */}
+                      {task.estimated_duration_minutes || 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/${projectId}/tasks/edit/${task.id}`}>

@@ -1,6 +1,6 @@
 // src/pages/Project/ProjectFormPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, DollarSign, FileText } from 'lucide-react';
+import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, DollarSign, FileText, Tag, Info } from 'lucide-react'; // ADDED Tag, Info
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -58,6 +58,8 @@ function ProjectFormPage() {
     expectedValue: 0, // NEW: Expected Value / Contract Amount
     status: 'not_started',
     description: '',
+    priority: 'medium', // ADDED: priority
+    tags: [] as string[], // ADDED: tags
   });
 
   const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>([]);
@@ -172,6 +174,8 @@ function ProjectFormPage() {
           expectedValue: data.expected_value || 0,
           status: data.status,
           description: data.description || '',
+          priority: data.priority || 'medium', // ADDED
+          tags: data.tags || [], // ADDED
         });
       }
     } catch (err: any) {
@@ -223,6 +227,8 @@ function ProjectFormPage() {
       expectedValue: 0,
       status: 'not_started',
       description: '',
+      priority: 'medium', // ADDED
+      tags: [], // ADDED
     });
   };
 
@@ -279,6 +285,8 @@ function ProjectFormPage() {
         status: formData.status,
         description: formData.description || null,
         created_by: (await supabase.auth.getUser()).data.user?.id || null,
+        priority: formData.priority, // ADDED
+        tags: formData.tags, // ADDED
       };
 
       let currentProjectId = formData.id;
@@ -330,6 +338,14 @@ function ProjectFormPage() {
     { id: 'completed', name: 'Completed' },
     { id: 'billed', name: 'Billed' },
     { id: 'closed', name: 'Closed' },
+  ];
+
+  // ADDED: Project Priorities
+  const projectPriorities = [
+    { id: 'low', name: 'Low' },
+    { id: 'medium', name: 'Medium' },
+    { id: 'high', name: 'High' },
+    { id: 'critical', name: 'Critical' },
   ];
 
   const selectedCategory = availableProjectCategories.find(cat => cat.id === formData.projectCategoryId);
@@ -388,7 +404,7 @@ function ProjectFormPage() {
                 label="Project Category" // Changed from Category / Type
                 value={formData.projectCategoryName}
                 onValueChange={(val) => handleInputChange('projectCategoryName', val)}
-                onSelect={handleProjectCategorySelect}
+                onSelect={(id, name, data) => handleProjectCategorySelect(id, name, data as ProjectCategoryOption)}
                 options={availableProjectCategories}
                 placeholder="Select Project Category"
                 required
@@ -450,6 +466,21 @@ function ProjectFormPage() {
                 onSelect={(id) => handleInputChange('status', id)}
                 options={projectStatuses}
                 placeholder="Select Status"
+              />
+              <MasterSelectField // ADDED: Priority Field
+                label="Priority"
+                value={projectPriorities.find(priority => priority.id === formData.priority)?.name || ''}
+                onValueChange={(val) => handleInputChange('priority', val)}
+                onSelect={(id) => handleInputChange('priority', id)}
+                options={projectPriorities}
+                placeholder="Select Priority"
+              />
+              <FormField // ADDED: Tags Field
+                label="Tags (comma-separated)"
+                value={formData.tags.join(', ')}
+                onChange={(val) => handleInputChange('tags', val.split(',').map((tag: string) => tag.trim()))}
+                placeholder="e.g., urgent, client-facing, development"
+                icon={<Tag size={18} />}
               />
               <FormField
                 label="Description / Scope of Work"

@@ -125,6 +125,7 @@ function ProjectCategoryFormPage() {
         showNotification('Recurrence Frequency is required for recurring categories.', 'error');
         return false;
       }
+      // MODIFIED: Added validation for recurrence due day/month based on frequency
       if (formData.recurrenceFrequency === 'weekly' && (!formData.recurrenceDueDay || parseInt(formData.recurrenceDueDay) < 1 || parseInt(formData.recurrenceDueDay) > 7)) {
         showNotification('Due Day (1-7 for Mon-Sun) is required for weekly recurrence.', 'error');
         return false;
@@ -310,6 +311,7 @@ function ProjectCategoryFormPage() {
                   placeholder="Select Frequency"
                   required
                 />
+                {/* MODIFIED: Conditional fields for recurrence due day/month */}
                 {formData.recurrenceFrequency === 'weekly' && (
                   <FormField
                     label="Due Day of Week (1=Mon, 7=Sun)"
