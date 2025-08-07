@@ -902,6 +902,8 @@ export interface Database {
           last_recurrence_created_at: string | null;
           priority: string | null; // NEW: Added priority
           tags: string[] | null; // NEW: Added tags
+          billing_status: string; // NEW: Added billing_status
+          total_billed_amount: number; // NEW: Added total_billed_amount
         };
         Insert: {
           id?: string;
@@ -924,6 +926,8 @@ export interface Database {
           last_recurrence_created_at?: string | null;
           priority?: string | null; // NEW: Added priority
           tags?: string[] | null; // NEW: Added tags
+          billing_status?: string; // NEW: Added billing_status
+          total_billed_amount?: number; // NEW: Added total_billed_amount
         };
         Update: {
           id?: string;
@@ -946,6 +950,8 @@ export interface Database {
           last_recurrence_created_at?: string | null;
           priority?: string | null; // NEW: Added priority
           tags?: string[] | null; // NEW: Added tags
+          billing_status?: string; // NEW: Added billing_status
+          total_billed_amount?: number; // NEW: Added total_billed_amount
         };
       };
       project_categories: { // NEW: Added project_categories table definition
@@ -1003,6 +1009,9 @@ export interface Database {
           start_date: string | null;
           priority: string | null;
           estimated_duration_minutes: number | null; // NEW: Added estimated_duration_minutes
+          is_billable: boolean; // NEW: Added is_billable
+          billed_amount: number; // NEW: Added billed_amount
+          billing_status: string; // NEW: Added billing_status
         };
         Insert: {
           id?: string;
@@ -1017,6 +1026,9 @@ export interface Database {
           start_date?: string | null;
           priority?: string | null;
           estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
+          is_billable?: boolean; // NEW: Added is_billable
+          billed_amount?: number; // NEW: Added billed_amount
+          billing_status?: string; // NEW: Added billing_status
         };
         Update: {
           id?: string;
@@ -1031,6 +1043,9 @@ export interface Database {
           start_date?: string | null;
           priority?: string | null;
           estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
+          is_billable?: boolean; // NEW: Added is_billable
+          billed_amount?: number; // NEW: Added billed_amount
+          billing_status?: string; // NEW: Added billing_status
         };
       };
       time_logs: { // NEW: Time Logs table definition
@@ -1083,6 +1098,7 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          project_id: string | null; // NEW: Added project_id
         };
         Insert: {
           id?: string;
@@ -1101,6 +1117,7 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          project_id?: string | null; // NEW: Added project_id
         };
         Update: {
           id?: string;
@@ -1119,6 +1136,7 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          project_id?: string | null; // NEW: Added project_id
         };
       };
       purchase_invoices: { // NEW: Added purchase_invoices table definition
@@ -1296,6 +1314,7 @@ export interface Database {
           employee_id: string;
           role: string | null;
           created_at: string;
+          hourly_rate_override: number | null; // NEW: Added hourly_rate_override
         };
         Insert: {
           id?: string;
@@ -1303,6 +1322,7 @@ export interface Database {
           employee_id: string;
           role?: string | null;
           created_at?: string;
+          hourly_rate_override?: number | null; // NEW: Added hourly_rate_override
         };
         Update: {
           id?: string;
@@ -1310,6 +1330,7 @@ export interface Database {
           employee_id?: string;
           role?: string | null;
           created_at?: string;
+          hourly_rate_override?: number | null; // NEW: Added hourly_rate_override
         };
       };
       project_comments: {
@@ -1402,8 +1423,61 @@ export interface Database {
           updated_at?: string;
         };
       };
+      task_dependencies: { // NEW: Added task_dependencies table
+        Row: {
+          id: string;
+          task_id: string;
+          depends_on_task_id: string;
+          dependency_type: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          depends_on_task_id: string;
+          dependency_type: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          depends_on_task_id?: string;
+          dependency_type?: string;
+          created_at?: string;
+        };
+      };
+      project_billing_entries: { // NEW: Added project_billing_entries table
+        Row: {
+          id: string;
+          company_id: string;
+          project_id: string;
+          task_id: string | null;
+          sales_invoice_id: string | null;
+          billed_amount: number;
+          billed_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          project_id: string;
+          task_id?: string | null;
+          sales_invoice_id?: string | null;
+          billed_amount: number;
+          billed_date: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          project_id?: string;
+          task_id?: string | null;
+          sales_invoice_id?: string | null;
+          billed_amount?: number;
+          billed_date?: string;
+          created_at?: string;
+        };
+      };
     };
   };
 }
-
-

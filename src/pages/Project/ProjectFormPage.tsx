@@ -1,6 +1,17 @@
 // src/pages/Project/ProjectFormPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, DollarSign, FileText, Tag, Info } from 'lucide-react'; // ADDED Tag, Info
+import {
+  Plus,
+  Save,
+  ArrowLeft,
+  ClipboardCheck,
+  Users,
+  Calendar,
+  DollarSign,
+  FileText,
+  Tag,
+  Info,
+} from 'lucide-react'; // ADDED Tag, Info
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -24,7 +35,8 @@ interface EmployeeOption {
   name: string; // Combined for display
 }
 
-interface ProjectCategoryOption { // NEW
+interface ProjectCategoryOption {
+  // NEW
   id: string;
   name: string;
   is_recurring_category: boolean;
@@ -52,7 +64,7 @@ function ProjectFormPage() {
     projectCategoryName: '', // For MasterSelectField display
     projectOwnerId: '', // NEW: Project Owner
     projectOwnerName: '', // For MasterSelectField display
-    assignedTeamMembers: [] as string[], // NEW: Assigned Team Members (array of employee IDs)
+    assignedTeamMembers: [] as string[], // NEW: Assigned Employees (array of employee IDs)
     startDate: '',
     actualDueDate: '', // Changed from dueDate
     expectedValue: 0, // NEW: Expected Value / Contract Amount
@@ -62,9 +74,15 @@ function ProjectFormPage() {
     tags: [] as string[], // ADDED: tags
   });
 
-  const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>([]);
-  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
-  const [availableProjectCategories, setAvailableProjectCategories] = useState<ProjectCategoryOption[]>([]); // NEW
+  const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>(
+    []
+  );
+  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>(
+    []
+  );
+  const [availableProjectCategories, setAvailableProjectCategories] = useState<
+    ProjectCategoryOption[]
+  >([]); // NEW
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,21 +99,23 @@ function ProjectFormPage() {
         resetForm();
         // Pre-fill customer if navigated from Lead Conversion
         if (location.state?.customerId && location.state?.customerName) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             customerId: location.state.customerId,
-            customerName: location.state.customerName
+            customerName: location.state.customerName,
           }));
         }
         // If returned from ProjectCategoryFormPage after creating a new category
-        if (location.state?.fromProjectCategoryCreation && location.state?.projectFormData) {
+        if (location.state?.fromProjectCategoryCreation &&
+          location.state?.projectFormData
+        ) {
           setFormData(location.state.projectFormData); // Restore previous form data
           if (location.state.createdCategoryId) {
             // Set the newly created category
-            setFormData(prev => ({
+            setFormData((prev) => ({
               ...prev,
               projectCategoryId: location.state.createdCategoryId,
-              projectCategoryName: location.state.createdCategoryName
+              projectCategoryName: location.state.createdCategoryName,
             }));
           }
         }
@@ -124,16 +144,24 @@ function ProjectFormPage() {
         .eq('company_id', companyId)
         .eq('status', 'active');
       if (employeesError) throw employeesError;
-      setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}`, first_name: emp.first_name, last_name: emp.last_name })) || []);
+      setAvailableEmployees(
+        employeesData.map((emp) => ({
+          id: emp.id,
+          name: `${emp.first_name} ${emp.last_name}`,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+        })) || []
+      );
 
       // NEW: Fetch Project Categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('project_categories')
-        .select('id, name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type')
+        .select(
+          'id, name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type'
+        )
         .eq('company_id', companyId);
       if (categoriesError) throw categoriesError;
       setAvailableProjectCategories(categoriesData || []);
-
     } catch (error) {
       console.error('Error fetching master data:', error);
       showNotification('Failed to load customers, employees, or project categories.', 'error');
@@ -144,13 +172,15 @@ function ProjectFormPage() {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select(`
+        .select(
+          `
           *,
           customers ( name ),
           project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
           project_team_members ( employee_id, employees ( first_name, last_name ) ),
           project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
-        `)
+        `
+        )
         .eq('id', projectId)
         .eq('company_id', currentCompany?.id)
         .single();
@@ -167,14 +197,17 @@ function ProjectFormPage() {
           projectCategoryId: data.project_category_id || '', // Changed from categoryType
           projectCategoryName: data.project_categories?.name || '', // For MasterSelectField display
           projectOwnerId: data.project_owner_id || '',
-          projectOwnerName: data.project_owner ? `${data.project_owner.first_name} ${data.project_owner.last_name}` : '',
-          assignedTeamMembers: data.project_team_members?.map(tm => tm.employee_id) || [],
+          projectOwnerName: data.project_owner
+            ? `${data.project_owner.first_name} ${data.project_owner.last_name}`
+            : '',
+          assignedTeamMembers:
+            data.project_team_members?.map((tm) => tm.employee_id) || [],
           startDate: data.start_date,
           actualDueDate: data.actual_due_date, // Changed from due_date
           expectedValue: data.expected_value || 0,
           status: data.status,
           description: data.description || '',
-          priority: data.priority || 'medium', // ADDED
+          priority: data.priority, // ADDED
           tags: data.tags || [], // ADDED
         });
       }
@@ -186,15 +219,20 @@ function ProjectFormPage() {
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCustomerSelect = (id: string, name: string) => {
-    setFormData(prev => ({ ...prev, customerId: id, customerName: name }));
+    setFormData((prev) => ({ ...prev, customerId: id, customerName: name }));
   };
 
-  const handleProjectCategorySelect = (id: string, name: string, data: ProjectCategoryOption) => { // NEW
-    setFormData(prev => ({ ...prev, projectCategoryId: id, projectCategoryName: name }));
+  const handleProjectCategorySelect = (
+    id: string,
+    name: string,
+    data: ProjectCategoryOption
+  ) => {
+    // NEW
+    setFormData((prev) => ({ ...prev, projectCategoryId: id, projectCategoryName: name }));
     // Automatically set billing type from category if it's not already set or if category changes
     // This logic is now handled in ProjectCategoryFormPage, but keeping this for reference if needed
     // if (data.billing_type && formData.billingType === 'fixed_price') { // Only auto-set if default
@@ -203,11 +241,11 @@ function ProjectFormPage() {
   };
 
   const handleProjectOwnerSelect = (id: string, name: string) => {
-    setFormData(prev => ({ ...prev, projectOwnerId: id, projectOwnerName: name }));
+    setFormData((prev) => ({ ...prev, projectOwnerId: id, projectOwnerName: name }));
   };
 
   const handleTeamMembersSelect = (selectedIds: string[]) => {
-    setFormData(prev => ({ ...prev, assignedTeamMembers: selectedIds }));
+    setFormData((prev) => ({ ...prev, assignedTeamMembers: selectedIds }));
   };
 
   const resetForm = () => {
@@ -241,14 +279,18 @@ function ProjectFormPage() {
       showNotification('Start Date is required.', 'error');
       return false;
     }
-    if (!formData.projectCategoryId) { // NEW: Project Category is required
+    if (!formData.projectCategoryId) {
+      // NEW: Project Category is required
       showNotification('Project Category is required.', 'error');
       return false;
     }
 
-    const selectedCategory = availableProjectCategories.find(cat => cat.id === formData.projectCategoryId);
+    const selectedCategory = availableProjectCategories.find(
+      (cat) => cat.id === formData.projectCategoryId
+    );
 
-    if (!selectedCategory?.is_recurring_category) { // If not a recurring category, actual_due_date is required
+    if (!selectedCategory?.is_recurring_category) {
+      // If not a recurring category, actual_due_date is required
       if (!formData.actualDueDate) {
         showNotification('Due Date is required for non-recurring projects.', 'error');
         return false;
@@ -258,7 +300,7 @@ function ProjectFormPage() {
         return false;
       }
     }
-    
+
     return true;
   };
 
@@ -310,13 +352,20 @@ function ProjectFormPage() {
 
       // Handle project team members
       if (currentProjectId) {
-        await supabase.from('project_team_members').delete().eq('project_id', currentProjectId);
+        await supabase
+          .from('project_team_members')
+          .delete()
+          .eq('project_id', currentProjectId);
         if (formData.assignedTeamMembers.length > 0) {
-          const teamMembersToInsert = formData.assignedTeamMembers.map(employeeId => ({
-            project_id: currentProjectId,
-            employee_id: employeeId,
-          }));
-          const { error: teamMembersError } = await supabase.from('project_team_members').insert(teamMembersToInsert);
+          const teamMembersToInsert = formData.assignedTeamMembers.map(
+            (employeeId) => ({
+              project_id: currentProjectId,
+              employee_id: employeeId,
+            })
+          );
+          const { error: teamMembersError } = await supabase
+            .from('project_team_members')
+            .insert(teamMembersToInsert);
           if (teamMembersError) throw teamMembersError;
         }
       }
@@ -348,7 +397,9 @@ function ProjectFormPage() {
     { id: 'critical', name: 'Critical' },
   ];
 
-  const selectedCategory = availableProjectCategories.find(cat => cat.id === formData.projectCategoryId);
+  const selectedCategory = availableProjectCategories.find(
+    (cat) => cat.id === formData.projectCategoryId
+  );
   const isRecurringCategorySelected = selectedCategory?.is_recurring_category;
 
   return (
@@ -359,10 +410,16 @@ function ProjectFormPage() {
             {isEditMode ? 'Edit Project' : 'Create New Project'}
           </h1>
           <p className={theme.textSecondary}>
-            {isEditMode ? 'Update project details and milestones.' : 'Start a new project and define its scope.'}
+            {isEditMode
+              ? 'Update project details and milestones.'
+              : 'Start a new project and define its scope.'}
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/project/list')} icon={<ArrowLeft size={16} />}>
+        <Button
+          variant="outline"
+          onClick={() => navigate('/project/list')}
+          icon={<ArrowLeft size={16} />}
+        >
           Back to Projects List
         </Button>
       </div>
@@ -374,8 +431,13 @@ function ProjectFormPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="p-6">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-              <ClipboardCheck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+            <h3
+              className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
+            >
+              <ClipboardCheck
+                size={20}
+                className={`mr-2 text-[${theme.hoverAccent}]`}
+              />
               General Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -404,12 +466,23 @@ function ProjectFormPage() {
                 label="Project Category" // Changed from Category / Type
                 value={formData.projectCategoryName}
                 onValueChange={(val) => handleInputChange('projectCategoryName', val)}
-                onSelect={(id, name, data) => handleProjectCategorySelect(id, name, data as ProjectCategoryOption)}
+                onSelect={(id, name, data) =>
+                  handleProjectCategorySelect(id, name, data as ProjectCategoryOption)
+                }
                 options={availableProjectCategories}
                 placeholder="Select Project Category"
                 required
                 allowCreation={true} // Allow creating new categories
-                onNewValueConfirmed={(name) => navigate('/project/categories/new', { state: { initialName: name, fromProjectForm: true, projectFormData: formData, returnPath: location.pathname + location.search } })}
+                onNewValueConfirmed={(name) =>
+                  navigate('/project/categories/new', {
+                    state: {
+                      initialName: name,
+                      fromProjectForm: true,
+                      projectFormData: formData,
+                      returnPath: location.pathname + location.search,
+                    },
+                  })
+                }
               />
               <MasterSelectField
                 label="Project Owner / Assigned Manager"
@@ -421,12 +494,14 @@ function ProjectFormPage() {
               />
               <MasterSelectField
                 label="Assigned Team Members"
-                value={formData.assignedTeamMembers.map(id => availableEmployees.find(emp => emp.id === id)?.name || '').join(', ')}
+                value={formData.assignedTeamMembers.map(
+                  (id) => availableEmployees.find((emp) => emp.id === id)?.name || ''
+                ).join(', ')}
                 onValueChange={(val) => {}} // Multi-select handles its own input
                 onSelect={(id, name, data) => {
                   // Toggle selection for multi-select
                   const newSelection = formData.assignedTeamMembers.includes(id)
-                    ? formData.assignedTeamMembers.filter(memberId => memberId !== id)
+                    ? formData.assignedTeamMembers.filter((memberId) => memberId !== id)
                     : [...formData.assignedTeamMembers, id];
                   handleTeamMembersSelect(newSelection);
                 }}
@@ -461,7 +536,10 @@ function ProjectFormPage() {
               />
               <MasterSelectField
                 label="Status"
-                value={projectStatuses.find(status => status.id === formData.status)?.name || ''}
+                value={
+                  projectStatuses.find((status) => status.id === formData.status)
+                    ?.name || ''
+                }
                 onValueChange={(val) => handleInputChange('status', val)}
                 onSelect={(id) => handleInputChange('status', id)}
                 options={projectStatuses}
@@ -469,7 +547,11 @@ function ProjectFormPage() {
               />
               <MasterSelectField // ADDED: Priority Field
                 label="Priority"
-                value={projectPriorities.find(priority => priority.id === formData.priority)?.name || ''}
+                value={
+                  projectPriorities.find(
+                    (priority) => priority.id === formData.priority
+                  )?.name || ''
+                }
                 onValueChange={(val) => handleInputChange('priority', val)}
                 onSelect={(id) => handleInputChange('priority', id)}
                 options={projectPriorities}
@@ -478,7 +560,12 @@ function ProjectFormPage() {
               <FormField // ADDED: Tags Field
                 label="Tags (comma-separated)"
                 value={formData.tags.join(', ')}
-                onChange={(val) => handleInputChange('tags', val.split(',').map((tag: string) => tag.trim()))}
+                onChange={(val) =>
+                  handleInputChange(
+                    'tags',
+                    val.split(',').map((tag: string) => tag.trim())
+                  )
+                }
                 placeholder="e.g., urgent, client-facing, development"
                 icon={<Tag size={18} />}
               />
@@ -494,19 +581,27 @@ function ProjectFormPage() {
 
           {/* Attachments Section (Placeholder - actual implementation would involve Supabase Storage) */}
           <Card className="p-6">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-              <FileText size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+            <h3
+              className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
+            >
+              <FileText size={20} className={`mr-2 text-[${theme.hoverAccent}]`} />
               Attachments
             </h3>
             <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg text-gray-500 cursor-pointer hover:border-blue-500 transition-colors">
               <input type="file" multiple className="hidden" />
               <p>Drag & drop files here, or click to browse</p>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Max file size: 5MB. Supported formats: PDF, DOCX, JPG, PNG.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Max file size: 5MB. Supported formats: PDF, DOCX, JPG, PNG.
+            </p>
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => navigate('/project/list')}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/project/list')}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} icon={<Save size={16} />}>

@@ -161,8 +161,8 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                       border border-slate-600
                     `}>
                       {item.label}
-                      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1
-                                    border-4 border-transparent border-r-slate-800" />
+                      <div className="absolute left-1/2 transform -translate-y-1/2 -top-1
+                                    border-4 border-transparent border-b-gray-700" />
                     </div>
                   )}
                 </Link>

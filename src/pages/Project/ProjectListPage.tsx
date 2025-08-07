@@ -1,6 +1,20 @@
 // src/pages/Project/ProjectListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ClipboardCheck, Edit, Trash2, RefreshCw, ArrowLeft, Filter, Users, Calendar, Eye, LayoutGrid, List } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ClipboardCheck,
+  Edit,
+  Trash2,
+  RefreshCw,
+  ArrowLeft,
+  Filter,
+  Users,
+  Calendar,
+  Eye,
+  LayoutGrid,
+  List,
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -34,7 +48,14 @@ interface Project {
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
-  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null; // NEW: Joined project_categories
+  project_categories?: {
+    name: string;
+    is_recurring_category: boolean;
+    recurrence_frequency: string | null;
+    recurrence_due_day: number | null;
+    recurrence_due_month: number | null;
+    billing_type: string;
+  } | null; // NEW: Joined project_categories
 }
 
 function ProjectListPage() {
@@ -95,13 +116,16 @@ function ProjectListPage() {
     try {
       let query = supabase
         .from('projects')
-        .select(`
+        .select(
+          `
           *,
           customers ( name ),
           project_owner:employees!projects_project_owner_id_fkey ( first_name, last_name ),
           assigned_staff:employees!projects_assigned_staff_id_fkey ( first_name, last_name ),
           project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
-        `, { count: 'exact' })
+        `,
+          { count: 'exact' }
+        )
         .eq('company_id', currentCompany.id);
 
       if (searchTerm) {
@@ -112,12 +136,15 @@ function ProjectListPage() {
         query = query.eq('customer_id', currentFilters.customer);
       }
       if (currentFilters.assignedStaff && currentFilters.assignedStaff !== 'all') {
-        query = query.or(`project_owner_id.eq.${currentFilters.assignedStaff},assigned_staff_id.eq.${currentFilters.assignedStaff}`);
+        query = query.or(
+          `project_owner_id.eq.${currentFilters.assignedStaff},assigned_staff_id.eq.${currentFilters.assignedStaff}`
+        );
       }
       if (currentFilters.status !== 'all') {
         query = query.eq('status', currentFilters.status);
       }
-      if (currentFilters.projectCategory && currentFilters.projectCategory !== 'all') { // Changed from billingType
+      if (currentFilters.projectCategory && currentFilters.projectCategory !== 'all') {
+        // Changed from billingType
         query = query.eq('project_category_id', currentFilters.projectCategory);
       }
       if (currentFilters.startDate) {
@@ -127,27 +154,34 @@ function ProjectListPage() {
         query = query.lte('actual_due_date', currentFilters.endDate); // Changed to actual_due_date
       }
       if (currentFilters.isRecurring !== 'all') {
-        query = query.eq('project_categories.is_recurring_category', currentFilters.isRecurring === 'true'); // Filter by category recurrence
+        query = query.eq(
+          'project_categories.is_recurring_category',
+          currentFilters.isRecurring === 'true'
+        ); // Filter by category recurrence
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T');
       const next7Days = new Date();
       next7Days.setDate(next7Days.getDate() + 7);
-      const next7DaysISO = next7Days.toISOString().split('T')[0];
+      const next7DaysISO = next7Days.toISOString().split('T');
 
       if (currentFilters.overdue === 'true') {
-        query = query.lte('actual_due_date', today) // Changed to actual_due_date
-                     .not('status', 'in', '("completed", "billed", "closed")');
+        query = query
+          .lte('actual_due_date', today) // Changed to actual_due_date
+          .not('status', 'in', '("completed", "billed", "closed")');
       }
       if (currentFilters.upcoming_due === 'true') {
-        query = query.gte('actual_due_date', today) // Changed to actual_due_date
-                     .lte('actual_due_date', next7DaysISO) // Changed to actual_due_date
-                     .not('status', 'in', '("completed", "billed", "closed")');
+        query = query
+          .gte('actual_due_date', today) // Changed to actual_due_date
+          .lte('actual_due_date', next7DaysISO) // Changed to actual_due_date
+          .not('status', 'in', '("completed", "billed", "closed")');
       }
-      if (currentFilters.priority !== 'all') { // ADDED: priority filter
+      if (currentFilters.priority !== 'all') {
+        // ADDED: priority filter
         query = query.eq('priority', currentFilters.priority);
       }
-      if (currentFilters.tags && currentFilters.tags.length > 0) { // ADDED: tags filter
+      if (currentFilters.tags && currentFilters.tags.length > 0) {
+        // ADDED: tags filter
         query = query.overlaps('tags', currentFilters.tags);
       }
 
@@ -207,13 +241,20 @@ function ProjectListPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'not_started': return 'bg-gray-100 text-gray-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'waiting_for_client': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'billed': return 'bg-purple-100 text-purple-800';
-      case 'closed': return 'bg-emerald-100 text-emerald-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'not_started':
+        return 'bg-gray-100 text-gray-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'waiting_for_client':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'billed':
+        return 'bg-purple-100 text-purple-800';
+      case 'closed':
+        return 'bg-emerald-100 text-emerald-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -232,10 +273,11 @@ function ProjectListPage() {
     setFilterCriteria(newFilters);
     setShowFilterModal(false);
     // Update URL search params when filters change
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       for (const key in newFilters) {
         const value = newFilters[key as keyof typeof newFilters];
-        if (Array.isArray(value)) { // Handle array for tags
+        if (Array.isArray(value)) {
+          // Handle array for tags
           if (value.length > 0) {
             prev.set(key, value.join(','));
           } else {
@@ -255,14 +297,25 @@ function ProjectListPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Projects</h1>
-          <p className={theme.textSecondary}>Manage all your projects, tasks, and time logs.</p>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
+            Projects
+          </h1>
+          <p className={theme.textSecondary}>
+            Manage all your projects, tasks, and time logs.
+          </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/project')} icon={<ArrowLeft size={16} />}>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/project')}
+            icon={<ArrowLeft size={16} />}
+          >
             Back to Project Dashboard
           </Button>
-          <AIButton variant="suggest" onSuggest={() => console.log('AI Project Suggestions')} />
+          <AIButton
+            variant="suggest"
+            onSuggest={() => console.log('AI Project Suggestions')}
+          />
           <Link to="/project/new">
             <Button icon={<Plus size={16} />}>Create New Project</Button>
           </Link>
@@ -270,16 +323,23 @@ function ProjectListPage() {
       </div>
 
       <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>All Projects</h3>
+        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+          All Projects
+        </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
           <div className="relative flex-grow">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
             <input
               type="text"
               placeholder="Search projects by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && fetchProjects(filterCriteria)}
+              onKeyPress={(e) =>
+                e.key === 'Enter' && fetchProjects(filterCriteria)
+              }
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                 ${theme.inputBg} ${theme.textPrimary}
@@ -292,14 +352,20 @@ function ProjectListPage() {
           </Button>
           <MasterSelectField
             label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
+            value={
+              numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''
+            }
             onValueChange={() => {}} // Not used for typing
             onSelect={(id) => setNumResultsToShow(id)}
             options={numResultsOptions}
             placeholder="Show"
             className="w-32"
           />
-          <Button onClick={() => fetchProjects(filterCriteria)} disabled={loading} icon={<RefreshCw size={16} />}>
+          <Button
+            onClick={() => fetchProjects(filterCriteria)}
+            disabled={loading}
+            icon={<RefreshCw size={16} />}
+          >
             {loading ? 'Loading...' : 'Refresh'}
           </Button>
         </div>
@@ -317,50 +383,105 @@ function ProjectListPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th> {/* Changed from Owner */}
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Complete</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Billing Type</th> {/* NEW */}
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th> {/* ADDED */}
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th> {/* ADDED */}
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Project Name
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>{' '}
+                  {/* Changed from Owner */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dates
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    % Complete
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Billing Type
+                  </th>{' '}
+                  {/* NEW */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Priority
+                  </th>{' '}
+                  {/* ADDED */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tags
+                  </th>{' '}
+                  {/* ADDED */}
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {projects.map((project) => (
                   <tr key={project.id}>
                     <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[150px] overflow-hidden text-ellipsis">
-                      <Link to={`/project/${project.id}/details`} className="text-blue-600 hover:underline">
+                      <Link
+                        to={`/project/${project.id}/details`}
+                        className="text-blue-600 hover:underline"
+                      >
                         {project.project_name}
                       </Link>
                     </td>
-                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis">{project.customers?.name || 'N/A'}</td>
-                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">{project.project_categories?.name || 'N/A'}</td> {/* Changed from Owner */}
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis">
+                      {project.customers?.name || 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">
+                      {project.project_categories?.name || 'N/A'}
+                    </td>{' '}
+                    {/* Changed from Owner */}
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {project.start_date} - {project.actual_due_date} {/* Changed to actual_due_date */}
+                      {project.start_date} - {project.actual_due_date}{' '}
+                      {/* Changed to actual_due_date */}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                          project.status
+                        )}`}
+                      >
                         {project.status.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       <div className="w-20 bg-gray-200 rounded-full h-2.5">
-                        <div className={`${getProgressBarColor(calculateProgress(project))} h-2.5 rounded-full`} style={{ width: `${calculateProgress(project)}%` }}></div>
+                        <div
+                          className={`${getProgressBarColor(
+                            calculateProgress(project)
+                          )} h-2.5 rounded-full`}
+                          style={{ width: `${calculateProgress(project)}%` }}
+                        ></div>
                       </div>
-                      <span className="text-xs mt-1 block">{calculateProgress(project)}%</span>
+                      <span className="text-xs mt-1 block">
+                        {calculateProgress(project)}%
+                      </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {project.project_categories?.billing_type.replace(/_/g, ' ') || 'N/A'} {/* NEW */}
+                      {project.project_categories?.billing_type.replace(/_/g, ' ') ||
+                        'N/A'}{' '}
+                      {/* NEW */}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"> {/* ADDED: Priority */}
-                      {project.priority ? project.priority.charAt(0).toUpperCase() + project.priority.slice(1) : 'N/A'}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {' '}
+                      {/* ADDED: Priority */}
+                      {project.priority
+                        ? project.priority.charAt(0).toUpperCase() +
+                        project.priority.slice(1)
+                        : 'N/A'}
                     </td>
-                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis"> {/* ADDED: Tags */}
-                      {project.tags && project.tags.length > 0 ? project.tags.join(', ') : 'N/A'}
+                    <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis">
+                      {' '}
+                      {/* ADDED: Tags */}
+                      {project.tags && project.tags.length > 0
+                        ? project.tags.join(', ')
+                        : 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/edit/${project.id}`}>
@@ -368,7 +489,13 @@ function ProjectListPage() {
                           <Edit size={16} />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteProject(project.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
                         <Trash2 size={16} />
                       </Button>
                     </td>
@@ -394,7 +521,9 @@ function ProjectListPage() {
         onClose={() => setShowFilterModal(false)}
         filters={filterCriteria}
         onApplyFilters={handleApplyFilters}
-        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+        onFilterChange={(key, value) =>
+          setFilterCriteria((prev) => ({ ...prev, [key]: value }))
+        }
       />
     </div>
   );

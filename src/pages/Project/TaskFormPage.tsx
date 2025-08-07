@@ -1,6 +1,17 @@
 // src/pages/Project/TaskFormPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, ArrowLeft, ClipboardCheck, Users, Calendar, FileText, Clock, Tag } from 'lucide-react'; // ADDED Clock, Tag
+import {
+  Plus,
+  Save,
+  ArrowLeft,
+  ClipboardCheck,
+  Users,
+  Calendar,
+  FileText,
+  Clock,
+  Tag,
+  DollarSign,
+} from 'lucide-react'; // ADDED Clock, Tag, DollarSign
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -37,9 +48,14 @@ function TaskFormPage() {
     priority: 'medium', // NEW: Priority
     description: '',
     estimatedDurationMinutes: 0, // ADDED: estimatedDurationMinutes
+    isBillable: false, // NEW: isBillable
+    billedAmount: 0, // NEW: billedAmount
+    billingStatus: 'not_billed', // NEW: billingStatus
   });
 
-  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>(
+    []
+  );
   const [projectDetails, setProjectDetails] = useState<any>(null); // To display project name
 
   const [loading, setLoading] = useState(true);
@@ -90,8 +106,14 @@ function TaskFormPage() {
         .eq('company_id', companyId)
         .eq('status', 'active');
       if (employeesError) throw employeesError;
-      setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}`, first_name: emp.first_name, last_name: emp.last_name })) || []);
-
+      setAvailableEmployees(
+        employeesData.map((emp) => ({
+          id: emp.id,
+          name: `${emp.first_name} ${emp.last_name}`,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+        })) || []
+      );
     } catch (error) {
       console.error('Error fetching employees:', error);
       showNotification('Failed to load employees.', 'error');
@@ -102,10 +124,12 @@ function TaskFormPage() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select(`
+        .select(
+          `
           *,
           employees ( first_name, last_name )
-        `)
+        `
+        )
         .eq('id', id)
         .eq('project_id', projectId)
         .single();
@@ -117,13 +141,18 @@ function TaskFormPage() {
           id: data.id,
           taskName: data.task_name,
           assignedToId: data.assigned_to_id || '',
-          assignedToName: data.employees ? `${data.employees.first_name} ${data.employees.last_name}` : '',
+          assignedToName: data.employees
+            ? `${data.employees.first_name} ${data.employees.last_name}`
+            : '',
           status: data.status,
           startDate: data.start_date || '',
           dueDate: data.due_date || '',
           priority: data.priority || 'medium',
           description: data.description || '',
           estimatedDurationMinutes: data.estimated_duration_minutes || 0, // ADDED
+          isBillable: data.is_billable, // NEW
+          billedAmount: data.billed_amount, // NEW
+          billingStatus: data.billing_status, // NEW
         });
       }
     } catch (err: any) {
@@ -134,11 +163,11 @@ function TaskFormPage() {
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleEmployeeSelect = (id: string, name: string) => {
-    setFormData(prev => ({ ...prev, assignedToId: id, assignedToName: name }));
+    setFormData((prev) => ({ ...prev, assignedToId: id, assignedToName: name }));
   };
 
   const resetForm = () => {
@@ -153,6 +182,9 @@ function TaskFormPage() {
       priority: 'medium',
       description: '',
       estimatedDurationMinutes: 0, // ADDED
+      isBillable: false, // NEW
+      billedAmount: 0, // NEW
+      billingStatus: 'not_billed', // NEW
     });
   };
 
@@ -185,7 +217,7 @@ function TaskFormPage() {
     e.preventDefault();
     if (!validateForm()) return;
     if (!projectId) {
-      showNotification('Project ID is missing.', 'error');
+      showNotification('Task ID is missing.', 'error');
       return;
     }
 
@@ -201,6 +233,9 @@ function TaskFormPage() {
         priority: formData.priority,
         description: formData.description || null,
         estimated_duration_minutes: formData.estimatedDurationMinutes, // ADDED
+        is_billable: formData.isBillable, // NEW
+        billed_amount: formData.billedAmount, // NEW
+        billing_status: formData.billingStatus, // NEW
       };
 
       if (formData.id) {
@@ -211,7 +246,7 @@ function TaskFormPage() {
         if (error) throw error;
         showNotification('Task updated successfully!', 'success');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tasks')
           .insert(taskToSave);
         if (error) throw error;
@@ -241,18 +276,32 @@ function TaskFormPage() {
     { id: 'critical', name: 'Critical' },
   ];
 
+  const billingStatuses = [
+    // NEW
+    { id: 'not_billed', name: 'Not Billed' },
+    { id: 'partially_billed', name: 'Partially Billed' },
+    { id: 'billed', name: 'Billed' },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            {isEditMode ? 'Edit Task' : 'Create New Task'} for {projectDetails?.project_name || 'Project'}
+            {isEditMode ? 'Edit Task' : 'Create New Task'} for{' '}
+            {projectDetails?.task_name || 'Project'}
           </h1>
           <p className={theme.textSecondary}>
-            {isEditMode ? 'Update task details and assignments.' : 'Add a new task to this project.'}
+            {isEditMode
+              ? 'Update task details and assignments.'
+              : 'Add a new task to this project.'}
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate(`/project/${projectId}/tasks`)} icon={<ArrowLeft size={16} />}>
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/project/${projectId}/tasks`)}
+          icon={<ArrowLeft size={16} />}
+        >
           Back to Tasks List
         </Button>
       </div>
@@ -264,8 +313,13 @@ function TaskFormPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="p-6">
-            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-              <ClipboardCheck size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+            <h3
+              className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
+            >
+              <ClipboardCheck
+                size={20}
+                className={`mr-2 text-[${theme.hoverAccent}]`}
+              />
               Task Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -280,13 +334,21 @@ function TaskFormPage() {
                 label="Assigned To"
                 value={formData.assignedToName}
                 onValueChange={(val) => handleInputChange('assignedToName', val)}
-                onSelect={(id) => handleEmployeeSelect(id, availableEmployees.find(emp => emp.id === id)?.name || '')} // MODIFIED: Pass name to handleEmployeeSelect
+                onSelect={(id) =>
+                  handleEmployeeSelect(
+                    id,
+                    availableEmployees.find((emp) => emp.id === id)?.name || ''
+                  )
+                } // MODIFIED: Pass name to handleEmployeeSelect
                 options={availableEmployees}
                 placeholder="Assign Employee (Optional)"
               />
               <MasterSelectField
                 label="Status"
-                value={taskStatuses.find(status => status.id === formData.status)?.name || ''}
+                value={
+                  taskStatuses.find((status) => status.id === formData.status)
+                    ?.name || ''
+                }
                 onValueChange={(val) => handleInputChange('status', val)}
                 onSelect={(id) => handleInputChange('status', id)}
                 options={taskStatuses}
@@ -294,7 +356,11 @@ function TaskFormPage() {
               />
               <MasterSelectField
                 label="Priority"
-                value={taskPriorities.find(priority => priority.id === formData.priority)?.name || ''}
+                value={
+                  taskPriorities.find(
+                    (priority) => priority.id === formData.priority
+                  )?.name || ''
+                }
                 onValueChange={(val) => handleInputChange('priority', val)}
                 onSelect={(id) => handleInputChange('priority', id)}
                 options={taskPriorities}
@@ -318,9 +384,53 @@ function TaskFormPage() {
                 label="Estimated Duration (Minutes)"
                 type="number"
                 value={formData.estimatedDurationMinutes.toString()}
-                onChange={(val) => handleInputChange('estimatedDurationMinutes', parseFloat(val) || 0)}
+                onChange={(val) =>
+                  handleInputChange('estimatedDurationMinutes', parseFloat(val) || 0)
+                }
                 icon={<Clock size={18} />}
               />
+              <div className="flex items-center space-x-3">
+                {' '}
+                {/* NEW: isBillable checkbox */}
+                <input
+                  type="checkbox"
+                  id="isBillable"
+                  checked={formData.isBillable}
+                  onChange={(e) => handleInputChange('isBillable', e.target.checked)}
+                  className={`w-4 h-4 text-[${theme.hoverAccent}] border-gray-300 rounded focus:ring-[${theme.hoverAccent}]`}
+                />
+                <label
+                  htmlFor="isBillable"
+                  className={`text-sm font-medium ${theme.textPrimary}`}
+                >
+                  Is Billable
+                </label>
+              </div>
+              {formData.isBillable && (
+                <>
+                  <FormField
+                    label="Billed Amount"
+                    type="number"
+                    value={formData.billedAmount.toString()}
+                    onChange={(val) =>
+                      handleInputChange('billedAmount', parseFloat(val) || 0)
+                    }
+                    icon={<DollarSign size={18} />}
+                  />
+                  <MasterSelectField
+                    label="Billing Status"
+                    value={
+                      billingStatuses.find(
+                        (status) => status.id === formData.billingStatus
+                      )?.name || ''
+                    }
+                    onValueChange={(val) => handleInputChange('billingStatus', val)}
+                    onSelect={(id) => handleInputChange('billingStatus', id)}
+                    options={billingStatuses}
+                    placeholder="Select Billing Status"
+                  />
+                </>
+              )}
               <FormField
                 label="Description"
                 value={formData.description}
@@ -332,7 +442,11 @@ function TaskFormPage() {
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => navigate(`/project/${projectId}/tasks`)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate(`/project/${projectId}/tasks`)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} icon={<Save size={16} />}>

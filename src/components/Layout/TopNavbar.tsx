@@ -111,7 +111,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
     <nav className={`
       fixed top-0 left-0 right-0 z-40 h-16
       ${theme.topNavBg} border-b border-slate-700/30
-      shadow-lg backdrop-blur-md
+      shadow-lg backdrop-blur-sm
     `}>
       <div className="px-4 h-full flex items-center justify-between">
         {/* Left Section */}
@@ -124,7 +124,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
               text-white hover:bg-white hover:bg-opacity-10 hover:text-[${theme.hoverAccent}]
             `}
           >
-            <div className="group relative"> {/* Added group for tooltip */}
+            <div className="group relative">
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
               <div className={`
                 absolute left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-700 text-white text-xs
@@ -134,7 +134,7 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
                 <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
                               border-4 border-transparent border-b-gray-700" />
-              </div>
+            </div>
             </div>
           </button>
 
@@ -281,8 +281,8 @@ function TopNavbar({ sidebarOpen, setSidebarOpen, sidebarWidth, showAI, setShowA
                 Notifications
                 <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
                               border-4 border-transparent border-b-gray-700" />
-              </div>
-            </button>
+            </div>
+          </button>
             
             {showNotifications && (
               <div className={`

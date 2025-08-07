@@ -215,6 +215,17 @@ export const ALL_PERMISSIONS = {
       update: 'Edit Milestones',
       delete: 'Delete Milestones',
     },
+    task_dependencies: { // NEW: Task Dependency permissions
+      create: 'Create Task Dependencies',
+      read: 'View Task Dependencies',
+      update: 'Edit Task Dependencies',
+      delete: 'Delete Task Dependencies',
+    },
+    project_billing: { // NEW: Project Billing permissions
+      read: 'View Project Billing',
+      create: 'Create Project Billing Entries',
+      update: 'Update Project Billing Entries',
+      generate_invoice: 'Generate Invoice from Project/Task',
+    },
   },
 };
-

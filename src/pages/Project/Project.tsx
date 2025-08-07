@@ -41,13 +41,15 @@ interface ProjectData {
   priority: string | null; // ADDED: priority
   tags: string[] | null; // ADDED: tags
   expected_value: number | null; // ADDED: expected_value
+  billing_status: string; // NEW: Added billing_status
+  total_billed_amount: number; // NEW: Added total_billed_amount
 }
 
 function Project() {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentCompany } = useCompany();
+  const { currentCompany, currentPeriod } = useCompany();
   const { showNotification } = useNotification();
 
   const [projectStats, setProjectStats] = useState({
@@ -62,6 +64,10 @@ function Project() {
     nonRecurring: 0, // NEW
     totalFixedPriceValue: 0, // ADDED: Total Fixed Price Value
     totalTimeBasedValue: 0, // ADDED: Total Time Based Value
+    totalBilledAmount: 0, // NEW: Total Billed Amount
+    totalBillableTasks: 0, // NEW: Total Billable Tasks
+    totalBilledTasksAmount: 0, // NEW: Total Billed Tasks Amount
+    totalTimeLoggedCost: 0, // NEW: Total Time Logged Cost
   });
   const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({});
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
@@ -89,13 +95,13 @@ function Project() {
   ];
 
   useEffect(() => {
-    if (currentCompany?.id) {
-      fetchProjectData(currentCompany.id);
+    if (currentCompany?.id && currentPeriod?.id) {
+      fetchProjectData(currentCompany.id, currentPeriod.startDate, currentPeriod.endDate);
       fetchUpcomingRecurringJobs(currentCompany.id);
     }
-  }, [currentCompany?.id]);
+  }, [currentCompany?.id, currentPeriod?.id]);
 
-  const fetchProjectData = async (companyId: string) => {
+  const fetchProjectData = async (companyId: string, periodStartDate: string, periodEndDate: string) => {
     setLoading(true);
     try {
       // MODIFIED: Query the materialized view for aggregated metrics
@@ -112,6 +118,7 @@ function Project() {
           totalProjects: 0, inProgress: 0, completed: 0, overdue: 0,
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
           nonRecurring: 0, totalFixedPriceValue: 0, totalTimeBasedValue: 0,
+          totalBilledAmount: 0, totalBillableTasks: 0, totalBilledTasksAmount: 0, totalTimeLoggedCost: 0,
         });
       } else {
         setProjectStats({
@@ -126,6 +133,10 @@ function Project() {
           nonRecurring: kpis?.total_one_time_projects || 0,
           totalFixedPriceValue: kpis?.total_fixed_price_value || 0, // ADDED
           totalTimeBasedValue: kpis?.total_time_based_value || 0, // ADDED
+          totalBilledAmount: kpis?.total_billed_amount || 0, // NEW
+          totalBillableTasks: kpis?.total_billable_tasks || 0, // NEW
+          totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0, // NEW
+          totalTimeLoggedCost: kpis?.total_time_logged_cost || 0, // NEW
         });
       }
 
@@ -227,6 +238,9 @@ function Project() {
           { type: 'trend', title: 'Project Completion Rate', message: 'Your project completion rate has improved by 15% this quarter. Keep up the good work!', confidence: 'medium', impact: 'low', actionable: false },
           { type: 'info', title: 'Fixed Price Project Value', message: `Total expected value from fixed-price projects: ₹${projectStats.totalFixedPriceValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
           { type: 'info', title: 'Time-Based Project Value', message: `Total expected value from time-based projects: ₹${projectStats.totalTimeBasedValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
+          { type: 'info', title: 'Total Billed Amount', message: `Total amount billed across all projects: ₹${projectStats.totalBilledAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
+          { type: 'info', title: 'Billable Tasks', message: `You have ${projectStats.totalBillableTasks} billable tasks. Total billed amount from tasks: ₹${projectStats.totalBilledTasksAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
+          { type: 'info', title: 'Total Time Logged Cost', message: `Total cost of time logged across all projects: ₹${projectStats.totalTimeLoggedCost.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
         ]
       };
 
@@ -406,7 +420,7 @@ function Project() {
           <Button
             variant="outline"
             icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />}
-            onClick={() => fetchProjectData(currentCompany?.id || '')}
+            onClick={() => fetchProjectData(currentCompany?.id || '', currentPeriod?.startDate || '', currentPeriod?.endDate || '')}
             disabled={loading}
           >
             Refresh
@@ -447,6 +461,10 @@ function Project() {
           { name: 'Category-wise', value: projectStats.categoryWise, icon: Layers, filter: 'categoryWise=true' }, // NEW
           { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, filter: 'billingType=fixed_price' }, // ADDED
           { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, filter: 'billingType=time_based' }, // ADDED
+          { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, filter: 'billing_status=billed' }, // NEW
+          { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, filter: 'is_billable=true' }, // NEW
+          { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, filter: 'task_billing_status=billed' }, // NEW
+          { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, filter: 'time_logged_cost' }, // NEW
         ].map((tile, index) => {
           const Icon = tile.icon;
           const colors = moduleColors[index % moduleColors.length]; // Use distinct colors
@@ -501,7 +519,7 @@ function Project() {
                         <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p> {/* NEW: Display customer name */}
                         <p className="text-xs text-gray-500">{project.project_categories?.name || 'N/A'}</p> {/* NEW: Display category name */}
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-1.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
+                          <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-2.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
                         </div>
                         <span className="text-xs text-gray-500 mt-1 block">{project.progress_percentage || 0}% Complete</span>
                         {project.actual_due_date && ( // Changed to actual_due_date

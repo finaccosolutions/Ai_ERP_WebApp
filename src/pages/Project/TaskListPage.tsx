@@ -1,6 +1,19 @@
 // src/pages/Project/TaskListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ClipboardCheck, Edit, Trash2, RefreshCw, ArrowLeft, Filter, Users, Calendar, Clock, Tag } from 'lucide-react'; // ADDED Tag
+import {
+  Plus,
+  Search,
+  ClipboardCheck,
+  Edit,
+  Trash2,
+  RefreshCw,
+  ArrowLeft,
+  Filter,
+  Users,
+  Calendar,
+  Clock,
+  Tag,
+} from 'lucide-react'; // ADDED Tag
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -26,6 +39,9 @@ interface Task {
   description: string | null;
   created_at: string;
   estimated_duration_minutes: number | null; // ADDED
+  is_billable: boolean; // NEW
+  billed_amount: number; // NEW
+  billing_status: string; // NEW
   // Joined data
   employees?: { first_name: string; last_name: string } | null;
   projects?: { project_name: string } | null;
@@ -54,6 +70,8 @@ function TaskListPage() {
     dueDateBefore: '',
     dueDateAfter: '',
     priority: 'all',
+    isBillable: 'all', // NEW: isBillable filter
+    billingStatus: 'all', // NEW: billingStatus filter
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
@@ -89,10 +107,13 @@ function TaskListPage() {
     try {
       let query = supabase
         .from('tasks')
-        .select(`
-          id, project_id, task_name, assigned_to_id, status, start_date, due_date, priority, description, created_at, estimated_duration_minutes,
+        .select(
+          `
+          *,
           employees ( first_name, last_name )
-        `, { count: 'exact' })
+        `,
+          { count: 'exact' }
+        )
         .eq('project_id', id);
 
       if (searchTerm) {
@@ -117,6 +138,14 @@ function TaskListPage() {
       if (filterCriteria.priority !== 'all') {
         query = query.eq('priority', filterCriteria.priority);
       }
+      if (filterCriteria.isBillable !== 'all') {
+        // NEW: isBillable filter
+        query = query.eq('is_billable', filterCriteria.isBillable === 'true');
+      }
+      if (filterCriteria.billingStatus !== 'all') {
+        // NEW: billingStatus filter
+        query = query.eq('billing_status', filterCriteria.billingStatus);
+      }
 
       query = query.order('created_at', { ascending: false });
 
@@ -129,7 +158,6 @@ function TaskListPage() {
       if (error) throw error;
       setTasks(data || []);
       setTotalTasksCount(count || 0);
-
     } catch (err: any) {
       showNotification(`Error fetching tasks: ${err.message}`, 'error');
       console.error('Error fetching tasks:', err);
@@ -175,21 +203,45 @@ function TaskListPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'open': return 'bg-blue-100 text-blue-800';
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'on_hold': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'open':
+        return 'bg-blue-100 text-blue-800';
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'on_hold':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'low': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'high': return 'text-orange-600';
-      case 'critical': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'low':
+        return 'text-green-600';
+      case 'medium':
+        return 'text-yellow-600';
+      case 'high':
+        return 'text-orange-600';
+      case 'critical':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  const getBillingStatusColor = (status: string) => {
+    // NEW
+    switch (status.toLowerCase()) {
+      case 'not_billed':
+        return 'bg-gray-100 text-gray-800';
+      case 'partially_billed':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'billed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -205,13 +257,22 @@ function TaskListPage() {
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
             Tasks for {projectDetails?.project_name || 'Project'}
           </h1>
-          <p className={theme.textSecondary}>Manage tasks and track progress for this project.</p>
+          <p className={theme.textSecondary}>
+            Manage tasks and track progress for this project.
+          </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/project/list')} icon={<ArrowLeft size={16} />}>
-            Back to Projects
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/project/${projectId}/details`)}
+            icon={<ArrowLeft size={16} />}
+          >
+            Back to Project Details
           </Button>
-          <AIButton variant="suggest" onSuggest={() => console.log('AI Task Suggestions')} />
+          <AIButton
+            variant="suggest"
+            onSuggest={() => console.log('AI Task Suggestions')}
+          />
           <Link to={`/project/${projectId}/tasks/new`}>
             <Button icon={<Plus size={16} />}>Create New Task</Button>
           </Link>
@@ -219,16 +280,23 @@ function TaskListPage() {
       </div>
 
       <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>All Tasks</h3>
+        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+          All Tasks
+        </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
           <div className="relative flex-grow">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
             <input
               type="text"
               placeholder="Search tasks by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && fetchTasks(projectId as string)}
+              onKeyPress={(e) =>
+                e.key === 'Enter' && fetchTasks(projectId as string)
+              }
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                 ${theme.inputBg} ${theme.textPrimary}
@@ -240,15 +308,19 @@ function TaskListPage() {
             Filter
           </Button>
           <MasterSelectField
-            label=""
-            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
-            onValueChange={() => {}}
+            label="" // No label needed for this dropdown
+            value={numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''}
+            onValueChange={() => {}} // Not used for typing
             onSelect={(id) => setNumResultsToShow(id)}
             options={numResultsOptions}
             placeholder="Show"
             className="w-32"
           />
-          <Button onClick={() => fetchTasks(projectId as string)} disabled={loading} icon={<RefreshCw size={16} />}>
+          <Button
+            onClick={() => fetchTasks(projectId as string)}
+            disabled={loading}
+            icon={<RefreshCw size={16} />}
+          >
             {loading ? 'Loading...' : 'Refresh'}
           </Button>
         </div>
@@ -266,37 +338,99 @@ function TaskListPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Duration (Mins)</th> {/* ADDED */}
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Task Name
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Assigned To
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dates
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Priority
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Est. Duration (Mins)
+                  </th>{' '}
+                  {/* ADDED */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Billable
+                  </th>{' '}
+                  {/* NEW */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Billed Amount
+                  </th>{' '}
+                  {/* NEW */}
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Billing Status
+                  </th>{' '}
+                  {/* NEW */}
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {tasks.map((task) => (
                   <tr key={task.id}>
-                    <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[150px] overflow-hidden text-ellipsis">{task.task_name}</td>
+                    <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[150px] overflow-hidden text-ellipsis">
+                      {task.task_name}
+                    </td>
                     <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">
-                      {task.employees ? `${task.employees.first_name} ${task.employees.last_name}` : 'N/A'}
+                      {task.employees
+                        ? `${task.employees.first_name} ${task.employees.last_name}`
+                        : 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {task.start_date} - {task.due_date}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                          task.status
+                        )}`}
+                      >
                         {task.status.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      <span className={`font-medium ${getPriorityColor(task.priority || 'medium')}`}>
+                      <span
+                        className={`font-medium ${getPriorityColor(
+                          task.priority || 'medium'
+                        )}`}
+                      >
                         {task.priority || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"> {/* ADDED */}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {' '}
+                      {/* ADDED */}
                       {task.estimated_duration_minutes || 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {' '}
+                      {/* NEW */}
+                      {task.is_billable ? 'Yes' : 'No'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {' '}
+                      {/* NEW */}
+                      ₹{task.billed_amount?.toLocaleString() || '0.00'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      {' '}
+                      {/* NEW */}
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getBillingStatusColor(
+                          task.billing_status
+                        )}`}
+                      >
+                        {task.billing_status.replace(/_/g, ' ')}
+                      </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/project/${projectId}/tasks/edit/${task.id}`}>
@@ -309,7 +443,13 @@ function TaskListPage() {
                           <Clock size={16} />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
                         <Trash2 size={16} />
                       </Button>
                     </td>
@@ -335,7 +475,7 @@ function TaskListPage() {
         onClose={() => setShowFilterModal(false)}
         filters={filterCriteria}
         onApplyFilters={handleApplyFilters}
-        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+        onFilterChange={(key, value) => setFilterCriteria((prev) => ({ ...prev, [key]: value }))}
       />
     </div>
   );

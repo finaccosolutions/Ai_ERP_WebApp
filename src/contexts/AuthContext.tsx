@@ -13,9 +13,9 @@ interface User {
   companies: string[];
   avatar?: string;
   mobile?: string;
-  department?: string;
-  designation?: string;
-  employeeId?: string;
+  department?: string; // NEW: Added department
+  designation?: string; // NEW: Added designation
+  employeeId?: string; // NEW: Added employeeId
   preferences?: any;
 }
 
@@ -334,4 +334,3 @@ export function useAuth() {
   }
   return context;
 }
-

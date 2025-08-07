@@ -1,6 +1,17 @@
 // src/pages/Project/TimeLogPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Clock, Edit, Trash2, RefreshCw, ArrowLeft, Filter, Users, Calendar } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Clock,
+  Edit,
+  Trash2,
+  RefreshCw,
+  ArrowLeft,
+  Filter,
+  Users,
+  Calendar,
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -24,7 +35,7 @@ interface TimeLog {
   notes: string | null;
   created_at: string;
   // Joined data
-  employees?: { first_name: string; last_name: string } | null;
+  employees?: { first_name: string; last_name: string; hourly_rate: number | null } | null; // MODIFIED: Added hourly_rate
   tasks?: { task_name: string } | null;
 }
 
@@ -66,7 +77,9 @@ function TimeLogPage() {
     notes: '',
   });
 
-  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>(
+    []
+  );
   const [taskDetails, setTaskDetails] = useState<any>(null);
 
   const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
@@ -89,7 +102,7 @@ function TimeLogPage() {
       setLoading(false);
     };
 
-    if (currentCompany?.id && taskId) {
+    if (currentCompany?.id) {
       initializePage();
     }
   }, [currentCompany?.id, taskId, viewMode, filterCriteria, numResultsToShow]);
@@ -119,8 +132,14 @@ function TimeLogPage() {
         .eq('company_id', companyId)
         .eq('status', 'active');
       if (employeesError) throw employeesError;
-      setAvailableEmployees(employeesData.map(emp => ({ id: emp.id, name: `${emp.first_name} ${emp.last_name}`, first_name: emp.first_name, last_name: emp.last_name })) || []);
-
+      setAvailableEmployees(
+        employeesData.map((emp) => ({
+          id: emp.id,
+          name: `${emp.first_name} ${emp.last_name}`,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+        })) || []
+      );
     } catch (error) {
       console.error('Error fetching employees:', error);
       showNotification('Failed to load employees.', 'error');
@@ -133,10 +152,13 @@ function TimeLogPage() {
     try {
       let query = supabase
         .from('time_logs')
-        .select(`
+        .select(
+          `
           id, task_id, employee_id, start_time, end_time, duration_minutes, notes, created_at,
-          employees ( first_name, last_name )
-        `, { count: 'exact' })
+          employees ( first_name, last_name, hourly_rate ) // MODIFIED: Added hourly_rate
+        `,
+          { count: 'exact' }
+        )
         .eq('task_id', id);
 
       if (searchTerm) {
@@ -176,9 +198,12 @@ function TimeLogPage() {
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (field === 'startTime' || field === 'endTime') {
-      calculateDuration(field === 'startTime' ? value : formData.startTime, field === 'endTime' ? value : formData.endTime);
+      calculateDuration(
+        field === 'startTime' ? value : formData.startTime,
+        field === 'endTime' ? value : formData.endTime
+      );
     }
   };
 
@@ -188,14 +213,14 @@ function TimeLogPage() {
       const endDate = new Date(end);
       const diffMs = endDate.getTime() - startDate.getTime();
       const diffMinutes = Math.round(diffMs / (1000 * 60));
-      setFormData(prev => ({ ...prev, durationMinutes: diffMinutes > 0 ? diffMinutes : 0 }));
+      setFormData((prev) => ({ ...prev, durationMinutes: diffMinutes > 0 ? diffMinutes : 0 }));
     } else {
-      setFormData(prev => ({ ...prev, durationMinutes: 0 }));
+      setFormData((prev) => ({ ...prev, durationMinutes: 0 }));
     }
   };
 
   const handleEmployeeSelect = (id: string, name: string) => {
-    setFormData(prev => ({ ...prev, employeeId: id, employeeName: name }));
+    setFormData((prev) => ({ ...prev, employeeId: id, employeeName: name }));
   };
 
   const resetForm = () => {
@@ -261,7 +286,7 @@ function TimeLogPage() {
         if (error) throw error;
         showNotification('Time log updated successfully!', 'success');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('time_logs')
           .insert(timeLogToSave);
         if (error) throw error;
@@ -282,7 +307,9 @@ function TimeLogPage() {
     setFormData({
       id: log.id,
       employeeId: log.employee_id || '',
-      employeeName: log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : '',
+      employeeName: log.employees
+        ? `${log.employees.first_name} ${log.employees.last_name}`
+        : '',
       startTime: log.start_time.slice(0, 16),
       endTime: log.end_time?.slice(0, 16) || '',
       durationMinutes: log.duration_minutes || 0,
@@ -338,14 +365,29 @@ function TimeLogPage() {
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
             Time Logs for {taskDetails?.task_name || 'Task'}
           </h1>
-          <p className={theme.textSecondary}>Log and track time spent on this task.</p>
+          <p className={theme.textSecondary}>
+            Log and track time spent on this task.
+          </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate(`/project/${projectId}/tasks`)} icon={<ArrowLeft size={16} />}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/project/${projectId}/tasks`)}
+            icon={<ArrowLeft size={16} />}
+          >
             Back to Tasks
           </Button>
-          <AIButton variant="suggest" onSuggest={() => console.log('AI Time Log Suggestions')} />
-          <Button icon={<Plus size={16} />} onClick={() => { setViewMode('create'); resetForm(); }}>
+          <AIButton
+            variant="suggest"
+            onSuggest={() => console.log('AI Time Log Suggestions')}
+          />
+          <Button
+            icon={<Plus size={16} />}
+            onClick={() => {
+              setViewMode('create');
+              resetForm();
+            }}
+          >
             Log New Time
           </Button>
         </div>
@@ -353,8 +395,10 @@ function TimeLogPage() {
 
       {viewMode === 'create' ? (
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Clock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+          <h3
+            className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
+          >
+            <Clock size={20} className={`mr-2 text-[${theme.hoverAccent}]`} />
             {isEditMode ? 'Edit Time Log' : 'Log New Time'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -386,7 +430,9 @@ function TimeLogPage() {
                 label="Duration (Minutes)"
                 type="number"
                 value={formData.durationMinutes.toString()}
-                onChange={(val) => handleInputChange('durationMinutes', parseFloat(val) || 0)}
+                onChange={(val) =>
+                  handleInputChange('durationMinutes', parseFloat(val) || 0)
+                }
                 readOnly
               />
               <FormField
@@ -398,7 +444,11 @@ function TimeLogPage() {
               />
             </div>
             <div className="flex justify-end space-x-2 mt-6">
-              <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setViewMode('list')}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={loading} icon={<Save size={16} />}>
@@ -409,16 +459,23 @@ function TimeLogPage() {
         </Card>
       ) : (
         <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>All Time Logs</h3>
+          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+            All Time Logs
+          </h3>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
             <div className="relative flex-grow">
-              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
               <input
                 type="text"
                 placeholder="Search time logs by notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && fetchTimeLogs(taskId as string)}
+                onKeyPress={(e) =>
+                  e.key === 'Enter' && fetchTimeLogs(taskId as string)
+                }
                 className={`
                   w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                   ${theme.inputBg} ${theme.textPrimary}
@@ -431,14 +488,20 @@ function TimeLogPage() {
             </Button>
             <MasterSelectField
               label=""
-              value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
+              value={
+                numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''
+              }
               onValueChange={() => {}}
               onSelect={(id) => setNumResultsToShow(id)}
               options={numResultsOptions}
               placeholder="Show"
               className="w-32"
             />
-            <Button onClick={() => fetchTimeLogs(taskId as string)} disabled={loading} icon={<RefreshCw size={16} />}>
+            <Button
+              onClick={() => fetchTimeLogs(taskId as string)}
+              disabled={loading}
+              icon={<RefreshCw size={16} />}
+            >
               {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
@@ -456,19 +519,37 @@ function TimeLogPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration (Mins)</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Start Time
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      End Time
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Duration (Mins)
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cost
+                    </th>{' '}
+                    {/* NEW */}
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {timeLogs.map((log) => (
                     <tr key={log.id}>
                       <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[120px] overflow-hidden text-ellipsis">
-                        {log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : 'N/A'}
+                        {log.employees
+                          ? `${log.employees.first_name} ${log.employees.last_name}`
+                          : 'N/A'}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {new Date(log.start_time).toLocaleString()}
@@ -476,13 +557,36 @@ function TimeLogPage() {
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {log.end_time ? new Date(log.end_time).toLocaleString() : 'N/A'}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{log.duration_minutes || 0}</td>
-                      <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[200px] overflow-hidden text-ellipsis">{log.notes || 'N/A'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {log.duration_minutes || 0}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {' '}
+                        {/* NEW */}
+                        ₹
+                        {((log.duration_minutes || 0) *
+                          (log.employees?.hourly_rate || 0)) /
+                          60}
+                      </td>
+                      <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[200px] overflow-hidden text-ellipsis">
+                        {log.notes || 'N/A'}
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
-                        <Button variant="ghost" size="sm" onClick={() => handleEditTimeLog(log)} title="Edit">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditTimeLog(log)}
+                          title="Edit"
+                        >
                           <Edit size={16} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteTimeLog(log.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteTimeLog(log.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete"
+                        >
                           <Trash2 size={16} />
                         </Button>
                       </td>
@@ -509,7 +613,9 @@ function TimeLogPage() {
         onClose={() => setShowFilterModal(false)}
         filters={filterCriteria}
         onApplyFilters={handleApplyFilters}
-        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+        onFilterChange={(key, value) =>
+          setFilterCriteria((prev) => ({ ...prev, [key]: value }))
+        }
       />
     </div>
   );
