@@ -85,6 +85,18 @@ function ProjectFormPage() {
             customerName: location.state.customerName
           }));
         }
+        // If returned from ProjectCategoryFormPage after creating a new category
+        if (location.state?.fromProjectCategoryCreation && location.state?.projectFormData) {
+          setFormData(location.state.projectFormData); // Restore previous form data
+          if (location.state.createdCategoryId) {
+            // Set the newly created category
+            setFormData(prev => ({
+              ...prev,
+              projectCategoryId: location.state.createdCategoryId,
+              projectCategoryName: location.state.createdCategoryName
+            }));
+          }
+        }
       }
       setLoading(false);
     };
@@ -115,7 +127,7 @@ function ProjectFormPage() {
       // NEW: Fetch Project Categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('project_categories')
-        .select('*')
+        .select('id, name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type')
         .eq('company_id', companyId);
       if (categoriesError) throw categoriesError;
       setAvailableProjectCategories(categoriesData || []);
@@ -180,9 +192,10 @@ function ProjectFormPage() {
   const handleProjectCategorySelect = (id: string, name: string, data: ProjectCategoryOption) => { // NEW
     setFormData(prev => ({ ...prev, projectCategoryId: id, projectCategoryName: name }));
     // Automatically set billing type from category if it's not already set or if category changes
-    if (data.billing_type && formData.billingType === 'fixed_price') { // Only auto-set if default
-      setFormData(prev => ({ ...prev, billingType: data.billing_type }));
-    }
+    // This logic is now handled in ProjectCategoryFormPage, but keeping this for reference if needed
+    // if (data.billing_type && formData.billingType === 'fixed_price') { // Only auto-set if default
+    //   setFormData(prev => ({ ...prev, billingType: data.billing_type }));
+    // }
   };
 
   const handleProjectOwnerSelect = (id: string, name: string) => {
@@ -380,7 +393,7 @@ function ProjectFormPage() {
                 placeholder="Select Project Category"
                 required
                 allowCreation={true} // Allow creating new categories
-                onNewValueConfirmed={(name) => navigate('/project/categories/new', { state: { initialName: name } })}
+                onNewValueConfirmed={(name) => navigate('/project/categories/new', { state: { initialName: name, fromProjectForm: true, projectFormData: formData, returnPath: location.pathname + location.search } })}
               />
               <MasterSelectField
                 label="Project Owner / Assigned Manager"

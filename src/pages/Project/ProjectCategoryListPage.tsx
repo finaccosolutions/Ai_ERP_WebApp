@@ -1,6 +1,6 @@
 // src/pages/Project/ProjectCategoryListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Layers, Edit, Trash2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Layers, Edit, Trash2, RefreshCw, Save, ArrowLeft, Filter } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -291,6 +291,15 @@ function ProjectCategoryListPage() {
         message="Are you sure you want to delete this project category? This action cannot be undone. Projects linked to this category will need to be reassigned."
         confirmText="Yes, Delete Category"
       />
+
+      {/* ItemCategoryFilterModal is not used here, but keeping the import for reference */}
+      {/* <ItemCategoryFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filterCriteria}
+        onApplyFilters={handleApplyFilters}
+        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
+      /> */}
     </div>
   );
 }

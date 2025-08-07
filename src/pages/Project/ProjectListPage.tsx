@@ -114,7 +114,7 @@ function ProjectListPage() {
       if (currentFilters.status !== 'all') {
         query = query.eq('status', currentFilters.status);
       }
-      if (currentFilters.projectCategory) { // Changed from billingType
+      if (currentFilters.projectCategory && currentFilters.projectCategory !== 'all') { // Changed from billingType
         query = query.eq('project_category_id', currentFilters.projectCategory);
       }
       if (currentFilters.startDate) {

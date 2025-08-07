@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Plus, Search, Filter, Users, Calendar, Clock, DollarSign, FileText, BarChart3, CheckCircle,
-  TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown,
-  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, Mic, RefreshCw // Added Mic, RefreshCw
+  TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown, Layers,
+  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, Mic, RefreshCw // Added Mic, RefreshCw, PlusSquare
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -22,8 +22,8 @@ import TaskListPage from './TaskListPage';
 import TaskFormPage from './TaskFormPage';
 import TimeLogPage from './TimeLogPage';
 import ProjectDetailPage from './ProjectDetailPage';
-import ProjectCategoryFormPage from './ProjectCategoryFormPage'; // NEW
-import ProjectCategoryListPage from './ProjectCategoryListPage'; // NEW
+import ProjectCategoryFormPage from './ProjectCategoryFormPage'; 
+import ProjectCategoryListPage from './ProjectCategoryListPage'; 
 
 interface ProjectData {
   id: string;
@@ -54,6 +54,9 @@ function Project() {
     overdue: 0,
     recurringJobs: 0,
     upcomingDue: 0,
+    customerWise: 0, // NEW
+    categoryWise: 0, // NEW
+    nonRecurring: 0, // NEW
   });
   const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({});
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
@@ -112,6 +115,9 @@ function Project() {
       let overdue = 0;
       let recurringJobs = 0;
       let upcomingDue = 0;
+      let customerWise = 0; // NEW
+      let categoryWise = 0; // NEW
+      let nonRecurring = 0; // NEW
 
       const kanbanCols: Record<string, ProjectData[]> = {
         not_started: [],
@@ -136,7 +142,14 @@ function Project() {
           upcomingDue++;
         }
 
-        if (project.project_categories?.is_recurring_category) recurringJobs++; // Changed to project_categories
+        if (project.project_categories?.is_recurring_category) {
+          recurringJobs++;
+        } else {
+          nonRecurring++;
+        }
+
+        if (project.customer_id) customerWise++; // Count projects with a customer
+        if (project.project_category_id) categoryWise++; // Count projects with a category
 
         if (kanbanCols[project.status]) {
           kanbanCols[project.status].push(project);
@@ -150,6 +163,9 @@ function Project() {
         overdue,
         recurringJobs,
         upcomingDue,
+        customerWise, // NEW
+        categoryWise, // NEW
+        nonRecurring, // NEW
       });
       setKanbanProjects(kanbanCols);
 
@@ -400,11 +416,15 @@ function Project() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"> {/* Adjusted grid for single row */}
         {[
           { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, filter: 'all' },
+          { name: 'Not Started', value: projectStats.inProgress, icon: Clock, filter: 'not_started' }, // Changed to Not Started
           { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, filter: 'in_progress' },
           { name: 'Completed', value: projectStats.completed, icon: CheckCircle, filter: 'completed' },
-          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
-          { name: 'Recurring', value: projectStats.recurringJobs, icon: Zap, filter: 'recurring' },
           { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, filter: 'upcoming_due' },
+          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
+          { name: 'Recurring', value: projectStats.recurringJobs, icon: Zap, filter: 'isRecurring=true' }, // NEW
+          { name: 'Non-Recurring', value: projectStats.nonRecurring, icon: Calendar, filter: 'isRecurring=false' }, // NEW
+          { name: 'Customer-wise', value: projectStats.customerWise, icon: Users, filter: 'customerWise=true' }, // NEW
+          { name: 'Category-wise', value: projectStats.categoryWise, icon: Layers, filter: 'categoryWise=true' }, // NEW
         ].map((tile, index) => {
           const Icon = tile.icon;
           const colors = moduleColors[index % moduleColors.length]; // Use distinct colors
@@ -456,7 +476,8 @@ function Project() {
                     <Card key={project.id} className="p-3" hover>
                       <Link to={`/project/${project.id}/details`}>
                         <p className="font-medium text-gray-900">{project.project_name}</p>
-                        <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p>
+                        <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p> {/* NEW: Display customer name */}
+                        <p className="text-xs text-gray-500">{project.project_categories?.name || 'N/A'}</p> {/* NEW: Display category name */}
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                           <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-1.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
                         </div>
@@ -469,6 +490,11 @@ function Project() {
                   ))}
                   {kanbanProjects[statusCol.id]?.length === 0 && (
                     <div className="text-center text-gray-400 text-sm py-8">No projects</div>
+                  )}
+                  {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length > 5 && (
+                    <Link to={`/project/list?status=${statusCol.id}`} className="block text-center text-sm text-blue-600 hover:underline mt-2">
+                      View All ({kanbanProjects[statusCol.id].length})
+                    </Link>
                   )}
                 </div>
               </div>
@@ -538,7 +564,7 @@ function Project() {
             bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
             hover:scale-110 hover:shadow-xl
           `}
-          icon={<Plus size={24} />} // Changed to simple Plus icon
+          icon={<PlusSquare size={24} />} // Changed to PlusSquare icon
         />
         {showFabMenu && (
           <div className="absolute bottom-16 right-0 space-y-2">

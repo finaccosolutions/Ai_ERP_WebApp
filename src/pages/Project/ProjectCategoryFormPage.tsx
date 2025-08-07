@@ -9,7 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 interface ProjectCategory {
   id: string;
@@ -30,10 +30,11 @@ function ProjectCategoryFormPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
+  const location = useLocation(); // Use useLocation to access state
 
   const [formData, setFormData] = useState({
     id: '',
-    name: '',
+    name: location.state?.initialName || '', // Pre-fill name if passed from ProjectFormPage
     description: '',
     isRecurringCategory: false,
     recurrenceFrequency: '',
@@ -54,6 +55,10 @@ function ProjectCategoryFormPage() {
         await fetchCategoryData(id as string);
       } else {
         resetForm();
+        // If initialName is passed, set it
+        if (location.state?.initialName) {
+          setFormData(prev => ({ ...prev, name: location.state.initialName }));
+        }
       }
       setLoading(false);
     };
@@ -61,7 +66,7 @@ function ProjectCategoryFormPage() {
     if (currentCompany?.id) {
       initializeForm();
     }
-  }, [currentCompany?.id, id, isEditMode]);
+  }, [currentCompany?.id, id, isEditMode, location.state]);
 
   const fetchCategoryData = async (categoryId: string) => {
     try {
@@ -120,16 +125,16 @@ function ProjectCategoryFormPage() {
         showNotification('Recurrence Frequency is required for recurring categories.', 'error');
         return false;
       }
-      if (formData.recurrenceFrequency === 'weekly' && !formData.recurrenceDueDay) {
-        showNotification('Day of the week is required for weekly recurrence.', 'error');
+      if (formData.recurrenceFrequency === 'weekly' && (!formData.recurrenceDueDay || parseInt(formData.recurrenceDueDay) < 1 || parseInt(formData.recurrenceDueDay) > 7)) {
+        showNotification('Due Day (1-7 for Mon-Sun) is required for weekly recurrence.', 'error');
         return false;
       }
       if (formData.recurrenceFrequency === 'monthly' && (!formData.recurrenceDueDay || parseInt(formData.recurrenceDueDay) < 1 || parseInt(formData.recurrenceDueDay) > 31)) {
-        showNotification('Day of the month (1-31) is required for monthly recurrence.', 'error');
+        showNotification('Due Day of the month (1-31) is required for monthly recurrence.', 'error');
         return false;
       }
       if (formData.recurrenceFrequency === 'yearly' && (!formData.recurrenceDueDay || !formData.recurrenceDueMonth || parseInt(formData.recurrenceDueDay) < 1 || parseInt(formData.recurrenceDueDay) > 31 || parseInt(formData.recurrenceDueMonth) < 1 || parseInt(formData.recurrenceDueMonth) > 12)) {
-        showNotification('Day and month are required for yearly recurrence.', 'error');
+        showNotification('Due Day (1-31) and Month (1-12) are required for yearly recurrence.', 'error');
         return false;
       }
     }
@@ -165,11 +170,27 @@ function ProjectCategoryFormPage() {
         if (error) throw error;
         showNotification('Project category updated successfully!', 'success');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('project_categories')
-          .insert(categoryToSave);
+          .insert(categoryToSave)
+          .select('id, name')
+          .single(); // Select the new ID and name
         if (error) throw error;
         showNotification('Project category created successfully!', 'success');
+
+        // If navigated from ProjectFormPage, return the new category ID
+        if (location.state?.fromProjectForm && location.state?.returnPath) {
+          navigate(location.state.returnPath, {
+            replace: true,
+            state: {
+              createdCategoryId: data.id,
+              createdCategoryName: data.name,
+              projectFormData: location.state.projectFormData, // Pass original project form data back
+              fromProjectCategoryCreation: true // Flag for ProjectFormPage to know it's a return
+            }
+          });
+          return; // Exit early to prevent navigating to list page
+        }
       }
       navigate('/project/categories');
       resetForm();
@@ -206,7 +227,19 @@ function ProjectCategoryFormPage() {
             {isEditMode ? 'Update project category details.' : 'Define a new type of project.'}
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/project/categories')} icon={<ArrowLeft size={16} />}>
+        <Button variant="outline" onClick={() => {
+          if (location.state?.fromProjectForm && location.state?.returnPath) {
+            navigate(location.state.returnPath, {
+              replace: true,
+              state: {
+                projectFormData: location.state.projectFormData,
+                fromProjectCategoryCreation: true, // Keep this flag for ProjectFormPage to restore data
+              },
+            });
+          } else {
+            navigate('/project/categories');
+          }
+        }} icon={<ArrowLeft size={16} />}>
           Back to Categories List
         </Button>
       </div>
@@ -322,7 +355,19 @@ function ProjectCategoryFormPage() {
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => navigate('/project/categories')}>
+            <Button type="button" variant="outline" onClick={() => {
+              if (location.state?.fromProjectForm && location.state?.returnPath) {
+                navigate(location.state.returnPath, {
+                  replace: true,
+                  state: {
+                    projectFormData: location.state.projectFormData,
+                    fromProjectCategoryCreation: true, // Keep this flag for ProjectFormPage to restore data
+                  },
+                });
+              } else {
+                navigate('/project/categories');
+              }
+            }}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} icon={<Save size={16} />}>
