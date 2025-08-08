@@ -1,22 +1,106 @@
 // src/pages/CRM/CampaignListPage.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Megaphone, Plus, Search, RefreshCw, Edit, Trash2 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../../lib/supabase'; // Import supabase
+import { useCompany } from '../../contexts/CompanyContext'; // Import useCompany
+import { useNotification } from '../../contexts/NotificationContext'; // Import useNotification
+import ConfirmationModal from '../../components/UI/ConfirmationModal'; // Import ConfirmationModal
+
+interface Campaign {
+  id: string;
+  campaign_name: string;
+  campaign_type: string;
+  status: string;
+  budget: number | null;
+  expected_leads: number | null;
+  actual_leads: number | null;
+  expected_revenue: number | null;
+  actual_revenue: number | null;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
 
 function CampaignListPage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { currentCompany } = useCompany(); // Use currentCompany
+  const { showNotification } = useNotification(); // Use showNotification
 
-  // Mock data for campaigns
-  const campaigns = [
-    { id: '1', name: 'Summer Sale 2024', type: 'Email', status: 'Active', budget: 5000, leads: 150, revenue: 12000, startDate: '2024-06-01', endDate: '2024-06-30' },
-    { id: '2', name: 'New Product Launch', type: 'Social Media', status: 'Planning', budget: 3000, leads: 0, revenue: 0, startDate: '2024-07-15', endDate: '2024-08-15' },
-    { id: '3', name: 'Customer Loyalty Program', type: 'Event', status: 'Completed', budget: 10000, leads: 500, revenue: 25000, startDate: '2024-03-01', endDate: '2024-05-31' },
-  ];
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalCampaignsCount, setTotalCampaignsCount] = useState(0); // New state for total count
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // State for confirmation modal
+  const [campaignToDeleteId, setCampaignToDeleteId] = useState<string | null>(null); // State to store ID of campaign to delete
+
+  useEffect(() => {
+    if (currentCompany?.id) {
+      fetchCampaigns();
+    }
+  }, [currentCompany?.id, searchTerm]); // Add searchTerm to dependencies
+
+  const fetchCampaigns = async () => {
+    if (!currentCompany?.id) return;
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('campaigns')
+        .select('*', { count: 'exact' })
+        .eq('company_id', currentCompany.id);
+
+      if (searchTerm) {
+        query = query.ilike('campaign_name', `%${searchTerm}%`);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+      setCampaigns(data || []);
+      setTotalCampaignsCount(count || 0);
+    } catch (err: any) {
+      showNotification(`Error fetching campaigns: ${err.message}`, 'error');
+      console.error('Error fetching campaigns:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCampaign = (campaignId: string) => {
+    setCampaignToDeleteId(campaignId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDeleteId) return;
+
+    setShowDeleteConfirm(false); // Close modal immediately
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', campaignToDeleteId);
+
+      if (error) throw error;
+      showNotification('Campaign deleted successfully!', 'success');
+      fetchCampaigns(); // Refresh list
+    } catch (err: any) {
+      showNotification(`Error deleting campaign: ${err.message}`, 'error');
+      console.error('Error deleting campaign:', err);
+    } finally {
+      setLoading(false);
+      setCampaignToDeleteId(null); // Clear campaign to delete ID
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -44,6 +128,9 @@ function CampaignListPage() {
             <input
               type="text"
               placeholder="Search campaigns by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && fetchCampaigns()}
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
                 ${theme.inputBg} ${theme.textPrimary}
@@ -51,11 +138,17 @@ function CampaignListPage() {
               `}
             />
           </div>
-          <Button icon={<RefreshCw size={16} />}>Refresh</Button>
+          <Button onClick={fetchCampaigns} disabled={loading} icon={<RefreshCw size={16} />}>
+            {loading ? 'Loading...' : 'Refresh'}
+          </Button>
         </div>
 
         <div className="overflow-x-auto">
-          {campaigns.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
+            </div>
+          ) : campaigns.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
               <p>No campaigns found. Create a new campaign to get started.</p>
             </div>
@@ -75,19 +168,19 @@ function CampaignListPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {campaigns.map((campaign) => (
                   <tr key={campaign.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{campaign.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campaign.type}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{campaign.campaign_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campaign.campaign_type}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campaign.status}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{campaign.budget.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campaign.leads}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{campaign.revenue.toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{campaign.budget?.toLocaleString() || '0.00'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campaign.expected_leads} / {campaign.actual_leads}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{campaign.actual_revenue?.toLocaleString() || '0.00'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link to={`/crm/campaigns/edit/${campaign.id}`}>
                         <Button variant="ghost" size="sm" title="Edit">
                           <Edit size={16} />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800" title="Delete">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteCampaign(campaign.id)} className="text-red-600 hover:text-red-800" title="Delete">
                         <Trash2 size={16} />
                       </Button>
                     </td>
@@ -98,8 +191,18 @@ function CampaignListPage() {
           )}
         </div>
       </Card>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteCampaign}
+        title="Confirm Campaign Deletion"
+        message="Are you sure you want to delete this campaign? This action cannot be undone."
+        confirmText="Yes, Delete Campaign"
+      />
     </div>
   );
 }
 
 export default CampaignListPage;
+

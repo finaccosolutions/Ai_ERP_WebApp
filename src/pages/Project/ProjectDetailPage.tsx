@@ -19,6 +19,7 @@ import {
   Shield,
   Tag,
   Info, // ADDED Tag, Info
+  Upload, // For file uploads
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -29,6 +30,9 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import { useParams, useNavigate, Link } from 'react-router-dom'; // Import Link
+import MilestoneForm from '../../components/Project/MilestoneForm'; // NEW: Import MilestoneForm
+import ProjectCommentForm from '../../components/Project/ProjectCommentForm'; // NEW: Import ProjectCommentForm
+import { useAuth } from '../../contexts/AuthContext'; // NEW: Import useAuth
 
 interface Project {
   id: string;
@@ -80,26 +84,57 @@ interface Milestone {
   notes: string | null;
 }
 
+interface DocumentAttachment {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  uploaded_by: string;
+  created_at: string;
+  users: { full_name: string } | null;
+}
+
+interface SalesInvoice {
+  id: string;
+  invoice_no: string;
+  invoice_date: string;
+  total_amount: number;
+  paid_amount: number;
+  outstanding_amount: number;
+  status: string;
+}
+
 function ProjectDetailPage() {
   const { theme } = useTheme();
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
+  const { user } = useAuth(); // NEW: Get current user for comments/uploads
 
   const [project, setProject] = useState<Project | null>(null);
   const [activities, setActivities] = useState<ProjectActivity[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]); // ADDED: Milestones state
+  const [documents, setDocuments] = useState<DocumentAttachment[]>([]); // NEW: Documents state
+  const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>([]); // NEW: Sales Invoices state
+  const [comments, setComments] = useState<any[]>([]); // NEW: Comments state
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMilestoneForm, setShowMilestoneForm] = useState(false); // NEW: State for Milestone Form modal
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null); // NEW: State for editing milestone
 
   useEffect(() => {
     if (projectId && currentCompany?.id) {
       fetchProjectDetails();
       fetchProjectActivities();
-      fetchMilestones(); // ADDED: Fetch milestones
+      fetchMilestones();
+      fetchDocuments(); // NEW: Fetch documents
+      fetchSalesInvoices(); // NEW: Fetch sales invoices
+      fetchComments(); // NEW: Fetch comments
     }
   }, [projectId, currentCompany?.id]);
 
@@ -166,6 +201,61 @@ function ProjectDetailPage() {
       setMilestones(data || []);
     } catch (err: any) {
       console.error('Error fetching milestones:', err);
+    }
+  };
+
+  // NEW: Fetch Documents function
+  const fetchDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('document_attachments')
+        .select(`
+          *,
+          users:user_profiles ( full_name )
+        `)
+        .eq('reference_id', projectId)
+        .eq('reference_type', 'project')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (err: any) {
+      console.error('Error fetching documents:', err);
+    }
+  };
+
+  // NEW: Fetch Sales Invoices function
+  const fetchSalesInvoices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sales_invoices')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('invoice_date', { ascending: false });
+
+      if (error) throw error;
+      setSalesInvoices(data || []);
+    } catch (err: any) {
+      console.error('Error fetching sales invoices:', err);
+    }
+  };
+
+  // NEW: Fetch Comments function
+  const fetchComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('project_comments')
+        .select(`
+          *,
+          users:user_profiles ( full_name )
+        `)
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (err: any) {
+      console.error('Error fetching comments:', err);
     }
   };
 
@@ -244,6 +334,128 @@ function ProjectDetailPage() {
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // NEW: Milestone CRUD Handlers
+  const handleAddMilestone = () => {
+    setEditingMilestone(null);
+    setShowMilestoneForm(true);
+  };
+
+  const handleEditMilestone = (milestone: Milestone) => {
+    setEditingMilestone(milestone);
+    setShowMilestoneForm(true);
+  };
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    if (!confirm('Are you sure you want to delete this milestone?')) return;
+    try {
+      const { error } = await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', milestoneId);
+      if (error) throw error;
+      showNotification('Milestone deleted successfully!', 'success');
+      fetchMilestones();
+    } catch (err: any) {
+      showNotification(`Error deleting milestone: ${err.message}`, 'error');
+      console.error('Error deleting milestone:', err);
+    }
+  };
+
+  const handleMilestoneFormSuccess = () => {
+    setShowMilestoneForm(false);
+    fetchMilestones();
+    showNotification('Milestone saved successfully!', 'success');
+  };
+
+  // NEW: Document Upload Handler
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !project?.id || !user?.id) return;
+
+    setLoading(true);
+    try {
+      const filePath = `${project.id}/${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('project_documents') // Ensure this bucket exists in Supabase Storage
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const publicUrl = supabase.storage.from('project_documents').getPublicUrl(filePath).data.publicUrl;
+
+      const { error: insertError } = await supabase
+        .from('document_attachments')
+        .insert({
+          company_id: currentCompany?.id,
+          reference_type: 'project',
+          reference_id: project.id,
+          file_name: file.name,
+          file_path: publicUrl,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: user.id,
+        });
+
+      if (insertError) throw insertError;
+      showNotification('Document uploaded successfully!', 'success');
+      fetchDocuments();
+    } catch (err: any) {
+      showNotification(`Error uploading document: ${err.message}`, 'error');
+      console.error('Error uploading document:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // NEW: Document Delete Handler
+  const handleDeleteDocument = async (docId: string, filePath: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    setLoading(true);
+    try {
+      // First, delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('project_documents')
+        .remove([filePath.split('/').slice(-2).join('/')]); // Extract path relative to bucket
+
+      if (storageError) console.error('Error deleting file from storage:', storageError);
+
+      // Then, delete from database
+      const { error: dbError } = await supabase
+        .from('document_attachments')
+        .delete()
+        .eq('id', docId);
+
+      if (dbError) throw dbError;
+      showNotification('Document deleted successfully!', 'success');
+      fetchDocuments();
+    } catch (err: any) {
+      showNotification(`Error deleting document: ${err.message}`, 'error');
+      console.error('Error deleting document:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // NEW: Add Comment Handler
+  const handleAddComment = async (commentText: string) => {
+    if (!project?.id || !user?.id || !commentText.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('project_comments')
+        .insert({
+          project_id: project.id,
+          user_id: user.id,
+          comment_text: commentText,
+        });
+      if (error) throw error;
+      showNotification('Comment added successfully!', 'success');
+      fetchComments();
+    } catch (err: any) {
+      showNotification(`Error adding comment: ${err.message}`, 'error');
+      console.error('Error adding comment:', err);
     }
   };
 
@@ -618,8 +830,7 @@ function ProjectDetailPage() {
               >
                 Milestones
               </h3>
-              <Button icon={<Plus size={16} />}>Add Milestone</Button>{' '}
-              {/* Placeholder for Add Milestone */}
+              <Button icon={<Plus size={16} />} onClick={handleAddMilestone}>Add Milestone</Button>
             </div>
             {milestones.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
@@ -645,13 +856,21 @@ function ProjectDetailPage() {
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getMilestoneStatusColor(
-                        milestone.status
-                      )}`}
-                    >
-                      {milestone.status}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getMilestoneStatusColor(
+                          milestone.status
+                        )}`}
+                      >
+                        {milestone.status}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditMilestone(milestone)} title="Edit">
+                        <Edit size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteMilestone(milestone.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -667,27 +886,59 @@ function ProjectDetailPage() {
               Timesheet
             </h3>
             <p className="text-sm text-gray-500">
-              Time logs for tasks will be summarized here.
+              This section summarizes time logged against tasks in this project.
             </p>
-            <Button className="mt-4" icon={<Clock size={16} />}>
-              View Time Logs
-            </Button>
+            <Link to={`/project/${project.id}/tasks`}> {/* Link to tasks list, where time logs are managed */}
+              <Button className="mt-4" icon={<Clock size={16} />}>
+                View Time Logs
+              </Button>
+            </Link>
           </Card>
         )}
 
         {activeTab === 'files' && (
           <Card className="p-6">
-            <h3
-              className={`text-lg font-semibold ${theme.textPrimary} mb-4`}
-            >
-              Files
-            </h3>
-            <p className="text-sm text-gray-500">
-              Project documents and attachments will be managed here.
-            </p>
-            <Button className="mt-4" icon={<Download size={16} />}>
-              Upload File
-            </Button>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>
+                Project Documents
+              </h3>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                id="document-upload"
+                onChange={handleDocumentUpload}
+              />
+              <label htmlFor="document-upload">
+                <Button icon={<Upload size={16} />}>Upload Document</Button>
+              </label>
+            </div>
+            {documents.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No documents uploaded for this project.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <FileText size={20} className="text-gray-600" />
+                      <div>
+                        <a href={doc.file_path} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                          {doc.file_name}
+                        </a>
+                        <p className="text-sm text-gray-600">
+                          {(doc.file_size / 1024).toFixed(2)} KB • Uploaded by {doc.users?.full_name || 'N/A'} on {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteDocument(doc.id, doc.file_path)} className="text-red-600 hover:text-red-800" title="Delete">
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 
@@ -699,11 +950,48 @@ function ProjectDetailPage() {
               Billing & Accounts
             </h3>
             <p className="text-sm text-gray-500">
-              Financial overview and invoicing for this project.
+              This section provides an overview of the project's financial status and linked invoices.
             </p>
-            <Button className="mt-4" icon={<FileText size={16} />}>
-              Create Sales Invoice
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <p className="text-sm text-gray-500">Total Billed Amount</p>
+                <p className="text-xl font-bold text-green-600">
+                  ₹{project.total_billed_amount?.toLocaleString() || '0.00'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Billing Status</p>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.billing_status)}`}>
+                  {project.billing_status.replace(/_/g, ' ')}
+                </span>
+              </div>
+            </div>
+
+            <h4 className={`text-md font-semibold ${theme.textPrimary} mt-6 mb-4`}>Linked Sales Invoices</h4>
+            {salesInvoices.length === 0 ? (
+              <p className="text-sm text-gray-500">No sales invoices linked to this project.</p>
+            ) : (
+              <div className="space-y-3">
+                {salesInvoices.map(invoice => (
+                  <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-900">Invoice #{invoice.invoice_no}</p>
+                      <p className="text-sm text-gray-600">
+                        Date: {invoice.invoice_date} • Amount: ₹{invoice.total_amount?.toLocaleString()}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
+                      {invoice.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link to={`/sales/invoices/create?projectId=${project.id}`}>
+              <Button className="mt-4" icon={<Plus size={16} />}>
+                Create New Invoice for Project
+              </Button>
+            </Link>
           </Card>
         )}
 
@@ -714,12 +1002,21 @@ function ProjectDetailPage() {
             >
               Comments & Notes
             </h3>
-            <p className="text-sm text-gray-500">
-              Collaborators can leave comments and notes here.
-            </p>
-            <Button className="mt-4" icon={<MessageSquare size={16} />}>
-              Add Comment
-            </Button>
+            <div className="space-y-4 max-h-96 overflow-y-auto mb-4">
+              {comments.length === 0 ? (
+                <p className="text-sm text-gray-500">No comments yet. Be the first to add one!</p>
+              ) : (
+                comments.map(comment => (
+                  <div key={comment.id} className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-800">{comment.comment_text}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      By {comment.users?.full_name || 'Unknown User'} on {new Date(comment.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            <ProjectCommentForm projectId={project.id} onSuccess={fetchComments} />
           </Card>
         )}
       </div>
@@ -732,8 +1029,19 @@ function ProjectDetailPage() {
         message="Are you sure you want to delete this project? This action cannot be undone and will also delete all associated tasks, time logs, and comments."
         confirmText="Yes, Delete Project"
       />
+
+      {showMilestoneForm && (
+        <MilestoneForm
+          isOpen={showMilestoneForm}
+          onClose={() => setShowMilestoneForm(false)}
+          projectId={project.id}
+          milestone={editingMilestone}
+          onSuccess={handleMilestoneFormSuccess}
+        />
+      )}
     </div>
   );
 }
 
 export default ProjectDetailPage;
+

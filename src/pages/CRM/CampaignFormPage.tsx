@@ -153,7 +153,7 @@ function CampaignFormPage() {
         expected_revenue: formData.expectedRevenue,
         actual_revenue: formData.actualRevenue,
         description: formData.description,
-        created_by: supabase.auth.getUser().then(res => res.data.user?.id).catch(() => null), // Assuming created_by is current user
+        created_by: (await supabase.auth.getUser()).data.user?.id, // Correctly get user ID
       };
 
       if (formData.id) {
@@ -317,3 +317,4 @@ function CampaignFormPage() {
 }
 
 export default CampaignFormPage;
+

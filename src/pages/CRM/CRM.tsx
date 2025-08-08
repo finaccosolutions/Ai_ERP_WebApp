@@ -1,7 +1,7 @@
 // src/pages/CRM/CRM.tsx
 import React, { useState, useEffect } from 'react';
 import {
-  Users, TrendingUp, Phone, Mail, Plus, Calendar, Clock, Target, FileText, Activity, ChevronRight,
+  Users, TrendingUp, Phone, Mail, Plus, Calendar, Clock, Target, FileText, Activity, ChevronRight, DollarSign,
   ClipboardList, // For Activities List
   Megaphone, // For Campaigns
   BarChart2, // For CRM Reports/Analytics
@@ -24,6 +24,14 @@ import CampaignListPage from './CampaignListPage';
 import CampaignFormPage from './CampaignFormPage';
 // NEW: Placeholder for Activities List
 import ActivityListPage from './ActivityListPage';
+// NEW: Opportunity Pages
+import OpportunityListPage from './OpportunityListPage';
+import OpportunityFormPage from './OpportunityFormPage';
+// NEW: Report Pages
+import LeadsBySourceReportPage from './reports/LeadsBySourceReportPage';
+import DealConversionFunnelReportPage from './reports/DealConversionFunnelReportPage';
+import RevenueByStageReportPage from './reports/RevenueByStageReportPage';
+
 
 function CRM() {
   const { theme } = useTheme();
@@ -40,6 +48,9 @@ function CRM() {
     lostLeads: 0,
     totalCustomers: 0,
     totalOpportunities: 0,
+    openOpportunities: 0, // NEW
+    wonOpportunities: 0, // NEW
+    lostOpportunities: 0, // NEW
     pendingFollowUps: 0,
     overdueFollowUps: 0,
     totalCampaigns: 0, // NEW: Metric for campaigns
@@ -70,7 +81,8 @@ function CRM() {
         // Fallback or show error to user
         setCrmMetrics({
           totalLeads: 0, newLeads: 0, contactedLeads: 0, qualifiedLeads: 0, convertedLeads: 0, lostLeads: 0,
-          totalCustomers: 0, totalOpportunities: 0, pendingFollowUps: 0, overdueFollowUps: 0,
+          totalCustomers: 0, totalOpportunities: 0, openOpportunities: 0, wonOpportunities: 0, lostOpportunities: 0,
+          pendingFollowUps: 0, overdueFollowUps: 0,
           totalCampaigns: 0, totalActivities: 0,
         });
       } else {
@@ -85,13 +97,35 @@ function CRM() {
           totalOpportunities: kpis?.total_opportunities || 0,
           totalCampaigns: kpis?.total_campaigns || 0,
           totalActivities: kpis?.total_activities || 0,
-          // pendingFollowUps and overdueFollowUps might still need a separate query
-          // if they are time-sensitive and not easily aggregated in a static MV.
-          // For now, keeping the existing logic for these two.
+          // Fetch specific opportunity counts
+          openOpportunities: kpis?.total_opportunities || 0, // Placeholder, refine with specific stage counts if MV supports
+          wonOpportunities: 0, // Will be updated by separate query if needed
+          lostOpportunities: 0, // Will be updated by separate query if needed
           pendingFollowUps: 0, // Placeholder, will be updated by activitiesData filter
           overdueFollowUps: 0, // Placeholder, will be updated by activitiesData filter
         });
       }
+
+      // Fetch specific opportunity counts by stage
+      const { data: opportunityStages, error: oppError } = await supabase
+        .from('opportunities')
+        .select('stage', { count: 'exact' })
+        .eq('company_id', companyId);
+
+      if (!oppError && opportunityStages) {
+        const won = opportunityStages.filter(o => o.stage === 'closed_won').length;
+        const lost = opportunityStages.filter(o => o.stage === 'closed_lost').length;
+        const open = opportunityStages.filter(o => o.stage !== 'closed_won' && o.stage !== 'closed_lost').length;
+        setCrmMetrics(prev => ({
+          ...prev,
+          wonOpportunities: won,
+          lostOpportunities: lost,
+          openOpportunities: open,
+        }));
+      } else if (oppError) {
+        console.error('Error fetching opportunity stages:', oppError);
+      }
+
 
       // Fetch Follow-up Activities (still needed for time-sensitive pending/overdue)
       const { data: activitiesData, error: activitiesError } = await supabase
@@ -99,9 +133,7 @@ function CRM() {
         .select('activity_date, status', { count: 'exact' })
         .eq('company_id', companyId)
         .eq('activity_type', 'task') // Assuming follow-ups are tasks
-        .eq('status', 'open') // Only open tasks
-        .gte('activity_date', periodStartDate)
-        .lte('activity_date', periodEndDate);
+        .eq('status', 'open'); // Only open tasks
 
       if (activitiesError) throw activitiesError;
 
@@ -152,7 +184,7 @@ function CRM() {
         { name: 'Leads', icon: Users, path: '/crm/leads', count: crmMetrics.totalLeads, description: 'Track and manage potential customers.' },
         // Pass state to indicate origin is CRM
         { name: 'Customers', icon: Users, path: '/sales/customers', state: { fromCrm: true }, count: crmMetrics.totalCustomers, description: 'Manage existing customer profiles.' }, // Links to Sales Customer Master
-        { name: 'Opportunities', icon: Target, path: '/crm/opportunities/list', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
+        { name: 'Opportunities', icon: Target, path: '/crm/opportunities', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
         { name: 'Activities', icon: Activity, path: '/crm/activities', count: crmMetrics.totalActivities, description: 'Log and manage all customer interactions.' },
       ]
     },
@@ -167,7 +199,9 @@ function CRM() {
       title: 'Analytics & Reports',
       description: 'Gain insights into your CRM performance.',
       modules: [
-        { name: 'CRM Reports', icon: BarChart2, path: '/crm/reports', count: 'N/A', description: 'Access various CRM performance reports.' },
+        { name: 'Leads by Source', icon: BarChart2, path: '/crm/reports/leads-by-source', count: 'N/A', description: 'Analyze lead generation effectiveness.' },
+        { name: 'Deal Conversion Funnel', icon: TrendingUp, path: '/crm/reports/deal-conversion-funnel', count: 'N/A', description: 'Visualize sales pipeline stages.' },
+        { name: 'Revenue by Stage', icon: DollarSign, path: '/crm/reports/revenue-by-stage', count: 'N/A', description: 'Track revenue across opportunity stages.' },
         { name: 'Sales Analysis', icon: TrendingUp, path: '/sales/analysis', count: 'N/A', description: 'Detailed sales performance insights.' }, // Links to Sales Analysis
       ]
     }
@@ -198,9 +232,16 @@ function CRM() {
         <Route path="/campaigns/new" element={<CampaignFormPage />} /> {/* NEW */}
         <Route path="/campaigns/edit/:id" element={<CampaignFormPage />} /> {/* NEW */}
         <Route path="/activities" element={<ActivityListPage />} /> {/* NEW */}
+        <Route path="/activities/new" element={<CampaignFormPage />} /> {/* NEW */}
+        <Route path="/activities/edit/:id" element={<CampaignFormPage />} /> {/* NEW */}
+        <Route path="/opportunities" element={<OpportunityListPage />} /> {/* NEW */}
+        <Route path="/opportunities/new" element={<OpportunityFormPage />} /> {/* NEW */}
+        <Route path="/opportunities/edit/:id" element={<OpportunityFormPage />} /> {/* NEW */}
         {/* Add other CRM sub-routes here (e.g., opportunities, campaigns) */}
         <Route path="/customers/*" element={<div>CRM Customers Page</div>} /> {/* Link to Sales Customers for now */}
-        <Route path="/opportunities/*" element={<div>CRM Opportunities Page</div>} />
+        <Route path="/reports/leads-by-source" element={<LeadsBySourceReportPage />} /> {/* NEW */}
+        <Route path="/reports/deal-conversion-funnel" element={<DealConversionFunnelReportPage />} /> {/* NEW */}
+        <Route path="/reports/revenue-by-stage" element={<RevenueByStageReportPage />} /> {/* NEW */}
         <Route path="/reports/*" element={<div>CRM Reports Page</div>} />
       </Routes>
     );
@@ -225,15 +266,11 @@ function CRM() {
         </div>
       </div>
 
-      {/* CRM Metrics - Simplified and integrated into modules below */}
-
-      {/* CRM Modules Section */}
       {/* CRM Modules Section */}
       {crmModules.map((category, catIndex) => (
         <div key={catIndex} className="space-y-4">
           <h2 className={`text-2xl font-bold ${theme.textPrimary} mt-8`}>{category.title}</h2>
           <p className={theme.textSecondary}>{category.description}</p>
-          {/* MODIFIED: Change lg:grid-cols-3 to lg:grid-cols-4 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {category.modules.map((module, moduleIndex) => {
               const Icon = module.icon;
@@ -347,6 +384,32 @@ function CRM() {
         </Card>
       </div>
 
+      {/* Opportunities Pipeline */}
+      <Card className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Opportunities Pipeline</h3>
+          <Link to="/crm/opportunities" className="text-sm text-cyan-600 hover:text-cyan-800 flex items-center">
+            View All Opportunities <ChevronRight size={16} />
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {[
+            { label: 'Open', count: crmMetrics.openOpportunities, color: 'bg-blue-100 text-blue-800' },
+            { label: 'Won', count: crmMetrics.wonOpportunities, color: 'bg-green-100 text-green-800' },
+            { label: 'Lost', count: crmMetrics.lostOpportunities, color: 'bg-red-100 text-red-800' },
+          ].map((stage, index) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">{stage.label}</p>
+              </div>
+              <span className={`px-2 py-1 text-xs rounded-full ${stage.color}`}>
+                {loadingMetrics ? '...' : stage.count} Opportunities
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       {/* Quick Access Buttons */}
       <Card className="p-6">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Quick Actions</h3>
@@ -383,3 +446,4 @@ function CRM() {
 }
 
 export default CRM;
+

@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'; // NEW: Import Recharts components
 
 // Import Project sub-pages
 import ProjectListPage from './ProjectListPage';
@@ -84,6 +85,10 @@ function Project() {
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [activeProjectTab, setActiveProjectTab] = useState('overview'); // NEW: State for active tab
 
+  // NEW: Chart Data States
+  const [projectsByTypeData, setProjectsByTypeData] = useState<any[]>([]);
+  const [timeTrackingTodayData, setTimeTrackingTodayData] = useState<any[]>([]);
+
   const moduleColors = [
     { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
     { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
@@ -101,6 +106,8 @@ function Project() {
     if (currentCompany?.id && currentPeriod?.id) {
       fetchProjectData(currentCompany.id, currentPeriod.startDate, currentPeriod.endDate);
       fetchUpcomingRecurringJobs(currentCompany.id);
+      fetchProjectsByTypeData(currentCompany.id); // NEW: Fetch chart data
+      fetchTimeTrackingTodayData(currentCompany.id); // NEW: Fetch chart data
     }
   }, [currentCompany?.id, currentPeriod?.id]);
 
@@ -223,6 +230,76 @@ function Project() {
       setUpcomingRecurringJobs(data || []);
     } catch (err: any) {
       console.error('Error fetching upcoming recurring jobs:', err);
+    }
+  };
+
+  // NEW: Fetch data for Projects by Type Chart
+  const fetchProjectsByTypeData = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          status,
+          project_categories ( name )
+        `)
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const statusCounts: { [key: string]: number } = {};
+      const categoryCounts: { [key: string]: number } = {};
+
+      data.forEach(project => {
+        statusCounts[project.status] = (statusCounts[project.status] || 0) + 1;
+        const categoryName = project.project_categories?.name || 'Uncategorized';
+        categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
+      });
+
+      const formattedStatusData = Object.keys(statusCounts).map(status => ({
+        name: status.replace(/_/g, ' '),
+        value: statusCounts[status],
+      }));
+
+      const formattedCategoryData = Object.keys(categoryCounts).map(category => ({
+        name: category,
+        value: categoryCounts[category],
+      }));
+
+      setProjectsByTypeData(formattedCategoryData); // Using category data for the pie chart
+    } catch (err) {
+      console.error('Error fetching projects by type data:', err);
+    }
+  };
+
+  // NEW: Fetch data for Time Tracking Today Chart
+  const fetchTimeTrackingTodayData = async (companyId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('time_logs')
+        .select(`
+          duration_minutes,
+          employees ( first_name, last_name )
+        `)
+        .gte('start_time', today)
+        .lte('start_time', `${today}T23:59:59.999Z`); // End of today
+
+      if (error) throw error;
+
+      const employeeTime: { [key: string]: number } = {};
+      data.forEach(log => {
+        const employeeName = log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : 'Unassigned';
+        employeeTime[employeeName] = (employeeTime[employeeName] || 0) + (log.duration_minutes || 0);
+      });
+
+      const formattedTimeData = Object.keys(employeeTime).map(name => ({
+        name: name,
+        hours: parseFloat((employeeTime[name] / 60).toFixed(1)), // Convert minutes to hours
+      }));
+
+      setTimeTrackingTodayData(formattedTimeData);
+    } catch (err) {
+      console.error('Error fetching time tracking today data:', err);
     }
   };
 
@@ -433,6 +510,25 @@ function Project() {
       case 'billing': return 'border-emerald-500';
       default: return theme.borderColor;
     }
+  };
+
+  // NEW: Custom Tooltip for Recharts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={`
+          ${theme.cardBg} border ${theme.borderColor} rounded-lg p-3 shadow-lg
+        `}>
+          {label && <p className={`${theme.textPrimary} font-medium mb-1`}>{label}</p>}
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -741,20 +837,54 @@ function Project() {
                       <Clock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
                       Time Tracking Today
                     </h3>
-                    <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-                      <p>Timesheet summary for today will appear here.</p>
-                    </div>
+                    {timeTrackingTodayData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={timeTrackingTodayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={theme.borderColor} />
+                          <XAxis dataKey="name" stroke={theme.textMuted} />
+                          <YAxis stroke={theme.textMuted} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: theme.textMuted }} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar dataKey="hours" fill="#8884d8" radius={[5, 5, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
+                        <p>No time logs for today.</p>
+                      </div>
+                    )}
                   </Card>
 
                   {/* Projects by Type Chart */}
                   <Card className="p-6 lg:col-span-2">
                     <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
                       <BarChart3 size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      Projects by Type
+                      Projects by Category
                     </h3>
-                    <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-                      <p>Bar/Donut chart showing project distribution by type will appear here.</p>
-                    </div>
+                    {projectsByTypeData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={projectsByTypeData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {projectsByTypeData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={moduleColors[index % moduleColors.length].iconBg} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
+                        <p>No project category data available.</p>
+                      </div>
+                    )}
                   </Card>
                 </div>
               </>
@@ -941,3 +1071,4 @@ function Project() {
 }
 
 export default Project;
+
