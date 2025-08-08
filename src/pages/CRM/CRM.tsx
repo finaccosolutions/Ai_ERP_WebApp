@@ -152,7 +152,7 @@ function CRM() {
         { name: 'Leads', icon: Users, path: '/crm/leads', count: crmMetrics.totalLeads, description: 'Track and manage potential customers.' },
         // Pass state to indicate origin is CRM
         { name: 'Customers', icon: Users, path: '/sales/customers', state: { fromCrm: true }, count: crmMetrics.totalCustomers, description: 'Manage existing customer profiles.' }, // Links to Sales Customer Master
-        { name: 'Opportunities', icon: Target, path: '/crm/opportunities', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
+        { name: 'Opportunities', icon: Target, path: '/crm/opportunities/list', count: crmMetrics.totalOpportunities, description: 'Track sales opportunities and deals.' },
         { name: 'Activities', icon: Activity, path: '/crm/activities', count: crmMetrics.totalActivities, description: 'Log and manage all customer interactions.' },
       ]
     },
@@ -364,6 +364,11 @@ function CRM() {
           <Link to="/crm/campaigns/new">
             <Button variant="outline" className="w-full justify-start" icon={<Megaphone size={16} />}>
               Create New Campaign
+            </Button>
+          </Link>
+          <Link to="/crm/opportunities/new">
+            <Button variant="outline" className="w-full justify-start" icon={<Target size={16} />}>
+              Add New Opportunity
             </Button>
           </Link>
           <Link to="/crm/activities/new">
