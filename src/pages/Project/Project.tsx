@@ -2,47 +2,51 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Plus, Search, Filter, Users, Calendar, Clock, DollarSign, FileText, BarChart3, CheckCircle,
-  TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown, Layers,
-  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, Mic, RefreshCw // Added Mic, RefreshCw, PlusSquare
+  TrendingUp, AlertTriangle, Lightbulb, LayoutGrid, List, ChevronDown, Layers, Flag,
+  ArrowLeft, Edit, Trash2, Download, MessageSquare, Bot, Zap, Brain, PlusSquare, Mic, RefreshCw,
+  Tag, // For Project Categories
+  Scale, // For Billing
+  BookOpen, // For Reports
+  Settings // For Masters
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
-import FormField from '../../components/UI/FormField'; // Added FormField for search input
+import FormField from '../../components/UI/FormField';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom'; // Import Link
+import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
-// NEW: Import Project sub-pages
+// Import Project sub-pages
 import ProjectListPage from './ProjectListPage';
 import ProjectFormPage from './ProjectFormPage';
 import TaskListPage from './TaskListPage';
 import TaskFormPage from './TaskFormPage';
 import TimeLogPage from './TimeLogPage';
 import ProjectDetailPage from './ProjectDetailPage';
-import ProjectCategoryFormPage from './ProjectCategoryFormPage'; 
-import ProjectCategoryListPage from './ProjectCategoryListPage'; 
+import ProjectCategoryFormPage from './ProjectCategoryFormPage';
+import ProjectCategoryListPage from './ProjectCategoryListPage';
 
 interface ProjectData {
   id: string;
   project_name: string;
   customer_id: string | null;
   start_date: string;
-  actual_due_date: string; // Changed from due_date
+  actual_due_date: string;
   status: string;
   progress_percentage: number | null;
-  project_category_id: string | null; // NEW
-  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null; // NEW
+  project_category_id: string | null;
+  project_categories?: { name: string; is_recurring_category: boolean; recurrence_frequency: string | null; recurrence_due_day: number | null; recurrence_due_month: number | null; billing_type: string; } | null;
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
-  priority: string | null; // ADDED: priority
-  tags: string[] | null; // ADDED: tags
-  expected_value: number | null; // ADDED: expected_value
-  billing_status: string; // NEW: Added billing_status
-  total_billed_amount: number; // NEW: Added total_billed_amount
+  priority: string | null;
+  tags: string[] | null;
+  expected_value: number | null;
+  billing_status: string;
+  total_billed_amount: number;
 }
 
 function Project() {
@@ -59,28 +63,27 @@ function Project() {
     overdue: 0,
     recurringJobs: 0,
     upcomingDue: 0,
-    customerWise: 0, // NEW
-    categoryWise: 0, // NEW
-    nonRecurring: 0, // NEW
-    totalFixedPriceValue: 0, // ADDED: Total Fixed Price Value
-    totalTimeBasedValue: 0, // ADDED: Total Time Based Value
-    totalBilledAmount: 0, // NEW: Total Billed Amount
-    totalBillableTasks: 0, // NEW: Total Billable Tasks
-    totalBilledTasksAmount: 0, // NEW: Total Billed Tasks Amount
-    totalTimeLoggedCost: 0, // NEW: Total Time Logged Cost
+    customerWise: 0,
+    categoryWise: 0,
+    nonRecurring: 0,
+    totalFixedPriceValue: 0,
+    totalTimeBasedValue: 0,
+    totalBilledAmount: 0,
+    totalBillableTasks: 0,
+    totalBilledTasksAmount: 0,
+    totalTimeLoggedCost: 0,
   });
   const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({});
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(''); // State for search input
-  const [isVoiceActive, setIsVoiceActive] = useState(false); // State for voice search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
 
-  // FAB state
   const [showFabMenu, setShowFabMenu] = useState(false);
+  const [activeProjectTab, setActiveProjectTab] = useState('overview'); // NEW: State for active tab
 
-  // Define a set of distinct colors for tiles and pipeline sections
   const moduleColors = [
     { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
     { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
@@ -104,16 +107,14 @@ function Project() {
   const fetchProjectData = async (companyId: string, periodStartDate: string, periodEndDate: string) => {
     setLoading(true);
     try {
-      // MODIFIED: Query the materialized view for aggregated metrics
       const { data: kpis, error: kpisError } = await supabase
-        .from('company_project_kpis') // Query the materialized view
+        .from('company_project_kpis')
         .select('*')
         .eq('company_id', companyId)
         .single();
 
       if (kpisError) {
         console.error('Project.tsx: Error fetching KPIs from materialized view:', kpisError);
-        // Fallback or show error to user
         setProjectStats({
           totalProjects: 0, inProgress: 0, completed: 0, overdue: 0,
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
@@ -125,22 +126,21 @@ function Project() {
           totalProjects: kpis?.total_projects || 0,
           inProgress: kpis?.projects_in_progress || 0,
           completed: kpis?.projects_completed || 0,
-          overdue: 0, // Needs separate calculation or specific MV field
+          overdue: 0,
           recurringJobs: kpis?.total_recurring_projects || 0,
-          upcomingDue: 0, // Needs separate calculation or specific MV field
-          customerWise: 0, // Needs specific MV field
-          categoryWise: 0, // Needs specific MV field
+          upcomingDue: 0,
+          customerWise: 0,
+          categoryWise: 0,
           nonRecurring: kpis?.total_one_time_projects || 0,
-          totalFixedPriceValue: kpis?.total_fixed_price_value || 0, // ADDED
-          totalTimeBasedValue: kpis?.total_time_based_value || 0, // ADDED
-          totalBilledAmount: kpis?.total_billed_amount || 0, // NEW
-          totalBillableTasks: kpis?.total_billable_tasks || 0, // NEW
-          totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0, // NEW
-          totalTimeLoggedCost: kpis?.total_time_logged_cost || 0, // NEW
+          totalFixedPriceValue: kpis?.total_fixed_price_value || 0,
+          totalTimeBasedValue: kpis?.total_time_based_value || 0,
+          totalBilledAmount: kpis?.total_billed_amount || 0,
+          totalBillableTasks: kpis?.total_billable_tasks || 0,
+          totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0,
+          totalTimeLoggedCost: kpis?.total_time_logged_cost || 0,
         });
       }
 
-      // MODIFIED: Fetch projects for Kanban and detailed stats (overdue, upcoming due)
       const { data: projects, error } = await supabase
         .from('projects')
         .select(`
@@ -188,7 +188,6 @@ function Project() {
         }
       });
 
-      // Update specific stats that are not in the MV or require client-side logic
       setProjectStats(prev => ({
         ...prev,
         overdue: overdueCount,
@@ -216,8 +215,8 @@ function Project() {
           project_categories ( name, is_recurring_category, recurrence_frequency, recurrence_due_day, recurrence_due_month, billing_type )
         `)
         .eq('company_id', companyId)
-        .eq('project_categories.is_recurring_category', true) // Filter by category recurrence
-        .order('actual_due_date', { ascending: true }) // Changed to actual_due_date
+        .eq('project_categories.is_recurring_category', true)
+        .order('actual_due_date', { ascending: true })
         .limit(10);
 
       if (error) throw error;
@@ -230,17 +229,16 @@ function Project() {
   const generateAIInsights = async (companyId: string) => {
     setRefreshingInsights(true);
     try {
-      // Mock AI insights for project management
       const insights = {
         predictions: [
           { type: 'alert', title: 'Projects Nearing Deadline', message: `${projectStats.upcomingDue} projects are due in the next 7 days. Review their progress.`, confidence: 'high', impact: 'high', actionable: true, action: 'View Upcoming Projects' },
           { type: 'suggestion', title: 'Overdue Project Follow-up', message: `You have ${projectStats.overdue} overdue projects. Consider sending automated reminders to customers or re-assigning tasks.`, confidence: 'high', impact: 'high', actionable: true, action: 'View Overdue Projects' },
           { type: 'trend', title: 'Project Completion Rate', message: 'Your project completion rate has improved by 15% this quarter. Keep up the good work!', confidence: 'medium', impact: 'low', actionable: false },
-          { type: 'info', title: 'Fixed Price Project Value', message: `Total expected value from fixed-price projects: ₹${projectStats.totalFixedPriceValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
-          { type: 'info', title: 'Time-Based Project Value', message: `Total expected value from time-based projects: ₹${projectStats.totalTimeBasedValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // ADDED
-          { type: 'info', title: 'Total Billed Amount', message: `Total amount billed across all projects: ₹${projectStats.totalBilledAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
-          { type: 'info', title: 'Billable Tasks', message: `You have ${projectStats.totalBillableTasks} billable tasks. Total billed amount from tasks: ₹${projectStats.totalBilledTasksAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
-          { type: 'info', title: 'Total Time Logged Cost', message: `Total cost of time logged across all projects: ₹${projectStats.totalTimeLoggedCost.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false }, // NEW
+          { type: 'info', title: 'Fixed Price Project Value', message: `Total expected value from fixed-price projects: ₹${projectStats.totalFixedPriceValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false },
+          { type: 'info', title: 'Time-Based Project Value', message: `Total expected value from time-based projects: ₹${projectStats.totalTimeBasedValue.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false },
+          { type: 'info', title: 'Total Billed Amount', message: `Total amount billed across all projects: ₹${projectStats.totalBilledAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false },
+          { type: 'info', title: 'Billable Tasks', message: `You have ${projectStats.totalBillableTasks} billable tasks. Total billed amount from tasks: ₹${projectStats.totalBilledTasksAmount.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false },
+          { type: 'info', title: 'Time Logged Cost', message: `Total cost of time logged across all projects: ₹${projectStats.totalTimeLoggedCost.toLocaleString()}.`, confidence: 'high', impact: 'low', actionable: false },
         ]
       };
 
@@ -346,9 +344,9 @@ function Project() {
         <Route path="/:projectId/tasks/new" element={<TaskFormPage />} />
         <Route path="/:projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
         <Route path="/:projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
-        <Route path="/categories" element={<ProjectCategoryListPage />} /> {/* NEW */}
-        <Route path="/categories/new" element={<ProjectCategoryFormPage />} /> {/* NEW */}
-        <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} /> {/* NEW */}
+        <Route path="/categories" element={<ProjectCategoryListPage />} />
+        <Route path="/categories/new" element={<ProjectCategoryFormPage />} />
+        <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} />
       </Routes>
     );
   }
@@ -370,9 +368,75 @@ function Project() {
     { id: 'closed', name: 'Closed' },
   ];
 
+  // NEW: Project Categories for tab navigation
+  const projectCategories = [
+    {
+      id: 'overview',
+      name: 'Overview',
+      icon: LayoutGrid,
+      modules: [
+        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, filter: 'all' },
+        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, filter: 'not_started' },
+        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, filter: 'in_progress' },
+        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, filter: 'completed' },
+        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, filter: 'upcoming_due' },
+        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
+        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, filter: 'billingType=fixed_price' },
+        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, filter: 'billingType=time_based' },
+        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, filter: 'billing_status=billed' },
+        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, filter: 'task_billing_status=billed' },
+        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, filter: 'isRecurring=true' },
+        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, filter: 'isRecurring=false' },
+        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, filter: 'is_billable=true' },
+        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, filter: 'time_logged_cost' },
+      ]
+    },
+    {
+      id: 'masters',
+      name: 'Masters',
+      icon: Settings,
+      modules: [
+        { name: 'Project List', description: 'Manage all your projects.', icon: ClipboardCheck, path: '/project/list' },
+        { name: 'Project Categories', description: 'Define and manage project types.', icon: Layers, path: '/project/categories' },
+        { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/all-tasks' }, // Placeholder for all tasks
+        { name: 'Milestones', description: 'Track key project milestones.', icon: Flag, path: '/project/milestones' }, // Placeholder for milestones list
+        { name: 'Team Members', description: 'Manage project team members.', icon: Users, path: '/project/team-members' }, // Placeholder for team members list
+      ]
+    },
+    {
+      id: 'reports',
+      name: 'Reports',
+      icon: BookOpen,
+      modules: [
+        { name: 'Project Performance', description: 'Analyze project health and progress.', icon: BarChart3, path: '/project/reports/performance' },
+        { name: 'Time Log Reports', description: 'Summarize time spent on projects/tasks.', icon: Clock, path: '/project/reports/time-logs' },
+        { name: 'Billing Reports', description: 'Review project billing and revenue.', icon: DollarSign, path: '/project/reports/billing' },
+      ]
+    },
+    {
+      id: 'billing',
+      name: 'Billing',
+      icon: Scale,
+      modules: [
+        { name: 'Project Billing Entries', description: 'Record project-specific billing.', icon: FileText, path: '/project/billing/entries' },
+        { name: 'Generate Invoices', description: 'Create invoices from projects/tasks.', icon: FileText, path: '/sales/invoices/create' }, // Links to Sales Invoice creation
+        { name: 'View Invoices', description: 'View all project-related invoices.', icon: FileText, path: '/sales/invoices' }, // Links to Sales Invoices list
+      ]
+    }
+  ];
+
+  const getActiveTabBorderColor = (tabId: string) => {
+    switch (tabId) {
+      case 'overview': return 'border-pink-500';
+      case 'masters': return 'border-purple-500';
+      case 'reports': return 'border-blue-500';
+      case 'billing': return 'border-emerald-500';
+      default: return theme.borderColor;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Enhanced Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
           <h1 className={`text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-transparent bg-clip-text drop-shadow-lg`}>
@@ -382,7 +446,6 @@ function Project() {
             Manage your projects, tasks, and time tracking
           </p>
         </div>
-        {/* MODIFIED: Search bar and refresh button */}
         <div className="flex space-x-2">
           <div className="relative flex-1 max-w-md">
             <Search
@@ -428,7 +491,6 @@ function Project() {
         </div>
       </div>
 
-      {/* AI Insights Banner */}
       {aiInsights.length > 0 && (
         <Card className="p-4 bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 border-l-4 border-l-[${theme.hoverAccent}]">
           <div className="flex items-center justify-between">
@@ -446,156 +508,394 @@ function Project() {
         </Card>
       )}
 
-      {/* Summary Tiles Section - MODIFIED */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"> {/* Adjusted grid for single row */}
-        {[
-          { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, filter: 'all' },
-          { name: 'Not Started', value: projectStats.inProgress, icon: Clock, filter: 'not_started' }, // Changed to Not Started
-          { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, filter: 'in_progress' },
-          { name: 'Completed', value: projectStats.completed, icon: CheckCircle, filter: 'completed' },
-          { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, filter: 'upcoming_due' },
-          { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
-          { name: 'Recurring', value: projectStats.recurringJobs, icon: Zap, filter: 'isRecurring=true' }, // NEW
-          { name: 'Non-Recurring', value: projectStats.nonRecurring, icon: Calendar, filter: 'isRecurring=false' }, // NEW
-          { name: 'Customer-wise', value: projectStats.customerWise, icon: Users, filter: 'customerWise=true' }, // NEW
-          { name: 'Category-wise', value: projectStats.categoryWise, icon: Layers, filter: 'categoryWise=true' }, // NEW
-          { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, filter: 'billingType=fixed_price' }, // ADDED
-          { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, filter: 'billingType=time_based' }, // ADDED
-          { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, filter: 'billing_status=billed' }, // NEW
-          { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, filter: 'is_billable=true' }, // NEW
-          { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, filter: 'task_billing_status=billed' }, // NEW
-          { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, filter: 'time_logged_cost' }, // NEW
-        ].map((tile, index) => {
-          const Icon = tile.icon;
-          const colors = moduleColors[index % moduleColors.length]; // Use distinct colors
-          return (
-            <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
-              <Card
-                hover
-                className={`
-                  p-3 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                  ${colors.cardBg}
-                  transform transition-all duration-300 ease-in-out
-                  hover:translate-y-[-4px] hover:shadow-xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                `}
-                backgroundIcon={<Icon size={80} className={`text-gray-300 opacity-20`} />}
-              >
-                <div className="relative z-10">
-                  <h3 className={`text-base font-bold ${colors.textColor}`}>{tile.name}</h3>
-                  <p className={`text-2xl font-extrabold mt-1 ${colors.textColor}`}>{tile.value}</p>
-                </div>
-                <div className="flex items-center justify-end mt-2 relative z-10">
-                  <div className={`
-                    p-2 rounded-xl shadow-md
-                    ${colors.iconBg} text-white
-                    group-hover:scale-110 transition-transform duration-300
-                  `}>
-                    <Icon size={20} />
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          );
-        })}
+      {/* NEW: Tab Navigation */}
+      <div className="flex flex-wrap justify-center md:justify-start gap-2">
+        {projectCategories.map((category) => (
+          <button
+            key={category.id}
+            onClick={() => setActiveProjectTab(category.id)}
+            className={`
+              flex-1 px-6 py-3 text-sm font-semibold transition-all duration-300 ease-in-out
+              ${
+                activeProjectTab === category.id
+                  ? `bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg transform scale-105 border border-pink-700 rounded-t-lg rounded-b-none`
+                  : `bg-gray-100 text-gray-700 hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-md border border-gray-200 rounded-lg`
+              }
+            `}
+          >
+            {category.name}
+          </button>
+        ))}
       </div>
 
-      {/* Visual Project Pipeline - MODIFIED */}
-      <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"> {/* Adjusted grid for more columns */}
-          {projectKanbanStatuses.map((statusCol, colIndex) => {
-            const colors = moduleColors[colIndex % moduleColors.length]; // Use distinct colors for columns
-            return (
-              <div key={statusCol.id} className={`flex-shrink-0 p-4 rounded-lg shadow-sm ${colors.cardBg}`}> {/* Applied color to column */}
-                <h4 className={`font-semibold text-lg mb-3 flex items-center ${colors.textColor}`}> {/* Applied color to header */}
-                  <span className={`w-3 h-3 rounded-full mr-2 ${colors.iconBg.replace('bg-', 'bg-')}`} /> {/* Status indicator color */}
-                  {statusCol.name} ({kanbanProjects[statusCol.id]?.length || 0})
-                </h4>
-                <div className="space-y-3 min-h-[100px]">
-                  {kanbanProjects[statusCol.id]?.slice(0, 5).map(project => ( /* Limited to 5 items */
-                    <Card key={project.id} className="p-3" hover>
-                      <Link to={`/project/${project.id}/details`}>
-                        <p className="font-medium text-gray-900">{project.project_name}</p>
-                        <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p> {/* NEW: Display customer name */}
-                        <p className="text-xs text-gray-500">{project.project_categories?.name || 'N/A'}</p> {/* NEW: Display category name */}
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-2.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
-                        </div>
-                        <span className="text-xs text-gray-500 mt-1 block">{project.progress_percentage || 0}% Complete</span>
-                        {project.actual_due_date && ( // Changed to actual_due_date
-                          <p className="text-xs text-gray-500 mt-1">Due: {project.actual_due_date} ({calculateDaysLeft(project.actual_due_date)})</p> // Changed to actual_due_date
-                        )}
+      {/* NEW: Tab Content */}
+      {projectCategories.map((category) => (
+        <div
+          key={category.id}
+          className={`${activeProjectTab === category.id ? 'block' : 'hidden'}`}
+        >
+          <Card
+            className={`
+            p-6 space-y-4 rounded-t-none rounded-b-lg
+            border-t-4 ${getActiveTabBorderColor(category.id)}
+            bg-white shadow-lg
+          `}
+          >
+            <h2 className={`text-2xl font-bold ${theme.textPrimary}`}>
+              {category.name}
+            </h2>
+            <p className={theme.textSecondary}>Explore {category.name.toLowerCase()} modules.</p>
+
+            {category.id === 'overview' && (
+              <>
+                {/* Project Summary Section */}
+                <h3 className={`text-xl font-bold ${theme.textPrimary} mt-8`}>Project Summary</h3>
+                <p className={theme.textSecondary}>Key metrics for your projects.</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {projectCategories[0].modules.slice(0, 6).map((tile, index) => { // First 6 tiles
+                    const Icon = tile.icon;
+                    const colors = moduleColors[index % moduleColors.length];
+                    return (
+                      <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-3 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-4px] hover:shadow-xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                          backgroundIcon={<Icon size={80} className={`text-gray-300 opacity-20`} />}
+                        >
+                          <div className="relative z-10">
+                            <h3 className={`text-base font-bold ${colors.textColor}`}>{tile.name}</h3>
+                            <p className={`text-2xl font-extrabold mt-1 ${colors.textColor}`}>{tile.value}</p>
+                          </div>
+                          <div className="flex items-center justify-end mt-2 relative z-10">
+                            <div className={`
+                              p-2 rounded-xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-110 transition-transform duration-300
+                            `}>
+                              <Icon size={20} />
+                            </div>
+                          </div>
+                        </Card>
                       </Link>
-                    </Card>
-                  ))}
-                  {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length === 0 && (
-                    <div className="text-center text-gray-400 text-sm py-8">No projects</div>
-                  )}
-                  {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length > 5 && (
-                    <Link to={`/project/list?status=${statusCol.id}`} className="block text-center text-sm text-blue-600 hover:underline mt-2">
-                      View All ({kanbanProjects[statusCol.id].length})
-                    </Link>
-                  )}
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
 
-      {/* Quick Panels Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recurring Schedule */}
-        <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Zap size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-            Upcoming Recurring Jobs
-          </h3>
-          <div className="space-y-3">
-            {upcomingRecurringJobs.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No upcoming recurring jobs.
-              </div>
-            ) : (
-              upcomingRecurringJobs.map((job, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{job.project_name}</p>
-                    <p className="text-sm text-gray-600">
-                      {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency}) {/* Changed to actual_due_date and project_categories */}
-                    </p>
+                {/* Financial Overview Section */}
+                <h3 className={`text-xl font-bold ${theme.textPrimary} mt-8`}>Financial Overview</h3>
+                <p className={theme.textSecondary}>Financial performance and billing status.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {projectCategories[0].modules.slice(6, 10).map((tile, index) => { // Next 4 tiles
+                    const Icon = tile.icon;
+                    const colors = moduleColors[(index + 6) % moduleColors.length];
+                    return (
+                      <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-3 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-4px] hover:shadow-xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                          backgroundIcon={<Icon size={80} className={`text-gray-300 opacity-20`} />}
+                        >
+                          <div className="relative z-10">
+                            <h3 className={`text-base font-bold ${colors.textColor}`}>{tile.name}</h3>
+                            <p className={`text-2xl font-extrabold mt-1 ${colors.textColor}`}>{tile.value}</p>
+                          </div>
+                          <div className="flex items-center justify-end mt-2 relative z-10">
+                            <div className={`
+                              p-2 rounded-xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-110 transition-transform duration-300
+                            `}>
+                              <Icon size={20} />
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Project Tracking Section */}
+                <h3 className={`text-xl font-bold ${theme.textPrimary} mt-8`}>Project Tracking</h3>
+                <p className={theme.textSecondary}>Insights into project types and time logging.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {projectCategories[0].modules.slice(10, 14).map((tile, index) => { // Last 4 tiles
+                    const Icon = tile.icon;
+                    const colors = moduleColors[(index + 10) % moduleColors.length];
+                    return (
+                      <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-3 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-4px] hover:shadow-xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                          backgroundIcon={<Icon size={80} className={`text-gray-300 opacity-20`} />}
+                        >
+                          <div className="relative z-10">
+                            <h3 className={`text-base font-bold ${colors.textColor}`}>{tile.name}</h3>
+                            <p className={`text-2xl font-extrabold mt-1 ${colors.textColor}`}>{tile.value}</p>
+                          </div>
+                          <div className="flex items-center justify-end mt-2 relative z-10">
+                            <div className={`
+                              p-2 rounded-xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-110 transition-transform duration-300
+                            `}>
+                              <Icon size={20} />
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Visual Project Pipeline */}
+                <Card className="p-6 mt-8">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {projectKanbanStatuses.map((statusCol, colIndex) => {
+                      const colors = moduleColors[colIndex % moduleColors.length];
+                      return (
+                        <div key={statusCol.id} className={`flex-shrink-0 p-4 rounded-lg shadow-sm ${colors.cardBg}`}>
+                          <h4 className={`font-semibold text-lg mb-3 flex items-center ${colors.textColor}`}>
+                            <span className={`w-3 h-3 rounded-full mr-2 ${colors.iconBg.replace('bg-', 'bg-')}`} />
+                            {statusCol.name} ({kanbanProjects[statusCol.id]?.length || 0})
+                          </h4>
+                          <div className="space-y-3 min-h-[100px]">
+                            {kanbanProjects[statusCol.id]?.slice(0, 5).map(project => (
+                              <Card key={project.id} className="p-3" hover>
+                                <Link to={`/project/${project.id}/details`}>
+                                  <p className="font-medium text-gray-900">{project.project_name}</p>
+                                  <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p>
+                                  <p className="text-xs text-gray-500">{project.project_categories?.name || 'N/A'}</p>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                    <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-2.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500 mt-1 block">{project.progress_percentage || 0}% Complete</span>
+                                  {project.actual_due_date && (
+                                    <p className="text-xs text-gray-500 mt-1">Due: {project.actual_due_date} ({calculateDaysLeft(project.actual_due_date)})</p>
+                                  )}
+                                </Link>
+                              </Card>
+                            ))}
+                            {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length === 0 && (
+                              <div className="text-center text-gray-400 text-sm py-8">No projects</div>
+                            )}
+                            {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length > 5 && (
+                              <Link to={`/project/list?status=${statusCol.id}`} className="block text-center text-sm text-blue-600 hover:underline mt-2">
+                                View All ({kanbanProjects[statusCol.id].length})
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <Button size="sm" variant="outline">View</Button>
+                </Card>
+
+                {/* Quick Panels Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  {/* Recurring Schedule */}
+                  <Card className="p-6">
+                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+                      <Zap size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                      Upcoming Recurring Jobs
+                    </h3>
+                    <div className="space-y-3">
+                      {upcomingRecurringJobs.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          No upcoming recurring jobs.
+                        </div>
+                      ) : (
+                        upcomingRecurringJobs.map((job, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-medium text-gray-900">{job.project_name}</p>
+                              <p className="text-sm text-gray-600">
+                                {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency})
+                              </p>
+                            </div>
+                            <Button size="sm" variant="outline">View</Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Time Tracking Today */}
+                  <Card className="p-6">
+                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+                      <Clock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                      Time Tracking Today
+                    </h3>
+                    <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
+                      <p>Timesheet summary for today will appear here.</p>
+                    </div>
+                  </Card>
+
+                  {/* Projects by Type Chart */}
+                  <Card className="p-6 lg:col-span-2">
+                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
+                      <BarChart3 size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                      Projects by Type
+                    </h3>
+                    <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
+                      <p>Bar/Donut chart showing project distribution by type will appear here.</p>
+                    </div>
+                  </Card>
                 </div>
-              ))
+              </>
             )}
-          </div>
-        </Card>
 
-        {/* Time Tracking Today */}
-        <Card className="p-6">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <Clock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-            Time Tracking Today
-          </h3>
-          <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-            <p>Timesheet summary for today will appear here.</p>
-          </div>
-        </Card>
+            {category.id === 'masters' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {category.modules.map((module, moduleIndex) => {
+                  const Icon = module.icon;
+                  const colors = moduleColors[moduleIndex % moduleColors.length];
+                  return (
+                    <Link key={module.name} to={module.path} className="flex">
+                      <Card
+                        hover
+                        className={`
+                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                          ${colors.cardBg}
+                          transform transition-all duration-300 ease-in-out
+                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                        `}
+                      >
+                        <div className="relative z-10">
+                          <h3
+                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                          >
+                            {module.name}
+                          </h3>
+                          <p className={`text-sm ${theme.textMuted}`}>
+                            {module.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 relative z-10">
+                          <div
+                            className={`
+                              p-3 rounded-2xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-125 transition-transform duration-300
+                            `}
+                          >
+                            <Icon size={24} className="text-white" />
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
-        {/* Projects by Type Chart */}
-        <Card className="p-6 lg:col-span-2">
-          <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-            <BarChart3 size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-            Projects by Type
-          </h3>
-          <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-            <p>Bar/Donut chart showing project distribution by type will appear here.</p>
-          </div>
-        </Card>
-      </div>
+            {category.id === 'reports' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {category.modules.map((module, moduleIndex) => {
+                  const Icon = module.icon;
+                  const colors = moduleColors[moduleIndex % moduleColors.length];
+                  return (
+                    <Link key={module.name} to={module.path} className="flex">
+                      <Card
+                        hover
+                        className={`
+                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                          ${colors.cardBg}
+                          transform transition-all duration-300 ease-in-out
+                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                        `}
+                      >
+                        <div className="relative z-10">
+                          <h3
+                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                          >
+                            {module.name}
+                          </h3>
+                          <p className={`text-sm ${theme.textMuted}`}>
+                            {module.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 relative z-10">
+                          <div
+                            className={`
+                              p-3 rounded-2xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-125 transition-transform duration-300
+                            `}
+                          >
+                            <Icon size={24} className="text-white" />
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
-      {/* Floating Action Button (FAB) - MODIFIED */}
+            {category.id === 'billing' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {category.modules.map((module, moduleIndex) => {
+                  const Icon = module.icon;
+                  const colors = moduleColors[moduleIndex % moduleColors.length];
+                  return (
+                    <Link key={module.name} to={module.path} className="flex">
+                      <Card
+                        hover
+                        className={`
+                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                          ${colors.cardBg}
+                          transform transition-all duration-300 ease-in-out
+                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                        `}
+                      >
+                        <div className="relative z-10">
+                          <h3
+                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                          >
+                            {module.name}
+                          </h3>
+                          <p className={`text-sm ${theme.textMuted}`}>
+                            {module.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 relative z-10">
+                          <div
+                            className={`
+                              p-3 rounded-2xl shadow-md
+                              ${colors.iconBg} text-white
+                              group-hover:scale-125 transition-transform duration-300
+                            `}
+                          >
+                            <Icon size={24} className="text-white" />
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+      ))}
+
+      {/* Floating Action Button (FAB) */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setShowFabMenu(!showFabMenu)}
@@ -604,7 +904,7 @@ function Project() {
             bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
             hover:scale-110 hover:shadow-xl
           `}
-          icon={<PlusSquare size={24} />} // Changed to PlusSquare icon
+          icon={<PlusSquare size={24} />}
         />
         {showFabMenu && (
           <div className="absolute bottom-16 right-0 space-y-2">
