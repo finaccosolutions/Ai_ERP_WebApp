@@ -24,27 +24,29 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
-import ProjectListFilterModal from '../../components/Modals/ProjectListFilterModal'; // NEW: Import the filter modal
+import ProjectListFilterModal from '../../components/Modals/ProjectListFilterModal';
 
 interface Project {
   id: string;
   project_name: string;
   customer_id: string | null;
   start_date: string;
-  actual_due_date: string; // Changed from due_date
+  actual_due_date: string;
   status: string;
   assigned_staff_id: string | null;
   created_at: string;
   reference_no: string | null;
-  project_category_id: string | null; // Changed from category_type
+  project_category_id: string | null;
   expected_value: number | null;
   project_owner_id: string | null;
   progress_percentage: number | null;
   last_recurrence_created_at: string | null;
-  priority: string | null; // ADDED: priority
-  tags: string[] | null; // ADDED: tags
+  priority: string | null;
+  tags: string[] | null;
+  billing_status: string;
+  total_billed_amount: number;
   customers?: { name: string } | null;
   project_owner?: { first_name: string; last_name: string } | null;
   assigned_staff?: { first_name: string; last_name: string } | null;
@@ -55,7 +57,7 @@ interface Project {
     recurrence_due_day: number | null;
     recurrence_due_month: number | null;
     billing_type: string;
-  } | null; // NEW: Joined project_categories
+  } | null;
 }
 
 function ProjectListPage() {
@@ -72,41 +74,40 @@ function ProjectListPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
 
-  const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
     customer: searchParams.get('customer') || '',
     assignedStaff: searchParams.get('assignedStaff') || '',
     status: searchParams.get('status') || 'all',
-    projectCategory: searchParams.get('projectCategory') || '', // Changed from billingType
+    projectCategory: searchParams.get('projectCategory') || '',
     startDate: searchParams.get('startDate') || '',
     endDate: searchParams.get('endDate') || '',
     isRecurring: searchParams.get('isRecurring') || 'all',
     overdue: searchParams.get('overdue') || 'false',
     upcoming_due: searchParams.get('upcoming_due') || 'false',
-    priority: searchParams.get('priority') || 'all', // ADDED: priority filter
-    tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [], // ADDED: tags filter
+    priority: searchParams.get('priority') || 'all',
+    tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [],
   });
-  const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
+  const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
   useEffect(() => {
-    // NEW: Update filterCriteria from URL search params on component mount/update
     const newFilterCriteria = {
       customer: searchParams.get('customer') || '',
       assignedStaff: searchParams.get('assignedStaff') || '',
       status: searchParams.get('status') || 'all',
-      projectCategory: searchParams.get('projectCategory') || '', // Changed from billingType
+      projectCategory: searchParams.get('projectCategory') || '',
       startDate: searchParams.get('startDate') || '',
       endDate: searchParams.get('endDate') || '',
       isRecurring: searchParams.get('isRecurring') || 'all',
       overdue: searchParams.get('overdue') || 'false',
       upcoming_due: searchParams.get('upcoming_due') || 'false',
-      priority: searchParams.get('priority') || 'all', // ADDED
-      tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [], // ADDED
+      priority: searchParams.get('priority') || 'all',
+      tags: searchParams.get('tags') ? searchParams.get('tags')?.split(',') : [],
     };
     setFilterCriteria(newFilterCriteria);
 
     if (currentCompany?.id) {
-      fetchProjects(newFilterCriteria); // Pass the updated filters
+      fetchProjects(newFilterCriteria);
     }
   }, [currentCompany?.id, searchParams, numResultsToShow, searchTerm]);
 
@@ -144,20 +145,19 @@ function ProjectListPage() {
         query = query.eq('status', currentFilters.status);
       }
       if (currentFilters.projectCategory && currentFilters.projectCategory !== 'all') {
-        // Changed from billingType
         query = query.eq('project_category_id', currentFilters.projectCategory);
       }
       if (currentFilters.startDate) {
         query = query.gte('start_date', currentFilters.startDate);
       }
       if (currentFilters.endDate) {
-        query = query.lte('actual_due_date', currentFilters.endDate); // Changed to actual_due_date
+        query = query.lte('actual_due_date', currentFilters.endDate);
       }
       if (currentFilters.isRecurring !== 'all') {
         query = query.eq(
           'project_categories.is_recurring_category',
           currentFilters.isRecurring === 'true'
-        ); // Filter by category recurrence
+        );
       }
 
       const today = new Date().toISOString().split('T');
@@ -167,21 +167,19 @@ function ProjectListPage() {
 
       if (currentFilters.overdue === 'true') {
         query = query
-          .lte('actual_due_date', today) // Changed to actual_due_date
+          .lte('actual_due_date', today)
           .not('status', 'in', '("completed", "billed", "closed")');
       }
       if (currentFilters.upcoming_due === 'true') {
         query = query
-          .gte('actual_due_date', today) // Changed to actual_due_date
-          .lte('actual_due_date', next7DaysISO) // Changed to actual_due_date
+          .gte('actual_due_date', today)
+          .lte('actual_due_date', next7DaysISO)
           .not('status', 'in', '("completed", "billed", "closed")');
       }
       if (currentFilters.priority !== 'all') {
-        // ADDED: priority filter
         query = query.eq('priority', currentFilters.priority);
       }
       if (currentFilters.tags && currentFilters.tags.length > 0) {
-        // ADDED: tags filter
         query = query.overlaps('tags', currentFilters.tags);
       }
 
@@ -262,7 +260,6 @@ function ProjectListPage() {
     return project.progress_percentage || 0;
   };
 
-  // Add this function to ProjectListPage.tsx
   const getProgressBarColor = (percentage: number) => {
     if (percentage < 30) return 'bg-red-500';
     if (percentage < 70) return 'bg-yellow-500';
@@ -272,12 +269,10 @@ function ProjectListPage() {
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     setFilterCriteria(newFilters);
     setShowFilterModal(false);
-    // Update URL search params when filters change
     setSearchParams((prev) => {
       for (const key in newFilters) {
         const value = newFilters[key as keyof typeof newFilters];
         if (Array.isArray(value)) {
-          // Handle array for tags
           if (value.length > 0) {
             prev.set(key, value.join(','));
           } else {
@@ -351,11 +346,9 @@ function ProjectListPage() {
             Filter
           </Button>
           <MasterSelectField
-            label="" // No label needed for this dropdown
-            value={
-              numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''
-            }
-            onValueChange={() => {}} // Not used for typing
+            label=""
+            value={numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''}
+            onValueChange={() => {}}
             onSelect={(id) => setNumResultsToShow(id)}
             options={numResultsOptions}
             placeholder="Show"
@@ -391,8 +384,7 @@ function ProjectListPage() {
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Category
-                  </th>{' '}
-                  {/* Changed from Owner */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Dates
                   </th>
@@ -404,16 +396,13 @@ function ProjectListPage() {
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Billing Type
-                  </th>{' '}
-                  {/* NEW */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Priority
-                  </th>{' '}
-                  {/* ADDED */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tags
-                  </th>{' '}
-                  {/* ADDED */}
+                  </th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -435,11 +424,9 @@ function ProjectListPage() {
                     </td>
                     <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">
                       {project.project_categories?.name || 'N/A'}
-                    </td>{' '}
-                    {/* Changed from Owner */}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {project.start_date} - {project.actual_due_date}{' '}
-                      {/* Changed to actual_due_date */}
+                      {project.start_date} - {project.actual_due_date}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <span
@@ -465,20 +452,15 @@ function ProjectListPage() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {project.project_categories?.billing_type.replace(/_/g, ' ') ||
-                        'N/A'}{' '}
-                      {/* NEW */}
+                        'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {' '}
-                      {/* ADDED: Priority */}
                       {project.priority
                         ? project.priority.charAt(0).toUpperCase() +
                         project.priority.slice(1)
                         : 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[120px] overflow-hidden text-ellipsis">
-                      {' '}
-                      {/* ADDED: Tags */}
                       {project.tags && project.tags.length > 0
                         ? project.tags.join(', ')
                         : 'N/A'}

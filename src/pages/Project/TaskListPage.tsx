@@ -13,7 +13,9 @@ import {
   Calendar,
   Clock,
   Tag,
-} from 'lucide-react'; // ADDED Tag
+  CheckCircle, // NEW
+  XCircle, // NEW
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -23,9 +25,14 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
-import TaskListFilterModal from '../../components/Modals/TaskListFilterModal'; // NEW: Import the filter modal
+import TaskListFilterModal from '../../components/Modals/TaskListFilterModal';
+
+// NEW IMPORTS FOR CHARTS AND METRICS CARD
+import ProjectMetricsCard from '../../components/Project/ProjectMetricsCard';
+import TaskStatusChart from '../../components/Project/TaskStatusChart';
+
 
 interface Task {
   id: string;
@@ -38,10 +45,10 @@ interface Task {
   priority: string | null;
   description: string | null;
   created_at: string;
-  estimated_duration_minutes: number | null; // ADDED
-  is_billable: boolean; // NEW
-  billed_amount: number; // NEW
-  billing_status: string; // NEW
+  estimated_duration_minutes: number | null;
+  is_billable: boolean;
+  billed_amount: number;
+  billing_status: string;
   // Joined data
   employees?: { first_name: string; last_name: string } | null;
   projects?: { project_name: string } | null;
@@ -53,6 +60,7 @@ function TaskListPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams(); // For URL filters
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,27 +70,44 @@ function TaskListPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [taskToDeleteId, setTaskToDeleteId] = useState<string | null>(null);
 
-  const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
-    name: '',
-    status: 'all',
-    assignedTo: '',
-    dueDateBefore: '',
-    dueDateAfter: '',
-    priority: 'all',
-    isBillable: 'all', // NEW: isBillable filter
-    billingStatus: 'all', // NEW: billingStatus filter
+    name: searchParams.get('name') || '',
+    status: searchParams.get('status') || 'all',
+    assignedTo: searchParams.get('assignedTo') || '',
+    dueDateBefore: searchParams.get('dueDateBefore') || '',
+    dueDateAfter: searchParams.get('dueDateAfter') || '',
+    priority: searchParams.get('priority') || 'all',
+    isBillable: searchParams.get('isBillable') || 'all',
+    billingStatus: searchParams.get('billingStatus') || 'all',
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
   const [projectDetails, setProjectDetails] = useState<any>(null);
 
+  // NEW STATES FOR METRICS AND CHART DATA
+  const [taskMetrics, setTaskMetrics] = useState({ total: 0, completed: 0, open: 0, statusDistribution: [] });
+
+
   useEffect(() => {
+    // Update filterCriteria from URL search params on component mount/update
+    const newFilterCriteria = {
+      name: searchParams.get('name') || '',
+      status: searchParams.get('status') || 'all',
+      assignedTo: searchParams.get('assignedTo') || '',
+      dueDateBefore: searchParams.get('dueDateBefore') || '',
+      dueDateAfter: searchParams.get('dueDateAfter') || '',
+      priority: searchParams.get('priority') || 'all',
+      isBillable: searchParams.get('isBillable') || 'all',
+      billingStatus: searchParams.get('billingStatus') || 'all',
+    };
+    setFilterCriteria(newFilterCriteria);
+
     if (currentCompany?.id && projectId) {
       fetchProjectDetails(projectId);
-      fetchTasks(projectId);
+      fetchTasks(projectId, newFilterCriteria); // Pass the updated filters
     }
-  }, [currentCompany?.id, projectId, filterCriteria, numResultsToShow, searchTerm]);
+  }, [currentCompany?.id, projectId, searchParams, numResultsToShow, searchTerm]);
 
   const fetchProjectDetails = async (id: string) => {
     try {
@@ -101,7 +126,7 @@ function TaskListPage() {
     }
   };
 
-  const fetchTasks = async (id: string) => {
+  const fetchTasks = async (id: string, currentFilters: typeof filterCriteria) => {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
@@ -120,31 +145,29 @@ function TaskListPage() {
         query = query.ilike('task_name', `%${searchTerm}%`);
       }
 
-      if (filterCriteria.name) {
-        query = query.ilike('task_name', `%${filterCriteria.name}%`);
+      if (currentFilters.name) {
+        query = query.ilike('task_name', `%${currentFilters.name}%`);
       }
-      if (filterCriteria.status !== 'all') {
-        query = query.eq('status', filterCriteria.status);
+      if (currentFilters.status !== 'all') {
+        query = query.eq('status', currentFilters.status);
       }
-      if (filterCriteria.assignedTo && filterCriteria.assignedTo !== 'all') {
-        query = query.eq('assigned_to_id', filterCriteria.assignedTo);
+      if (currentFilters.assignedTo && currentFilters.assignedTo !== 'all') {
+        query = query.eq('assigned_to_id', currentFilters.assignedTo);
       }
-      if (filterCriteria.dueDateBefore) {
-        query = query.lte('due_date', filterCriteria.dueDateBefore);
+      if (currentFilters.dueDateBefore) {
+        query = query.lte('due_date', currentFilters.dueDateBefore);
       }
-      if (filterCriteria.dueDateAfter) {
-        query = query.gte('due_date', filterCriteria.dueDateAfter);
+      if (currentFilters.dueDateAfter) {
+        query = query.gte('due_date', currentFilters.dueDateAfter);
       }
-      if (filterCriteria.priority !== 'all') {
-        query = query.eq('priority', filterCriteria.priority);
+      if (currentFilters.priority !== 'all') {
+        query = query.eq('priority', currentFilters.priority);
       }
-      if (filterCriteria.isBillable !== 'all') {
-        // NEW: isBillable filter
-        query = query.eq('is_billable', filterCriteria.isBillable === 'true');
+      if (currentFilters.isBillable !== 'all') {
+        query = query.eq('is_billable', currentFilters.isBillable === 'true');
       }
-      if (filterCriteria.billingStatus !== 'all') {
-        // NEW: billingStatus filter
-        query = query.eq('billing_status', filterCriteria.billingStatus);
+      if (currentFilters.billingStatus !== 'all') {
+        query = query.eq('billing_status', currentFilters.billingStatus);
       }
 
       query = query.order('created_at', { ascending: false });
@@ -158,6 +181,21 @@ function TaskListPage() {
       if (error) throw error;
       setTasks(data || []);
       setTotalTasksCount(count || 0);
+
+      // Calculate task metrics for charts
+      const total = data?.length || 0;
+      const completed = data?.filter(t => t.status === 'completed').length || 0;
+      const open = data?.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'on_hold').length || 0;
+      setTaskMetrics({ total, completed, open });
+
+      const statusCounts: { [key: string]: number } = {};
+      data?.forEach(t => {
+        const statusName = t.status.replace(/_/g, ' '); // Convert 'in_progress' to 'in progress'
+        statusCounts[statusName] = (statusCounts[statusName] || 0) + 1;
+      });
+      setTaskMetrics(prev => ({ ...prev, statusDistribution: Object.entries(statusCounts).map(([name, count]) => ({ name, count })) }));
+
+
     } catch (err: any) {
       showNotification(`Error fetching tasks: ${err.message}`, 'error');
       console.error('Error fetching tasks:', err);
@@ -184,7 +222,7 @@ function TaskListPage() {
 
       if (error) throw error;
       showNotification('Task deleted successfully!', 'success');
-      fetchTasks(projectId as string);
+      fetchTasks(projectId as string, filterCriteria);
     } catch (err: any) {
       showNotification(`Error deleting task: ${err.message}`, 'error');
       console.error('Error deleting task:', err);
@@ -232,7 +270,6 @@ function TaskListPage() {
   };
 
   const getBillingStatusColor = (status: string) => {
-    // NEW
     switch (status.toLowerCase()) {
       case 'not_billed':
         return 'bg-gray-100 text-gray-800';
@@ -248,6 +285,24 @@ function TaskListPage() {
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     setFilterCriteria(newFilters);
     setShowFilterModal(false);
+    // Update URL search params when filters change
+    setSearchParams((prev) => {
+      for (const key in newFilters) {
+        const value = newFilters[key as keyof typeof newFilters];
+        if (Array.isArray(value)) {
+          if (value.length > 0) {
+            prev.set(key, value.join(','));
+          } else {
+            prev.delete(key);
+          }
+        } else if (value === 'all' || value === '') {
+          prev.delete(key);
+        } else {
+          prev.set(key, value);
+        }
+      }
+      return prev;
+    });
   };
 
   return (
@@ -279,6 +334,39 @@ function TaskListPage() {
         </div>
       </div>
 
+      {/* Key Task Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ProjectMetricsCard
+          title="Total Tasks"
+          value={taskMetrics.total}
+          description="All tasks in this project"
+          icon={ClipboardCheck}
+          colorClass="bg-blue-500"
+          onClick={() => handleApplyFilters({ ...filterCriteria, status: 'all' })}
+        />
+        <ProjectMetricsCard
+          title="Open Tasks"
+          value={taskMetrics.open}
+          description="Tasks not yet completed"
+          icon={XCircle}
+          colorClass="bg-red-500"
+          onClick={() => handleApplyFilters({ ...filterCriteria, status: 'open' })}
+        />
+        <ProjectMetricsCard
+          title="Completed Tasks"
+          value={taskMetrics.completed}
+          description="Tasks marked as done"
+          icon={CheckCircle}
+          colorClass="bg-green-500"
+          onClick={() => handleApplyFilters({ ...filterCriteria, status: 'completed' })}
+        />
+      </div>
+
+      {/* Task Status Breakdown Chart */}
+      {taskMetrics.statusDistribution && taskMetrics.statusDistribution.length > 0 && (
+        <TaskStatusChart data={taskMetrics.statusDistribution} />
+      )}
+
       <Card className="p-6">
         <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
           All Tasks
@@ -295,7 +383,7 @@ function TaskListPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) =>
-                e.key === 'Enter' && fetchTasks(projectId as string)
+                e.key === 'Enter' && fetchTasks(projectId as string, filterCriteria)
               }
               className={`
                 w-full pl-10 pr-4 py-2 border ${theme.inputBorder} rounded-lg
@@ -308,16 +396,16 @@ function TaskListPage() {
             Filter
           </Button>
           <MasterSelectField
-            label="" // No label needed for this dropdown
+            label=""
             value={numResultsOptions.find((opt) => opt.id === numResultsToShow)?.name || ''}
-            onValueChange={() => {}} // Not used for typing
+            onValueChange={() => {}}
             onSelect={(id) => setNumResultsToShow(id)}
             options={numResultsOptions}
             placeholder="Show"
             className="w-32"
           />
           <Button
-            onClick={() => fetchTasks(projectId as string)}
+            onClick={() => fetchTasks(projectId as string, filterCriteria)}
             disabled={loading}
             icon={<RefreshCw size={16} />}
           >
@@ -355,20 +443,16 @@ function TaskListPage() {
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Est. Duration (Mins)
-                  </th>{' '}
-                  {/* ADDED */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Billable
-                  </th>{' '}
-                  {/* NEW */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Billed Amount
-                  </th>{' '}
-                  {/* NEW */}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Billing Status
-                  </th>{' '}
-                  {/* NEW */}
+                  </th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -407,23 +491,15 @@ function TaskListPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {' '}
-                      {/* ADDED */}
                       {task.estimated_duration_minutes || 'N/A'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {' '}
-                      {/* NEW */}
                       {task.is_billable ? 'Yes' : 'No'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                      {' '}
-                      {/* NEW */}
                       ₹{task.billed_amount?.toLocaleString() || '0.00'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
-                      {' '}
-                      {/* NEW */}
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${getBillingStatusColor(
                           task.billing_status

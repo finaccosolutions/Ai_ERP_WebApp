@@ -75,7 +75,6 @@ export interface Database {
           };
           is_active: boolean;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -133,7 +132,6 @@ export interface Database {
           };
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -191,7 +189,6 @@ export interface Database {
           };
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
       };
       periods: {
@@ -291,10 +288,9 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
-          // New fields for tax and other ledger entries
-          tax_details: any | null; // JSONB to store dynamic tax rows
-          other_ledger_entries: any | null; // JSONB to store other ledger entries
-          project_id: string | null; // NEW: Added project_id
+          tax_details: any | null;
+          other_ledger_entries: any | null;
+          project_id: string | null;
         };
         Insert: {
           id?: string;
@@ -318,7 +314,7 @@ export interface Database {
           updated_at?: string;
           tax_details?: any | null;
           other_ledger_entries?: any | null;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
         Update: {
           id?: string;
@@ -342,7 +338,7 @@ export interface Database {
           updated_at?: string;
           tax_details?: any | null;
           other_ledger_entries?: any | null;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
       };
       sales_invoice_items: {
@@ -360,9 +356,9 @@ export interface Database {
           tax_amount: number | null;
           line_total: number;
           created_at: string;
-          hsn_code: string | null; // Added hsn_code
-          discount_percent: number | null; // NEW
-          discount_amount: number | null; // NEW
+          hsn_code: string | null;
+          discount_percent: number | null;
+          discount_amount: number | null;
         };
         Insert: {
           id?: string;
@@ -378,9 +374,9 @@ export interface Database {
           tax_amount?: number | null;
           line_total?: number;
           created_at?: string;
-          hsn_code?: string | null; // Added hsn_code
-          discount_percent?: number | null; // NEW
-          discount_amount?: number | null; // NEW
+          hsn_code?: string | null;
+          discount_percent?: number | null;
+          discount_amount?: number | null;
         };
         Update: {
           id?: string;
@@ -396,9 +392,9 @@ export interface Database {
           tax_amount?: number | null;
           line_total?: number;
           created_at?: string;
-          hsn_code?: string | null; // Added hsn_code
-          discount_percent?: number | null; // NEW
-          discount_amount?: number | null; // NEW
+          hsn_code?: string | null;
+          discount_percent?: number | null;
+          discount_amount?: number | null;
         };
       };
       customers: {
@@ -441,11 +437,9 @@ export interface Database {
           created_at: string;
           updated_at: string;
           customer_group_id: string | null;
-          // NEW: Banking Details
           bank_name: string | null;
           account_number: string | null;
           ifsc_code: string | null;
-          // NEW: Tax Registration Type
           tax_registration_type: string | null;
         };
         Insert: {
@@ -487,11 +481,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           customer_group_id?: string | null;
-          // NEW: Banking Details
           bank_name?: string | null;
           account_number?: string | null;
           ifsc_code?: string | null;
-          // NEW: Tax Registration Type
           tax_registration_type?: string | null;
         };
         Update: {
@@ -533,11 +525,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           customer_group_id?: string | null;
-          // NEW: Banking Details
           bank_name?: string | null;
           account_number?: string | null;
           ifsc_code?: string | null;
-          // NEW: Tax Registration Type
           tax_registration_type?: string | null;
         };
       };
@@ -556,7 +546,7 @@ export interface Database {
           balance_type: string | null;
           tax_rate: number | null;
           is_default: boolean | null;
-          comment: string | null; // NEW: Added comment column
+          comment: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -574,7 +564,7 @@ export interface Database {
           balance_type?: string | null;
           tax_rate?: number | null;
           is_default?: boolean | null;
-          comment?: string | null; // NEW: Added comment column
+          comment?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -592,12 +582,12 @@ export interface Database {
           balance_type?: string | null;
           tax_rate?: number | null;
           is_default?: boolean | null;
-          comment?: string | null; // NEW: Added comment column
+          comment?: string | null;
           created_at?: string;
           updated_at?: string;
         };
       };
-      items: { // Updated items table type
+      items: {
         Row: {
           id: string;
           company_id: string | null;
@@ -628,8 +618,7 @@ export interface Database {
           is_active: boolean | null;
           created_at: string;
           updated_at: string;
-          // custom_attributes: any | null; // Removed custom_attributes
-          item_group_id: string | null; // NEW: Added item_group_id
+          item_group_id: string | null;
         };
         Insert: {
           id?: string;
@@ -661,8 +650,7 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
-          // custom_attributes?: any | null; // Removed custom_attributes
-          item_group_id?: string | null; // NEW: Added item_group_id
+          item_group_id?: string | null;
         };
         Update: {
           id?: string;
@@ -694,11 +682,10 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
-          // custom_attributes?: any | null; // Removed custom_attributes
-          item_group_id?: string | null; // NEW: Added item_group_id
+          item_group_id?: string | null;
         };
       };
-      item_groups: { // NEW: Added item_groups table definition
+      item_groups: {
         Row: {
           id: string;
           company_id: string | null;
@@ -724,7 +711,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      leads: { // EXISTING: Leads table definition
+      leads: {
         Row: {
           id: string;
           company_id: string | null;
@@ -798,7 +785,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      lead_sources: { // EXISTING: Lead Sources table definition
+      lead_sources: {
         Row: {
           id: string;
           company_id: string | null;
@@ -824,7 +811,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      opportunities: { // EXISTING: Opportunities table definition
+      opportunities: {
         Row: {
           id: string;
           company_id: string | null;
@@ -880,15 +867,15 @@ export interface Database {
           updated_at?: string;
         };
       };
-      projects: { // NEW: Projects table definition
+      projects: {
         Row: {
           id: string;
           company_id: string | null;
           project_name: string;
           customer_id: string | null;
           start_date: string;
-          actual_due_date: string; // Renamed from due_date
-          project_category_id: string | null; // NEW: Added project_category_id
+          actual_due_date: string;
+          project_category_id: string | null;
           assigned_staff_id: string | null;
           status: string | null;
           description: string | null;
@@ -896,14 +883,14 @@ export interface Database {
           created_at: string;
           updated_at: string;
           reference_no: string | null;
-          expected_value: number | null; // NEW: Added expected_value
+          expected_value: number | null;
           project_owner_id: string | null;
           progress_percentage: number | null;
           last_recurrence_created_at: string | null;
-          priority: string | null; // NEW: Added priority
-          tags: string[] | null; // NEW: Added tags
-          billing_status: string; // NEW: Added billing_status
-          total_billed_amount: number; // NEW: Added total_billed_amount
+          priority: string | null;
+          tags: string[] | null;
+          billing_status: string;
+          total_billed_amount: number;
         };
         Insert: {
           id?: string;
@@ -911,8 +898,8 @@ export interface Database {
           project_name: string;
           customer_id?: string | null;
           start_date: string;
-          actual_due_date?: string; // Renamed from due_date
-          project_category_id?: string | null; // NEW: Added project_category_id
+          actual_due_date?: string;
+          project_category_id?: string | null;
           assigned_staff_id?: string | null;
           status?: string | null;
           description?: string | null;
@@ -920,14 +907,14 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          expected_value?: number | null; // NEW: Added expected_value
+          expected_value?: number | null;
           project_owner_id?: string | null;
           progress_percentage?: number | null;
           last_recurrence_created_at?: string | null;
-          priority?: string | null; // NEW: Added priority
-          tags?: string[] | null; // NEW: Added tags
-          billing_status?: string; // NEW: Added billing_status
-          total_billed_amount?: number; // NEW: Added total_billed_amount
+          priority?: string | null;
+          tags?: string[] | null;
+          billing_status?: string;
+          total_billed_amount?: number;
         };
         Update: {
           id?: string;
@@ -935,8 +922,8 @@ export interface Database {
           project_name?: string;
           customer_id?: string | null;
           start_date?: string;
-          actual_due_date?: string; // Renamed from due_date
-          project_category_id?: string | null; // NEW: Added project_category_id
+          actual_due_date?: string;
+          project_category_id?: string | null;
           assigned_staff_id?: string | null;
           status?: string | null;
           description?: string | null;
@@ -944,17 +931,17 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           reference_no?: string | null;
-          expected_value?: number | null; // NEW: Added expected_value
+          expected_value?: number | null;
           project_owner_id?: string | null;
           progress_percentage?: number | null;
           last_recurrence_created_at?: string | null;
-          priority?: string | null; // NEW: Added priority
-          tags?: string[] | null; // NEW: Added tags
-          billing_status?: string; // NEW: Added billing_status
-          total_billed_amount?: number; // NEW: Added total_billed_amount
+          priority?: string | null;
+          tags?: string[] | null;
+          billing_status?: string;
+          total_billed_amount?: number;
         };
       };
-      project_categories: { // NEW: Added project_categories table definition
+      project_categories: {
         Row: {
           id: string;
           company_id: string;
@@ -995,7 +982,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      tasks: { // NEW: Tasks table definition
+      tasks: {
         Row: {
           id: string;
           project_id: string | null;
@@ -1008,10 +995,10 @@ export interface Database {
           updated_at: string;
           start_date: string | null;
           priority: string | null;
-          estimated_duration_minutes: number | null; // NEW: Added estimated_duration_minutes
-          is_billable: boolean; // NEW: Added is_billable
-          billed_amount: number; // NEW: Added billed_amount
-          billing_status: string; // NEW: Added billing_status
+          estimated_duration_minutes: number | null;
+          is_billable: boolean;
+          billed_amount: number;
+          billing_status: string;
         };
         Insert: {
           id?: string;
@@ -1025,10 +1012,10 @@ export interface Database {
           updated_at?: string;
           start_date?: string | null;
           priority?: string | null;
-          estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
-          is_billable?: boolean; // NEW: Added is_billable
-          billed_amount?: number; // NEW: Added billed_amount
-          billing_status?: string; // NEW: Added billing_status
+          estimated_duration_minutes?: number | null;
+          is_billable?: boolean;
+          billed_amount?: number;
+          billing_status?: string;
         };
         Update: {
           id?: string;
@@ -1042,13 +1029,13 @@ export interface Database {
           updated_at?: string;
           start_date?: string | null;
           priority?: string | null;
-          estimated_duration_minutes?: number | null; // NEW: Added estimated_duration_minutes
-          is_billable?: boolean; // NEW: Added is_billable
-          billed_amount?: number; // NEW: Added billed_amount
-          billing_status?: string; // NEW: Added billing_status
+          estimated_duration_minutes?: number | null;
+          is_billable?: boolean;
+          billed_amount?: number;
+          billing_status?: string;
         };
       };
-      time_logs: { // NEW: Time Logs table definition
+      time_logs: {
         Row: {
           id: string;
           task_id: string | null;
@@ -1080,7 +1067,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      activities: { // UPDATED: Activities table definition
+      activities: {
         Row: {
           id: string;
           company_id: string | null;
@@ -1093,12 +1080,12 @@ export interface Database {
           status: string | null;
           priority: string | null;
           assigned_to_id: string | null;
-          reference_type: string | null; // NEW
-          reference_id: string | null; // NEW
+          reference_type: string | null;
+          reference_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
-          project_id: string | null; // NEW: Added project_id
+          project_id: string | null;
         };
         Insert: {
           id?: string;
@@ -1112,12 +1099,12 @@ export interface Database {
           status?: string | null;
           priority?: string | null;
           assigned_to_id?: string | null;
-          reference_type?: string | null; // NEW
-          reference_id?: string | null; // NEW
+          reference_type?: string | null;
+          reference_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1131,15 +1118,15 @@ export interface Database {
           status?: string | null;
           priority?: string | null;
           assigned_to_id?: string | null;
-          reference_type?: string | null; // NEW
-          reference_id?: string | null; // NEW
+          reference_type?: string | null;
+          reference_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
       };
-      purchase_invoices: { // NEW: Added purchase_invoices table definition
+      purchase_invoices: {
         Row: {
           id: string;
           company_id: string | null;
@@ -1161,7 +1148,7 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
-          project_id: string | null; // NEW: Added project_id
+          project_id: string | null;
         };
         Insert: {
           id?: string;
@@ -1184,7 +1171,7 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1207,10 +1194,10 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
-          project_id?: string | null; // NEW: Added project_id
+          project_id?: string | null;
         };
       };
-      compliance_tasks: { // NEW: Added recurrence fields
+      compliance_tasks: {
         Row: {
           id: string;
           company_id: string | null;
@@ -1226,8 +1213,8 @@ export interface Database {
           notes: string | null;
           created_at: string;
           updated_at: string;
-          recurrence_frequency: string | null; // NEW
-          recurrence_due_date: string | null; // NEW
+          recurrence_frequency: string | null;
+          recurrence_due_date: string | null;
         };
         Insert: {
           id?: string;
@@ -1244,8 +1231,8 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
-          recurrence_frequency?: string | null; // NEW
-          recurrence_due_date?: string | null; // NEW
+          recurrence_frequency?: string | null;
+          recurrence_due_date?: string | null;
         };
         Update: {
           id?: string;
@@ -1262,11 +1249,11 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
-          recurrence_frequency?: string | null; // NEW
-          recurrence_due_date?: string | null; // NEW
+          recurrence_frequency?: string | null;
+          recurrence_due_date?: string | null;
         };
       };
-      document_attachments: { // NEW: Added document_attachments table definition
+      document_attachments: {
         Row: {
           id: string;
           company_id: string | null;
@@ -1314,7 +1301,7 @@ export interface Database {
           employee_id: string;
           role: string | null;
           created_at: string;
-          hourly_rate_override: number | null; // NEW: Added hourly_rate_override
+          hourly_rate_override: number | null;
         };
         Insert: {
           id?: string;
@@ -1322,7 +1309,7 @@ export interface Database {
           employee_id: string;
           role?: string | null;
           created_at?: string;
-          hourly_rate_override?: number | null; // NEW: Added hourly_rate_override
+          hourly_rate_override?: number | null;
         };
         Update: {
           id?: string;
@@ -1330,7 +1317,7 @@ export interface Database {
           employee_id?: string;
           role?: string | null;
           created_at?: string;
-          hourly_rate_override?: number | null; // NEW: Added hourly_rate_override
+          hourly_rate_override?: number | null;
         };
       };
       project_comments: {
@@ -1388,7 +1375,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      milestones: { // NEW: Added milestones table definition
+      milestones: {
         Row: {
           id: string;
           project_id: string;
@@ -1423,7 +1410,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      task_dependencies: { // NEW: Added task_dependencies table
+      task_dependencies: {
         Row: {
           id: string;
           task_id: string;
@@ -1446,7 +1433,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      project_billing_entries: { // NEW: Added project_billing_entries table
+      project_billing_entries: {
         Row: {
           id: string;
           company_id: string;

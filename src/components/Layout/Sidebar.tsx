@@ -110,7 +110,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                     transition-all duration-300 ease-in-out
                     ${isActive
                       ? 'bg-gradient-to-r ${theme.primaryGradient} text-white shadow-lg shadow-[#6AC8A3]/25'
-                      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' // Changed text-slate-300 to text-slate-400 for better contrast
+                      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
                     }
                     ${!open ? 'justify-center' : ''}
                     transform hover:scale-105 hover:translate-x-1
@@ -161,7 +161,7 @@ function Sidebar({ open, setOpen }: SidebarProps) {
                       border border-slate-600
                     `}>
                       {item.label}
-                      <div className="absolute left-1/2 transform -translate-y-1/2 -top-1
+                      <div className="absolute left-1/2 transform -translate-x-1/2 -top-1
                                     border-4 border-transparent border-b-gray-700" />
                     </div>
                   )}

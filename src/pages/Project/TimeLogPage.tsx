@@ -11,6 +11,8 @@ import {
   Filter,
   Users,
   Calendar,
+  DollarSign,
+  CheckCircle,
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -23,7 +25,11 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
-import TimeLogFilterModal from '../../components/Modals/TimeLogFilterModal'; // NEW: Import the filter modal
+import TimeLogFilterModal from '../../components/Modals/TimeLogFilterModal';
+
+import ProjectMetricsCard from '../../components/Project/ProjectMetricsCard';
+import TimeLoggedByEmployeeChart from '../../components/Project/TimeLoggedByEmployeeChart';
+
 
 interface TimeLog {
   id: string;
@@ -34,8 +40,7 @@ interface TimeLog {
   duration_minutes: number | null;
   notes: string | null;
   created_at: string;
-  // Joined data
-  employees?: { first_name: string; last_name: string; hourly_rate: number | null } | null; // MODIFIED: Added hourly_rate
+  employees?: { first_name: string; last_name: string; hourly_rate: number | null } | null;
   tasks?: { task_name: string } | null;
 }
 
@@ -43,7 +48,7 @@ interface EmployeeOption {
   id: string;
   first_name: string;
   last_name: string;
-  name: string; // Combined for display
+  name: string;
 }
 
 interface TaskOption {
@@ -82,7 +87,7 @@ function TimeLogPage() {
   );
   const [taskDetails, setTaskDetails] = useState<any>(null);
 
-  const [showFilterModal, setShowFilterModal] = useState(false); // NEW: State for filter modal visibility
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
     employee: '',
     startDate: '',
@@ -90,6 +95,11 @@ function TimeLogPage() {
     notes: '',
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
+
+  const [timeLogMetrics, setTimeLogMetrics] = useState({ totalMinutes: 0, billableMinutes: 0, nonBillableMinutes: 0, employeeTimeDistribution: [] });
+
+
+  const isEditMode = !!formData.id;
 
   useEffect(() => {
     const initializePage = async () => {
@@ -155,7 +165,7 @@ function TimeLogPage() {
         .select(
           `
           id, task_id, employee_id, start_time, end_time, duration_minutes, notes, created_at,
-          employees ( first_name, last_name, hourly_rate ) // MODIFIED: Added hourly_rate
+          employees ( first_name, last_name, hourly_rate )
         `,
           { count: 'exact' }
         )
@@ -189,6 +199,20 @@ function TimeLogPage() {
       if (error) throw error;
       setTimeLogs(data || []);
       setTotalTimeLogsCount(count || 0);
+
+      const totalMinutes = data?.reduce((sum, log) => sum + (log.duration_minutes || 0), 0) || 0;
+      const billableMinutes = totalMinutes; // Placeholder
+      const nonBillableMinutes = 0; // Placeholder
+      setTimeLogMetrics({ totalMinutes, billableMinutes, nonBillableMinutes });
+
+      const employeeTime: { [key: string]: number } = {};
+      data?.forEach(log => {
+        const employeeName = log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : 'Unassigned';
+        employeeTime[employeeName] = (employeeTime[employeeName] || 0) + (log.duration_minutes || 0);
+      });
+      setTimeLogMetrics(prev => ({ ...prev, employeeTimeDistribution: Object.entries(employeeTime).map(([name, duration]) => ({ name, duration })) }));
+
+
     } catch (err: any) {
       showNotification(`Error fetching time logs: ${err.message}`, 'error');
       console.error('Error fetching time logs:', err);
@@ -393,7 +417,40 @@ function TimeLogPage() {
         </div>
       </div>
 
-      {viewMode === 'create' ? (
+      {/* Key Time Log Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ProjectMetricsCard
+          title="Total Time Logged"
+          value={`${(timeLogMetrics.totalMinutes / 60).toFixed(1)} hrs`}
+          description="Overall time spent on task"
+          icon={Clock}
+          colorClass="bg-blue-500"
+          onClick={() => { /* No specific filter, just refresh */ }}
+        />
+        <ProjectMetricsCard
+          title="Billable Hours"
+          value={`${(timeLogMetrics.billableMinutes / 60).toFixed(1)} hrs`}
+          description="Hours that can be invoiced"
+          icon={DollarSign}
+          colorClass="bg-green-500"
+          onClick={() => { /* Filter time logs by billable status */ }}
+        />
+        <ProjectMetricsCard
+          title="Non-Billable Hours"
+          value={`${(timeLogMetrics.nonBillableMinutes / 60).toFixed(1)} hrs`}
+          description="Internal or non-chargeable time"
+          icon={XCircle}
+          colorClass="bg-red-500"
+          onClick={() => { /* Filter time logs by non-billable status */ }}
+        />
+      </div>
+
+      {/* Time Logged by Employee Chart */}
+      {timeLogMetrics.employeeTimeDistribution && timeLogMetrics.employeeTimeDistribution.length > 0 && (
+        <TimeLoggedByEmployeeChart data={timeLogMetrics.employeeTimeDistribution} />
+      )}
+
+      {viewMode === 'create' || viewMode === 'edit' ? (
         <Card className="p-6">
           <h3
             className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
@@ -533,8 +590,7 @@ function TimeLogPage() {
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cost
-                    </th>{' '}
-                    {/* NEW */}
+                    </th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Notes
                     </th>
@@ -561,8 +617,6 @@ function TimeLogPage() {
                         {log.duration_minutes || 0}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {' '}
-                        {/* NEW */}
                         ₹
                         {((log.duration_minutes || 0) *
                           (log.employees?.hourly_rate || 0)) /

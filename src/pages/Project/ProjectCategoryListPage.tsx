@@ -24,6 +24,8 @@ interface ProjectCategory {
   billing_type: string;
   created_at: string;
   updated_at: string;
+  // Joined data
+  parent_category?: { name: string } | null; // Assuming parent category name can be joined
 }
 
 function ProjectCategoryListPage() {
@@ -58,7 +60,10 @@ function ProjectCategoryListPage() {
     try {
       let query = supabase
         .from('project_categories')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          parent_category:project_categories ( name )
+        `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
       if (searchTerm) {
@@ -105,7 +110,6 @@ function ProjectCategoryListPage() {
     setShowDeleteConfirm(false);
     setLoading(true);
     try {
-      // Check if any projects are linked to this category
       const { count: linkedProjectsCount, error: projectsCountError } = await supabase
         .from('projects')
         .select('count', { count: 'exact', head: true })
@@ -138,7 +142,6 @@ function ProjectCategoryListPage() {
 
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     setFilterCriteria(newFilters);
-    // If you had a filter modal, you'd close it here
   };
 
   const numResultsOptions = [
@@ -191,6 +194,9 @@ function ProjectCategoryListPage() {
               `}
             />
           </div>
+          <Button onClick={() => { /* setShowFilterModal(true); */ }} icon={<Filter size={16} />}>
+            Filter
+          </Button>
           <MasterSelectField
             label=""
             value={billingTypes.find(type => type.id === filterCriteria.billingType)?.name || ''}
@@ -239,7 +245,7 @@ function ProjectCategoryListPage() {
             </div>
           ) : categories.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-              <p>No project categories found. Create a new one to get started.</p>
+              <p>No project categories or groups found. Create a new one to get started.</p>
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
@@ -291,15 +297,6 @@ function ProjectCategoryListPage() {
         message="Are you sure you want to delete this project category? This action cannot be undone. Projects linked to this category will need to be reassigned."
         confirmText="Yes, Delete Category"
       />
-
-      {/* ItemCategoryFilterModal is not used here, but keeping the import for reference */}
-      {/* <ItemCategoryFilterModal
-        isOpen={showFilterModal}
-        onClose={() => setShowFilterModal(false)}
-        filters={filterCriteria}
-        onApplyFilters={handleApplyFilters}
-        onFilterChange={(key, value) => setFilterCriteria(prev => ({ ...prev, [key]: value }))}
-      /> */}
     </div>
   );
 }

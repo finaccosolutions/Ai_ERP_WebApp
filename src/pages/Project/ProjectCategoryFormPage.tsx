@@ -29,12 +29,12 @@ function ProjectCategoryFormPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
-  const location = useLocation(); // Use useLocation to access state
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     id: '',
-    name: location.state?.initialName || '', // Pre-fill name if passed from ProjectFormPage
+    name: location.state?.initialName || '',
     description: '',
     isRecurringCategory: false,
     recurrenceFrequency: '',
@@ -55,7 +55,6 @@ function ProjectCategoryFormPage() {
         await fetchCategoryData(id as string);
       } else {
         resetForm();
-        // If initialName is passed, set it
         if (location.state?.initialName) {
           setFormData(prev => ({ ...prev, name: location.state.initialName }));
         }
@@ -125,7 +124,6 @@ function ProjectCategoryFormPage() {
         showNotification('Recurrence Frequency is required for recurring categories.', 'error');
         return false;
       }
-      // MODIFIED: Added validation for recurrence due day/month based on frequency
       if (formData.recurrenceFrequency === 'weekly' && (!formData.recurrenceDueDay || parseInt(formData.recurrenceDueDay) < 1 || parseInt(formData.recurrenceDueDay) > 7)) {
         showNotification('Due Day (1-7 for Mon-Sun) is required for weekly recurrence.', 'error');
         return false;
@@ -175,22 +173,21 @@ function ProjectCategoryFormPage() {
           .from('project_categories')
           .insert(categoryToSave)
           .select('id, name')
-          .single(); // Select the new ID and name
+          .single();
         if (error) throw error;
         showNotification('Project category created successfully!', 'success');
 
-        // If navigated from ProjectFormPage, return the new category ID
         if (location.state?.fromProjectForm && location.state?.returnPath) {
           navigate(location.state.returnPath, {
             replace: true,
             state: {
               createdCategoryId: data.id,
               createdCategoryName: data.name,
-              projectFormData: location.state.projectFormData, // Pass original project form data back
-              fromProjectCategoryCreation: true // Flag for ProjectFormPage to know it's a return
+              projectFormData: location.state.projectFormData,
+              fromProjectCategoryCreation: true
             }
           });
-          return; // Exit early to prevent navigating to list page
+          return;
         }
       }
       navigate('/project/categories');
@@ -234,7 +231,7 @@ function ProjectCategoryFormPage() {
               replace: true,
               state: {
                 projectFormData: location.state.projectFormData,
-                fromProjectCategoryCreation: true, // Keep this flag for ProjectFormPage to restore data
+                fromProjectCategoryCreation: true,
               },
             });
           } else {
@@ -311,7 +308,6 @@ function ProjectCategoryFormPage() {
                   placeholder="Select Frequency"
                   required
                 />
-                {/* MODIFIED: Conditional fields for recurrence due day/month */}
                 {formData.recurrenceFrequency === 'weekly' && (
                   <FormField
                     label="Due Day of Week (1=Mon, 7=Sun)"
@@ -363,7 +359,7 @@ function ProjectCategoryFormPage() {
                   replace: true,
                   state: {
                     projectFormData: location.state.projectFormData,
-                    fromProjectCategoryCreation: true, // Keep this flag for ProjectFormPage to restore data
+                    fromProjectCategoryCreation: true,
                   },
                 });
               } else {

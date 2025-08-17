@@ -11,7 +11,7 @@ import {
   FileText,
   Tag,
   Info,
-} from 'lucide-react'; // ADDED Tag, Info
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -36,7 +36,6 @@ interface EmployeeOption {
 }
 
 interface ProjectCategoryOption {
-  // NEW
   id: string;
   name: string;
   is_recurring_category: boolean;
@@ -51,27 +50,27 @@ function ProjectFormPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>(); // Get ID from URL for edit mode
-  const location = useLocation(); // Use useLocation to access state
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     id: '',
     projectName: '',
     customerId: '',
-    customerName: '', // For MasterSelectField display
-    referenceNo: '', // NEW: Reference No / Contract No
-    projectCategoryId: '', // Changed from categoryType
-    projectCategoryName: '', // For MasterSelectField display
-    projectOwnerId: '', // NEW: Project Owner
-    projectOwnerName: '', // For MasterSelectField display
-    assignedTeamMembers: [] as string[], // NEW: Assigned Employees (array of employee IDs)
+    customerName: '',
+    referenceNo: '',
+    projectCategoryId: '',
+    projectCategoryName: '',
+    projectOwnerId: '',
+    projectOwnerName: '',
+    assignedTeamMembers: [] as string[],
     startDate: '',
-    actualDueDate: '', // Changed from dueDate
-    expectedValue: 0, // NEW: Expected Value / Contract Amount
+    actualDueDate: '',
+    expectedValue: 0,
     status: 'not_started',
     description: '',
-    priority: 'medium', // ADDED: priority
-    tags: [] as string[], // ADDED: tags
+    priority: 'medium',
+    tags: [] as string[],
   });
 
   const [availableCustomers, setAvailableCustomers] = useState<CustomerOption[]>(
@@ -82,7 +81,7 @@ function ProjectFormPage() {
   );
   const [availableProjectCategories, setAvailableProjectCategories] = useState<
     ProjectCategoryOption[]
-  >([]); // NEW
+  >([]);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +96,6 @@ function ProjectFormPage() {
         await fetchProjectData(id as string);
       } else {
         resetForm();
-        // Pre-fill customer if navigated from Lead Conversion
         if (location.state?.customerId && location.state?.customerName) {
           setFormData((prev) => ({
             ...prev,
@@ -105,13 +103,11 @@ function ProjectFormPage() {
             customerName: location.state.customerName,
           }));
         }
-        // If returned from ProjectCategoryFormPage after creating a new category
         if (location.state?.fromProjectCategoryCreation &&
           location.state?.projectFormData
         ) {
-          setFormData(location.state.projectFormData); // Restore previous form data
+          setFormData(location.state.projectFormData);
           if (location.state.createdCategoryId) {
-            // Set the newly created category
             setFormData((prev) => ({
               ...prev,
               projectCategoryId: location.state.createdCategoryId,
@@ -153,7 +149,6 @@ function ProjectFormPage() {
         })) || []
       );
 
-      // NEW: Fetch Project Categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('project_categories')
         .select(
@@ -194,8 +189,8 @@ function ProjectFormPage() {
           customerId: data.customer_id || '',
           customerName: data.customers?.name || '',
           referenceNo: data.reference_no || '',
-          projectCategoryId: data.project_category_id || '', // Changed from categoryType
-          projectCategoryName: data.project_categories?.name || '', // For MasterSelectField display
+          projectCategoryId: data.project_category_id || '',
+          projectCategoryName: data.project_categories?.name || '',
           projectOwnerId: data.project_owner_id || '',
           projectOwnerName: data.project_owner
             ? `${data.project_owner.first_name} ${data.project_owner.last_name}`
@@ -203,18 +198,18 @@ function ProjectFormPage() {
           assignedTeamMembers:
             data.project_team_members?.map((tm) => tm.employee_id) || [],
           startDate: data.start_date,
-          actualDueDate: data.actual_due_date, // Changed from due_date
+          actualDueDate: data.actual_due_date,
           expectedValue: data.expected_value || 0,
           status: data.status,
           description: data.description || '',
-          priority: data.priority, // ADDED
-          tags: data.tags || [], // ADDED
+          priority: data.priority,
+          tags: data.tags || [],
         });
       }
     } catch (err: any) {
       showNotification(`Error loading project: ${err.message}`, 'error');
       console.error('Error loading project:', err);
-      navigate('/project/list');
+      navigate(`/project/list`);
     }
   };
 
@@ -231,13 +226,7 @@ function ProjectFormPage() {
     name: string,
     data: ProjectCategoryOption
   ) => {
-    // NEW
     setFormData((prev) => ({ ...prev, projectCategoryId: id, projectCategoryName: name }));
-    // Automatically set billing type from category if it's not already set or if category changes
-    // This logic is now handled in ProjectCategoryFormPage, but keeping this for reference if needed
-    // if (data.billing_type && formData.billingType === 'fixed_price') { // Only auto-set if default
-    //   setFormData(prev => ({ ...prev, billingType: data.billing_type }));
-    // }
   };
 
   const handleProjectOwnerSelect = (id: string, name: string) => {
@@ -265,8 +254,8 @@ function ProjectFormPage() {
       expectedValue: 0,
       status: 'not_started',
       description: '',
-      priority: 'medium', // ADDED
-      tags: [], // ADDED
+      priority: 'medium',
+      tags: [],
     });
   };
 
@@ -280,7 +269,6 @@ function ProjectFormPage() {
       return false;
     }
     if (!formData.projectCategoryId) {
-      // NEW: Project Category is required
       showNotification('Project Category is required.', 'error');
       return false;
     }
@@ -290,7 +278,6 @@ function ProjectFormPage() {
     );
 
     if (!selectedCategory?.is_recurring_category) {
-      // If not a recurring category, actual_due_date is required
       if (!formData.actualDueDate) {
         showNotification('Due Date is required for non-recurring projects.', 'error');
         return false;
@@ -319,16 +306,16 @@ function ProjectFormPage() {
         project_name: formData.projectName,
         customer_id: formData.customerId || null,
         reference_no: formData.referenceNo || null,
-        project_category_id: formData.projectCategoryId || null, // Changed from category_type
+        project_category_id: formData.projectCategoryId || null,
         project_owner_id: formData.projectOwnerId || null,
         start_date: formData.startDate,
-        actual_due_date: formData.actualDueDate || null, // Changed from due_date, set to null if not required by category
+        actual_due_date: formData.actualDueDate || null,
         expected_value: formData.expectedValue,
         status: formData.status,
         description: formData.description || null,
         created_by: (await supabase.auth.getUser()).data.user?.id || null,
-        priority: formData.priority, // ADDED
-        tags: formData.tags, // ADDED
+        priority: formData.priority,
+        tags: formData.tags,
       };
 
       let currentProjectId = formData.id;
@@ -350,7 +337,6 @@ function ProjectFormPage() {
         showNotification('Project created successfully!', 'success');
       }
 
-      // Handle project team members
       if (currentProjectId) {
         await supabase
           .from('project_team_members')
@@ -389,7 +375,6 @@ function ProjectFormPage() {
     { id: 'closed', name: 'Closed' },
   ];
 
-  // ADDED: Project Priorities
   const projectPriorities = [
     { id: 'low', name: 'Low' },
     { id: 'medium', name: 'Medium' },
@@ -463,7 +448,7 @@ function ProjectFormPage() {
                 placeholder="e.g., PO-12345, CON-XYZ"
               />
               <MasterSelectField
-                label="Project Category" // Changed from Category / Type
+                label="Project Category"
                 value={formData.projectCategoryName}
                 onValueChange={(val) => handleInputChange('projectCategoryName', val)}
                 onSelect={(id, name, data) =>
@@ -472,7 +457,7 @@ function ProjectFormPage() {
                 options={availableProjectCategories}
                 placeholder="Select Project Category"
                 required
-                allowCreation={true} // Allow creating new categories
+                allowCreation={true}
                 onNewValueConfirmed={(name) =>
                   navigate('/project/categories/new', {
                     state: {
@@ -497,9 +482,8 @@ function ProjectFormPage() {
                 value={formData.assignedTeamMembers.map(
                   (id) => availableEmployees.find((emp) => emp.id === id)?.name || ''
                 ).join(', ')}
-                onValueChange={(val) => {}} // Multi-select handles its own input
+                onValueChange={(val) => {}}
                 onSelect={(id, name, data) => {
-                  // Toggle selection for multi-select
                   const newSelection = formData.assignedTeamMembers.includes(id)
                     ? formData.assignedTeamMembers.filter((memberId) => memberId !== id)
                     : [...formData.assignedTeamMembers, id];
@@ -517,10 +501,9 @@ function ProjectFormPage() {
                 onChange={(val) => handleInputChange('startDate', val)}
                 required
               />
-              {/* Conditional Due Date based on category recurrence */}
               {!isRecurringCategorySelected && (
                 <FormField
-                  label="Due Date" // Changed from Due Date
+                  label="Due Date"
                   type="date"
                   value={formData.actualDueDate}
                   onChange={(val) => handleInputChange('actualDueDate', val)}
@@ -545,7 +528,7 @@ function ProjectFormPage() {
                 options={projectStatuses}
                 placeholder="Select Status"
               />
-              <MasterSelectField // ADDED: Priority Field
+              <MasterSelectField
                 label="Priority"
                 value={
                   projectPriorities.find(
@@ -557,7 +540,7 @@ function ProjectFormPage() {
                 options={projectPriorities}
                 placeholder="Select Priority"
               />
-              <FormField // ADDED: Tags Field
+              <FormField
                 label="Tags (comma-separated)"
                 value={formData.tags.join(', ')}
                 onChange={(val) =>
@@ -579,7 +562,6 @@ function ProjectFormPage() {
             </div>
           </Card>
 
-          {/* Attachments Section (Placeholder - actual implementation would involve Supabase Storage) */}
           <Card className="p-6">
             <h3
               className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}

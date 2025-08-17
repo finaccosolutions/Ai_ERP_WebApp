@@ -7,11 +7,11 @@ import {
   ClipboardCheck,
   Users,
   Calendar,
+  DollarSign,
   FileText,
   Clock,
   Tag,
-  DollarSign,
-} from 'lucide-react'; // ADDED Clock, Tag, DollarSign
+} from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 import AIButton from '../../components/UI/AIButton';
@@ -35,28 +35,28 @@ function TaskFormPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>(); // Get projectId and taskId from URL
+  const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
 
   const [formData, setFormData] = useState({
     id: '',
     taskName: '',
     assignedToId: '',
-    assignedToName: '', // For MasterSelectField display
+    assignedToName: '',
     status: 'open',
-    startDate: '', // NEW: Start Date
+    startDate: '',
     dueDate: '',
-    priority: 'medium', // NEW: Priority
+    priority: 'medium',
     description: '',
-    estimatedDurationMinutes: 0, // ADDED: estimatedDurationMinutes
-    isBillable: false, // NEW: isBillable
-    billedAmount: 0, // NEW: billedAmount
-    billingStatus: 'not_billed', // NEW: billingStatus
+    estimatedDurationMinutes: 0,
+    isBillable: false,
+    billedAmount: 0,
+    billingStatus: 'not_billed',
   });
 
   const [availableEmployees, setAvailableEmployees] = useState<EmployeeOption[]>(
     []
   );
-  const [projectDetails, setProjectDetails] = useState<any>(null); // To display project name
+  const [projectDetails, setProjectDetails] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +66,7 @@ function TaskFormPage() {
   useEffect(() => {
     const initializeForm = async () => {
       setLoading(true);
-      await fetchProjectDetails(projectId as string); // Fetch project details first
+      await fetchProjectDetails(projectId as string);
       await fetchEmployees(currentCompany?.id as string);
       if (isEditMode) {
         await fetchTaskData(taskId as string);
@@ -94,7 +94,7 @@ function TaskFormPage() {
     } catch (err: any) {
       showNotification(`Error fetching project details: ${err.message}`, 'error');
       console.error('Error fetching project details:', err);
-      navigate('/project/list'); // Redirect if project not found
+      navigate('/project/list');
     }
   };
 
@@ -149,10 +149,10 @@ function TaskFormPage() {
           dueDate: data.due_date || '',
           priority: data.priority || 'medium',
           description: data.description || '',
-          estimatedDurationMinutes: data.estimated_duration_minutes || 0, // ADDED
-          isBillable: data.is_billable, // NEW
-          billedAmount: data.billed_amount, // NEW
-          billingStatus: data.billing_status, // NEW
+          estimatedDurationMinutes: data.estimated_duration_minutes || 0,
+          isBillable: data.is_billable,
+          billedAmount: data.billed_amount,
+          billingStatus: data.billing_status,
         });
       }
     } catch (err: any) {
@@ -181,10 +181,10 @@ function TaskFormPage() {
       dueDate: '',
       priority: 'medium',
       description: '',
-      estimatedDurationMinutes: 0, // ADDED
-      isBillable: false, // NEW
-      billedAmount: 0, // NEW
-      billingStatus: 'not_billed', // NEW
+      estimatedDurationMinutes: 0,
+      isBillable: false,
+      billedAmount: 0,
+      billingStatus: 'not_billed',
     });
   };
 
@@ -205,7 +205,6 @@ function TaskFormPage() {
       showNotification('Due Date cannot be before Start Date.', 'error');
       return false;
     }
-    // ADDED: Validation for estimatedDurationMinutes
     if (formData.estimatedDurationMinutes < 0) {
       showNotification('Estimated Duration cannot be negative.', 'error');
       return false;
@@ -232,10 +231,10 @@ function TaskFormPage() {
         due_date: formData.dueDate,
         priority: formData.priority,
         description: formData.description || null,
-        estimated_duration_minutes: formData.estimatedDurationMinutes, // ADDED
-        is_billable: formData.isBillable, // NEW
-        billed_amount: formData.billedAmount, // NEW
-        billing_status: formData.billingStatus, // NEW
+        estimated_duration_minutes: formData.estimatedDurationMinutes,
+        is_billable: formData.isBillable,
+        billed_amount: formData.billedAmount,
+        billing_status: formData.billingStatus,
       };
 
       if (formData.id) {
@@ -277,7 +276,6 @@ function TaskFormPage() {
   ];
 
   const billingStatuses = [
-    // NEW
     { id: 'not_billed', name: 'Not Billed' },
     { id: 'partially_billed', name: 'Partially Billed' },
     { id: 'billed', name: 'Billed' },
@@ -289,7 +287,7 @@ function TaskFormPage() {
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
             {isEditMode ? 'Edit Task' : 'Create New Task'} for{' '}
-            {projectDetails?.task_name || 'Project'}
+            {projectDetails?.project_name || 'Project'}
           </h1>
           <p className={theme.textSecondary}>
             {isEditMode
@@ -339,7 +337,7 @@ function TaskFormPage() {
                     id,
                     availableEmployees.find((emp) => emp.id === id)?.name || ''
                   )
-                } // MODIFIED: Pass name to handleEmployeeSelect
+                }
                 options={availableEmployees}
                 placeholder="Assign Employee (Optional)"
               />
@@ -380,7 +378,7 @@ function TaskFormPage() {
                 onChange={(val) => handleInputChange('dueDate', val)}
                 required
               />
-              <FormField // ADDED: Estimated Duration
+              <FormField
                 label="Estimated Duration (Minutes)"
                 type="number"
                 value={formData.estimatedDurationMinutes.toString()}
@@ -390,8 +388,6 @@ function TaskFormPage() {
                 icon={<Clock size={18} />}
               />
               <div className="flex items-center space-x-3">
-                {' '}
-                {/* NEW: isBillable checkbox */}
                 <input
                   type="checkbox"
                   id="isBillable"
