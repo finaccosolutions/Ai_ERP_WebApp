@@ -82,6 +82,10 @@ function Project() {
     totalBillableTasks: 0,
     totalBilledTasksAmount: 0,
     totalTimeLoggedCost: 0,
+    totalTasks: 0, // Added for Masters tab
+    totalMilestones: 0, // Added for Masters tab
+    totalTeamMembers: 0, // Added for Masters tab
+    totalDocuments: 0, // Added for Masters tab
   });
   const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData>>({}); // Changed to single ProjectData
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
@@ -97,6 +101,9 @@ function Project() {
   // NEW: Chart Data States
   const [projectsByTypeData, setProjectsByTypeData] = useState<any[]>([]);
   const [timeTrackingTodayData, setTimeTrackingTodayData] = useState<any[]>([]);
+  const [milestoneStatusData, setMilestoneStatusData] = useState<any[]>([]); // NEW
+  const [billingStatusData, setBillingStatusData] = useState<any[]>([]); // NEW
+  const [documentTypeDistributionData, setDocumentTypeDistributionData] = useState<any[]>([]); // NEW
 
   const moduleColors = [
     { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
@@ -115,8 +122,11 @@ function Project() {
     if (currentCompany?.id && currentPeriod?.id) {
       fetchProjectData(currentCompany.id, currentPeriod.startDate, currentPeriod.endDate);
       fetchUpcomingRecurringJobs(currentCompany.id);
-      fetchProjectsByTypeData(currentCompany.id); // NEW: Fetch chart data
-      fetchTimeTrackingTodayData(currentCompany.id); // NEW: Fetch chart data
+      fetchProjectsByTypeData(currentCompany.id);
+      fetchTimeTrackingTodayData(currentCompany.id);
+      fetchMilestoneStatusData(currentCompany.id); // NEW
+      fetchBillingStatusData(currentCompany.id); // NEW
+      fetchDocumentTypeDistributionData(currentCompany.id); // NEW
     }
   }, [currentCompany?.id, currentPeriod?.id]);
 
@@ -136,6 +146,7 @@ function Project() {
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
           nonRecurring: 0, totalFixedPriceValue: 0, totalTimeBasedValue: 0,
           totalBilledAmount: 0, totalBillableTasks: 0, totalBilledTasksAmount: 0, totalTimeLoggedCost: 0,
+          totalTasks: 0, totalMilestones: 0, totalTeamMembers: 0, totalDocuments: 0,
         });
       } else {
         setProjectStats({
@@ -154,6 +165,10 @@ function Project() {
           totalBillableTasks: kpis?.total_billable_tasks || 0,
           totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0,
           totalTimeLoggedCost: kpis?.total_time_logged_cost || 0,
+          totalTasks: kpis?.total_tasks || 0, // From KPI
+          totalMilestones: kpis?.total_milestones || 0, // Placeholder, needs actual query
+          totalTeamMembers: 0, // Placeholder, needs actual query
+          totalDocuments: 0, // Placeholder, needs actual query
         });
       }
 
@@ -242,7 +257,6 @@ function Project() {
     }
   };
 
-  // NEW: Fetch data for Projects by Type Chart
   const fetchProjectsByTypeData = async (companyId: string) => {
     try {
       const { data, error } = await supabase
@@ -274,13 +288,12 @@ function Project() {
         value: categoryCounts[category],
       }));
 
-      setProjectsByTypeData(formattedCategoryData); // Using category data for the pie chart
+      setProjectsByTypeData(formattedCategoryData);
     } catch (err) {
       console.error('Error fetching projects by type data:', err);
     }
   };
 
-  // NEW: Fetch data for Time Tracking Today Chart
   const fetchTimeTrackingTodayData = async (companyId: string) => {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -309,6 +322,108 @@ function Project() {
       setTimeTrackingTodayData(formattedTimeData);
     } catch (err) {
       console.error('Error fetching time tracking today data:', err);
+    }
+  };
+
+  // NEW: Fetch Milestone Status Data
+  const fetchMilestoneStatusData = async (companyId: string) => {
+    try {
+      // First, get all project IDs for the company
+      const { data: projectIdsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('company_id', companyId);
+
+      if (projectsError) throw projectsError;
+      const projectIds = projectIdsData.map(p => p.id);
+
+      if (projectIds.length === 0) {
+        setMilestoneStatusData([]); // No projects, no milestones
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .select('status')
+        .in('project_id', projectIds); // Use the array of IDs
+
+      if (error) throw error;
+
+      const statusCounts: { [key: string]: number } = {};
+      data.forEach(milestone => {
+        const statusName = milestone.status.replace(/_/g, ' ');
+        statusCounts[statusName] = (statusCounts[statusName] || 0) + 1;
+      });
+
+      const formattedData = Object.keys(statusCounts).map(status => ({
+        name: status,
+        count: statusCounts[status],
+      }));
+      setMilestoneStatusData(formattedData);
+    } catch (err) {
+      console.error('Error fetching milestone status data:', err);
+    }
+  };
+
+  // NEW: Fetch Billing Status Data
+  const fetchBillingStatusData = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('billing_status, total_billed_amount, expected_value')
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const billingStatusTotals: { [key: string]: number } = {
+        'not_billed': 0,
+        'partially_billed': 0,
+        'billed': 0,
+      };
+
+      data.forEach(project => {
+        if (project.billing_status === 'billed') {
+          billingStatusTotals['billed'] += project.total_billed_amount || 0;
+        } else if (project.billing_status === 'partially_billed') {
+          billingStatusTotals['partially_billed'] += project.total_billed_amount || 0;
+        } else {
+          billingStatusTotals['not_billed'] += project.expected_value || 0; // For not billed, use expected value
+        }
+      });
+
+      const formattedData = Object.keys(billingStatusTotals).map(status => ({
+        name: status.replace(/_/g, ' '),
+        value: billingStatusTotals[status],
+      }));
+      setBillingStatusData(formattedData);
+    } catch (err) {
+      console.error('Error fetching billing status data:', err);
+    }
+  };
+
+  // NEW: Fetch Document Type Distribution Data
+  const fetchDocumentTypeDistributionData = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('document_attachments')
+        .select('reference_type')
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const typeCounts: { [key: string]: number } = {};
+      data.forEach(doc => {
+        const typeName = doc.reference_type || 'Other';
+        typeCounts[typeName] = (typeCounts[typeName] || 0) + 1;
+      });
+
+      const formattedData = Object.keys(typeCounts).map(type => ({
+        name: type.replace(/_/g, ' '),
+        count: typeCounts[type],
+      }));
+      setDocumentTypeDistributionData(formattedData);
+    } catch (err) {
+      console.error('Error fetching document type distribution data:', err);
     }
   };
 
@@ -482,11 +597,11 @@ function Project() {
       name: 'Masters',
       icon: Settings,
       modules: [
-        { name: 'Project List', description: 'Manage all your projects.', icon: ClipboardCheck, path: '/project/list' },
-        { name: 'Project Categories', description: 'Define and manage project types.', icon: Layers, path: '/project/categories' },
-        { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/all-tasks' }, // Placeholder for all tasks
-        { name: 'Milestones', description: 'Track key project milestones.', icon: Flag, path: '/project/milestones' }, // Placeholder for milestones list
-        { name: 'Team Members', description: 'Manage project team members.', icon: Users, path: '/project/team-members' }, // Placeholder for team members list
+        { name: 'Project List', description: 'Manage all your projects.', icon: ClipboardCheck, path: '/project/list', count: projectStats.totalProjects },
+        { name: 'Project Categories', description: 'Define and manage project types.', icon: Layers, path: '/project/categories', count: projectStats.categoryWise },
+        { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/all-tasks', count: projectStats.totalTasks },
+        { name: 'Milestones', description: 'Track key project milestones.', icon: Flag, path: '/project/milestones', count: projectStats.totalMilestones },
+        { name: 'Team Members', description: 'Manage project team members.', icon: Users, path: '/project/team-members', count: projectStats.totalTeamMembers },
       ]
     },
     {
@@ -654,51 +769,50 @@ function Project() {
             {category.id === 'overview' && (
               <>
                 {/* Project Summary Section */}
-                <h3 className={`text-xl font-bold ${theme.textPrimary} mt-8`}>Project Summary</h3>
-                <p className={theme.textSecondary}>Key metrics for your projects.</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {projectCategories[0].modules.slice(0, 6).map((tile, index) => { // First 6 tiles
-                    const Icon = tile.icon;
-                    const colors = moduleColors[index % moduleColors.length];
-                    return (
-                      <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
-                        <ProjectMetricsCard
-                          title={tile.name}
-                          value={tile.value}
-                          description="" // Description is part of the tile name now
-                          icon={Icon}
-                          colorClass={colors.iconBg}
-                        />
-                      </Link>
-                    );
-                  })}
-                </div>
+                <Card className="p-6 mb-6">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Summary</h3>
+                  <p className={theme.textSecondary}>Key metrics for your projects.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
+                    {projectCategories[0].modules.map((tile, index) => {
+                      const Icon = tile.icon;
+                      const colors = moduleColors[index % moduleColors.length];
+                      return (
+                        <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+                          <ProjectMetricsCard
+                            title={tile.name}
+                            value={tile.value}
+                            description="" // Description is part of the tile name now
+                            icon={Icon}
+                            colorClass={colors.iconBg}
+                          />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </Card>
 
-                {/* Financial Overview Section (Removed as per request) */}
+                {/* Project Health & Progress Section */}
+                <Card className="p-6 mb-6">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Health & Progress</h3>
+                  <p className={theme.textSecondary}>Visual insights into project completion and milestone status.</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                    <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
+                    <MilestoneStatusChart data={milestoneStatusData} />
+                  </div>
+                </Card>
 
-                {/* Project Tracking Section */}
-                <h3 className={`text-xl font-bold ${theme.textPrimary} mt-8`}>Financial & Tracking Overview</h3>
-                <p className={theme.textSecondary}>Financial performance and insights into project types and time logging.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {projectCategories[0].modules.slice(6, 14).map((tile, index) => { // Next 8 tiles
-                    const Icon = tile.icon;
-                    const colors = moduleColors[(index + 6) % moduleColors.length];
-                    return (
-                      <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
-                        <ProjectMetricsCard
-                          title={tile.name}
-                          value={tile.value}
-                          description="" // Description is part of the tile name now
-                          icon={Icon}
-                          colorClass={colors.iconBg}
-                        />
-                      </Link>
-                    );
-                  })}
-                </div>
+                {/* Resource & Financial Insights Section */}
+                <Card className="p-6 mb-6">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Resource & Financial Insights</h3>
+                  <p className={theme.textSecondary}>Detailed breakdown of time logging and billing status.</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                    <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
+                    <BillingStatusChart data={billingStatusData} />
+                  </div>
+                </Card>
 
                 {/* Visual Project Pipeline */}
-                <Card className="p-6 mt-8">
+                <Card className="p-6 mb-6">
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                     {projectKanbanStatuses.map((statusCol, colIndex) => {
@@ -743,7 +857,7 @@ function Project() {
 
                 {/* Quick Panels Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  {/* Recurring Schedule */}
+                  {/* Upcoming Recurring Jobs */}
                   <Card className="p-6">
                     <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
                       <Zap size={20} className="mr-2 text-[${theme.hoverAccent}]" />
@@ -770,195 +884,230 @@ function Project() {
                     </div>
                   </Card>
 
-                  {/* Time Tracking Today */}
+                  {/* AI Project Insights for Recurring Jobs */}
                   <Card className="p-6">
-                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                      <Clock size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      Time Tracking Today
+                    <h3
+                      className={`text-lg font-semibold ${theme.textPrimary} flex items-center mb-4`}
+                    >
+                      <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
+                      AI Recurring Job Insights
+                      <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
                     </h3>
-                    {timeTrackingTodayData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={timeTrackingTodayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={theme.borderColor} />
-                          <XAxis dataKey="name" stroke={theme.textMuted} />
-                          <YAxis stroke={theme.textMuted} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: theme.textMuted }} />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar dataKey="hours" fill="#8884d8" radius={[5, 5, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-                        <p>No time logs for today.</p>
-                      </div>
-                    )}
-                  </Card>
-
-                  {/* Projects by Type Chart */}
-                  <Card className="p-6 lg:col-span-2">
-                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                      <BarChart3 size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      Projects by Category
-                    </h3>
-                    {projectsByTypeData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie
-                            data={projectsByTypeData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        currentCompany?.id && generateAIInsights(currentCompany.id)
+                      }
+                      disabled={refreshingInsights}
+                      icon={
+                        <RefreshCw
+                          size={16}
+                          className={refreshingInsights ? 'animate-spin' : ''}
+                        />
+                      }
+                    >
+                      {refreshingInsights ? 'Refreshing...' : 'Refresh Insights'}
+                    </Button>
+                    <div className="space-y-4 mt-4">
+                      {aiInsights.length > 0 ? (
+                        aiInsights.map((insight, index) => (
+                          <div
+                            key={index}
+                            className={`
+                              p-3 rounded-2xl border-l-4
+                              ${getImpactColor(insight.impact)}
+                            `}
                           >
-                            {projectsByTypeData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={moduleColors[index % moduleColors.length].iconBg} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-                        <p>No project category data available.</p>
-                      </div>
-                    )}
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center space-x-2">
+                                {getInsightIcon(insight.type)}
+                                <h4 className={`font-medium ${theme.textPrimary} text-sm`}>
+                                  {insight.title}
+                                </h4>
+                              </div>
+                              <span
+                                className={`
+                                  px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
+                                `}
+                              >
+                                {insight.confidence}
+                              </span>
+                            </div>
+                            <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
+                            {insight.actionable && (
+                              <button className="text-xs text-sky-600 hover:text-sky-800 font-medium">
+                                {insight.action || 'View Details'} →
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No AI insights available. Click "Refresh Insights" to generate.
+                        </div>
+                      )}
+                    </div>
                   </Card>
                 </div>
               </>
             )}
 
             {category.id === 'masters' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {category.modules.map((module, moduleIndex) => {
-                  const Icon = module.icon;
-                  const colors = moduleColors[moduleIndex % moduleColors.length];
-                  return (
-                    <Link key={module.name} to={module.path} className="flex">
-                      <Card
-                        hover
-                        className={`
-                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                          ${colors.cardBg}
-                          transform transition-all duration-300 ease-in-out
-                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                        `}
-                      >
-                        <div className="relative z-10">
-                          <h3
-                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
-                          >
-                            {module.name}
-                          </h3>
-                          <p className={`text-sm ${theme.textMuted}`}>
-                            {module.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 relative z-10">
-                          <div
-                            className={`
-                              p-3 rounded-2xl shadow-md
-                              ${colors.iconBg} text-white
-                              group-hover:scale-125 transition-transform duration-300
-                            `}
-                          >
-                            <Icon size={24} className="text-white" />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {category.modules.map((module, moduleIndex) => {
+                    const Icon = module.icon;
+                    const colors = moduleColors[moduleIndex % moduleColors.length];
+                    return (
+                      <Link key={module.name} to={module.path} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                        >
+                          <div className="relative z-10">
+                            <h3
+                              className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                            >
+                              {module.name}
+                            </h3>
+                            <p className={`text-sm ${theme.textMuted}`}>
+                              {module.description}
+                            </p>
                           </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
+                          <div className="flex items-center justify-between mt-3 relative z-10">
+                            <p className={`text-xl font-bold ${colors.textColor}`}>
+                              {loading ? '...' : module.count}
+                            </p>
+                            <div
+                              className={`
+                                p-3 rounded-2xl shadow-md
+                                ${colors.iconBg} text-white
+                                group-hover:scale-125 transition-transform duration-300
+                              `}
+                            >
+                              <Icon size={24} className="text-white" />
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {/* NEW: Masters Tab Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
+                  <MilestoneStatusChart data={milestoneStatusData} />
+                  <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
+                  <DocumentTypeDistributionChart data={documentTypeDistributionData} />
+                </div>
+              </>
             )}
 
             {category.id === 'reports' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {category.modules.map((module, moduleIndex) => {
-                  const Icon = module.icon;
-                  const colors = moduleColors[moduleIndex % moduleColors.length];
-                  return (
-                    <Link key={module.name} to={module.path} className="flex">
-                      <Card
-                        hover
-                        className={`
-                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                          ${colors.cardBg}
-                          transform transition-all duration-300 ease-in-out
-                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                        `}
-                      >
-                        <div className="relative z-10">
-                          <h3
-                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
-                          >
-                            {module.name}
-                          </h3>
-                          <p className={`text-sm ${theme.textMuted}`}>
-                            {module.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 relative z-10">
-                          <div
-                            className={`
-                              p-3 rounded-2xl shadow-md
-                              ${colors.iconBg} text-white
-                              group-hover:scale-125 transition-transform duration-300
-                            `}
-                          >
-                            <Icon size={24} className="text-white" />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {category.modules.map((module, moduleIndex) => {
+                    const Icon = module.icon;
+                    const colors = moduleColors[moduleIndex % moduleColors.length];
+                    return (
+                      <Link key={module.name} to={module.path} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                        >
+                          <div className="relative z-10">
+                            <h3
+                              className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                            >
+                              {module.name}
+                            </h3>
+                            <p className={`text-sm ${theme.textMuted}`}>
+                              {module.description}
+                            </p>
                           </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
+                          <div className="flex items-center justify-between mt-3 relative z-10">
+                            <div
+                              className={`
+                                p-3 rounded-2xl shadow-md
+                                ${colors.iconBg} text-white
+                                group-hover:scale-125 transition-transform duration-300
+                              `}
+                            >
+                              <Icon size={24} className="text-white" />
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {/* NEW: Reports Tab Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
+                  <MilestoneStatusChart data={milestoneStatusData} />
+                </div>
+              </>
             )}
 
             {category.id === 'billing' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {category.modules.map((module, moduleIndex) => {
-                  const Icon = module.icon;
-                  const colors = moduleColors[moduleIndex % moduleColors.length];
-                  return (
-                    <Link key={module.name} to={module.path} className="flex">
-                      <Card
-                        hover
-                        className={`
-                          p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
-                          ${colors.cardBg}
-                          transform transition-all duration-300 ease-in-out
-                          hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
-                        `}
-                      >
-                        <div className="relative z-10">
-                          <h3
-                            className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
-                          >
-                            {module.name}
-                          </h3>
-                          <p className={`text-sm ${theme.textMuted}`}>
-                            {module.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 relative z-10">
-                          <div
-                            className={`
-                              p-3 rounded-2xl shadow-md
-                              ${colors.iconBg} text-white
-                              group-hover:scale-125 transition-transform duration-300
-                            `}
-                          >
-                            <Icon size={24} className="text-white" />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {category.modules.map((module, moduleIndex) => {
+                    const Icon = module.icon;
+                    const colors = moduleColors[moduleIndex % moduleColors.length];
+                    return (
+                      <Link key={module.name} to={module.path} className="flex">
+                        <Card
+                          hover
+                          className={`
+                            p-4 cursor-pointer group relative overflow-hidden flex-1 flex flex-col justify-between
+                            ${colors.cardBg}
+                            transform transition-all duration-300 ease-in-out
+                            hover:translate-y-[-6px] hover:shadow-2xl hover:ring-2 hover:ring-[${theme.hoverAccent}] hover:ring-opacity-75
+                          `}
+                        >
+                          <div className="relative z-10">
+                            <h3
+                              className={`text-xl font-bold ${colors.textColor} group-hover:text-[${theme.hoverAccent}] transition-colors`}
+                            >
+                              {module.name}
+                            </h3>
+                            <p className={`text-sm ${theme.textMuted}`}>
+                              {module.description}
+                            </p>
                           </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
+                          <div className="flex items-center justify-between mt-3 relative z-10">
+                            <div
+                              className={`
+                                p-3 rounded-2xl shadow-md
+                                ${colors.iconBg} text-white
+                                group-hover:scale-125 transition-transform duration-300
+                              `}
+                            >
+                              <Icon size={24} className="text-white" />
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {/* NEW: Billing Tab Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  <BillingStatusChart data={billingStatusData} />
+                </div>
+              </>
             )}
           </Card>
         </div>
