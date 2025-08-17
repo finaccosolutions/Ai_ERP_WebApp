@@ -8,8 +8,8 @@ import AIButton from '../UI/AIButton';
 import MasterSelectField from '../UI/MasterSelectField';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAI } from '../../contexts/AIContext';
-import { supabase } from '../../lib/supabase'; // Import supabase
-import { useCompany } from '../../contexts/CompanyContext'; // Import useCompany
+import { supabase } from '../../lib/supabase';
+import { useCompany } from '../../contexts/CompanyContext';
 
 interface ItemCategoryFilterModalProps {
   isOpen: boolean;
@@ -73,8 +73,8 @@ function ItemCategoryFilterModal({
       const aiPrompt = `Suggest relevant filters for item categories based on common inventory needs. Consider category name, description, parent category, and active status. Provide suggestions in a structured format.`;
       const aiResponse = await suggestWithAI({ query: aiPrompt, context: 'item_category_filters' });
 
-      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0) {
-        const suggestedFilters = aiResponse.suggestions[0].filterData; // Assuming AI returns filterData
+      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0 && aiResponse.suggestions.data?.filterData) {
+        const suggestedFilters = aiResponse.suggestions.data.filterData; // Assuming AI returns filterData
         if (suggestedFilters) {
           onApplyFilters({ ...filters, ...suggestedFilters });
         } else {
@@ -87,7 +87,7 @@ function ItemCategoryFilterModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z- flex items-center justify-center p-4 bg-black bg-opacity-50">
       <Card className={`w-full max-w-4xl ${theme.cardBg}`}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -149,8 +149,8 @@ function ItemCategoryFilterModal({
                 `}
               >
                 <option value="all">All</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
               </select>
             </div>
           </div>

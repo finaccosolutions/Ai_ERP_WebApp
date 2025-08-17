@@ -13,6 +13,7 @@ import {
   Calendar,
   DollarSign,
   CheckCircle,
+  XCircle, // NEW: Import XCircle
 } from 'lucide-react';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -23,7 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import TimeLogFilterModal from '../../components/Modals/TimeLogFilterModal';
 
@@ -62,6 +63,7 @@ function TimeLogPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
+  const location = useLocation(); // Use useLocation to get state
 
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,9 @@ function TimeLogPage() {
 
   const [timeLogMetrics, setTimeLogMetrics] = useState({ totalMinutes: 0, billableMinutes: 0, nonBillableMinutes: 0, employeeTimeDistribution: [] });
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Time Logs");
+
 
   const isEditMode = !!formData.id;
 
@@ -115,7 +120,14 @@ function TimeLogPage() {
     if (currentCompany?.id) {
       initializePage();
     }
-  }, [currentCompany?.id, taskId, viewMode, filterCriteria, numResultsToShow]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Time Logs"); // Default title
+    }
+  }, [currentCompany?.id, taskId, viewMode, filterCriteria, numResultsToShow, location.state]);
 
   const fetchTaskDetails = async (id: string) => {
     try {
@@ -387,7 +399,7 @@ function TimeLogPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            Time Logs for {taskDetails?.task_name || 'Task'}
+            {pageTitle} for {taskDetails?.task_name || 'Task'}
           </h1>
           <p className={theme.textSecondary}>
             Log and track time spent on this task.
@@ -464,7 +476,7 @@ function TimeLogPage() {
                 label="Employee"
                 value={formData.employeeName}
                 onValueChange={(val) => handleInputChange('employeeName', val)}
-                onSelect={handleEmployeeSelect}
+                onSelect={(id) => handleEmployeeSelect(id, availableEmployees.find(emp => emp.id === id)?.name || '')}
                 options={availableEmployees}
                 placeholder="Select Employee"
                 required

@@ -172,10 +172,10 @@ function ProjectListPage() {
         );
       }
 
-      const today = new Date().toISOString().split('T');
+      const today = new Date().toISOString().split('T')[0];
       const next7Days = new Date();
       next7Days.setDate(next7Days.getDate() + 7);
-      const next7DaysISO = next7Days.toISOString().split('T');
+      const next7DaysISO = next7Days.toISOString().split('T')[0];
 
       if (currentFilters.overdue === 'true') {
         query = query

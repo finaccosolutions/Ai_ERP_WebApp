@@ -64,7 +64,7 @@ function StockJournalPage() {
     id: '',
     entryNo: '',
     entryType: 'stock_adjustment', // Fixed for this page
-    entryDate: new Date().toISOString().split('T')[0],
+    entryDate: new Date().toISOString().split('T'),
     warehouseId: '', // For stock adjustment, single warehouse
     notes: '',
     status: 'draft',
@@ -168,7 +168,7 @@ function StockJournalPage() {
         query = query.limit(parseInt(numResultsToShow));
       }
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
       setStockEntries(data || []);
@@ -185,7 +185,7 @@ function StockJournalPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -234,7 +234,7 @@ function StockJournalPage() {
       id: '',
       entryNo: '',
       entryType: 'stock_adjustment',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: new Date().toISOString().split('T'),
       warehouseId: '',
       notes: '',
       status: 'draft',

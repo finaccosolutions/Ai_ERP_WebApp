@@ -29,7 +29,7 @@ function ReceiptsPage() {
     receiptNo: '',
     customerId: '',
     customerName: '',
-    receiptDate: new Date().toISOString().split('T')[0],
+    receiptDate: new Date().toISOString().split('T'),
     amount: 0,
     paymentMethod: 'bank', // cash, bank, card, upi, cheque
     referenceNo: '',
@@ -104,7 +104,7 @@ function ReceiptsPage() {
       receiptNo: '',
       customerId: '',
       customerName: '',
-      receiptDate: new Date().toISOString().split('T')[0],
+      receiptDate: new Date().toISOString().split('T'),
       amount: 0,
       paymentMethod: 'bank',
       referenceNo: '',
@@ -229,8 +229,8 @@ function ReceiptsPage() {
         availableCustomers: availableCustomers.map(cust => ({ id: cust.id, name: cust.name }))
       });
       
-      if (suggestions?.customer) {
-        const suggestedCustomer = availableCustomers.find(cust => cust.id === suggestions.customer.id || cust.name === suggestions.customer.name);
+      if (suggestions?.suggestions && suggestions.suggestions.length > 0 && suggestions.suggestions.data?.customer) {
+        const suggestedCustomer = availableCustomers.find(cust => cust.id === suggestions.suggestions.data.customer.id || cust.name === suggestions.suggestions.data.customer.name);
         if (suggestedCustomer) {
           handleCustomerSelect(suggestedCustomer.id, suggestedCustomer.name);
         }
@@ -428,4 +428,3 @@ function ReceiptsPage() {
 }
 
 export default ReceiptsPage;
-

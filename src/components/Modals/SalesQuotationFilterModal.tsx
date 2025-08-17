@@ -80,8 +80,8 @@ function SalesQuotationFilterModal({
       const aiPrompt = `Suggest relevant filters for sales quotations based on common business needs. Consider quotation number, date ranges, status, customer, and amount. Provide suggestions in a structured format.`;
       const aiResponse = await suggestWithAI({ query: aiPrompt, context: 'sales_quotation_filters' });
 
-      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0) {
-        const suggestedFilters = aiResponse.suggestions[0].filterData; // Assuming AI returns filterData
+      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0 && aiResponse.suggestions.data?.filterData) {
+        const suggestedFilters = aiResponse.suggestions.data.filterData; // Assuming AI returns filterData
         if (suggestedFilters) {
           onApplyFilters({ ...filters, ...suggestedFilters });
         } else {
@@ -94,7 +94,7 @@ function SalesQuotationFilterModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z- flex items-center justify-center p-4 bg-black bg-opacity-50">
       <Card className={`w-full max-w-4xl ${theme.cardBg}`}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">

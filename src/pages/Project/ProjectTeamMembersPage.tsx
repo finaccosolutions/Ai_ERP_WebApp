@@ -29,6 +29,7 @@ function ProjectTeamMembersPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get state
 
   const [teamMembers, setTeamMembers] = useState<ProjectTeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +52,22 @@ function ProjectTeamMembersPage() {
   const [availableProjects, setAvailableProjects] = useState<{ id: string; name: string }[]>([]);
   const [availableEmployees, setAvailableEmployees] = useState<{ id: string; name: string }[]>([]);
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Project Team Members");
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchTeamMembers();
       fetchMasterData(currentCompany.id);
     }
-  }, [currentCompany?.id]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Project Team Members"); // Default title
+    }
+  }, [currentCompany?.id, location.state]);
 
   const fetchMasterData = async (companyId: string) => {
     try {
@@ -224,7 +235,7 @@ function ProjectTeamMembersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Project Team Members</h1>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1>
           <p className={theme.textSecondary}>Manage staff assigned to various projects.</p>
         </div>
         <div className="flex space-x-2">

@@ -49,7 +49,7 @@ function CreditNotesPage() {
     customerName: '',
     invoiceId: '', // Original invoice ID
     invoiceNo: '', // Original invoice number
-    creditNoteDate: new Date().toISOString().split('T')[0], // Maps to invoice_date
+    creditNoteDate: new Date().toISOString().split('T'), // Maps to invoice_date
     reason: '', // Stored in notes or a custom field if schema extended
     notes: '',
     status: 'credit_note', // Fixed status for credit notes
@@ -118,7 +118,7 @@ function CreditNotesPage() {
   };
 
   const fetchAvailableCustomers = async (companyId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('CreditNotesPage: Supabase session at fetchAvailableCustomers start:', session);
 
     try {
@@ -146,7 +146,7 @@ function CreditNotesPage() {
       customerName: '',
       invoiceId: '',
       invoiceNo: '',
-      creditNoteDate: new Date().toISOString().split('T')[0],
+      creditNoteDate: new Date().toISOString().split('T'),
       reason: '',
       notes: '',
       status: 'credit_note',
@@ -290,7 +290,7 @@ function CreditNotesPage() {
           console.error('CreditNotesPage: Error creating sales invoice for credit note:', error);
           throw error;
         }
-        creditNoteId = data[0].id;
+        creditNoteId = data.id;
         setSuccessMessage('Credit Note created successfully!');
       }
 
@@ -406,8 +406,8 @@ function CreditNotesPage() {
         availableCustomers: availableCustomers.map(cust => ({ id: cust.id, name: cust.name }))
       });
       
-      if (suggestions?.customer) {
-        const suggestedCustomer = availableCustomers.find(cust => cust.id === suggestions.customer.id || cust.name === suggestions.customer.name);
+      if (suggestions?.suggestions && suggestions.suggestions.length > 0 && suggestions.suggestions.data?.customer) {
+        const suggestedCustomer = availableCustomers.find(cust => cust.id === suggestions.suggestions.data.customer.id || cust.name === suggestions.suggestions.data.customer.name);
         if (suggestedCustomer) {
           handleCustomerSelect(suggestedCustomer.id, suggestedCustomer.name);
         }
@@ -506,9 +506,9 @@ function CreditNotesPage() {
                   label="Customer Name"
                   value={creditNote.customerName}
                   onValueChange={(value) => handleCreditNoteChange('customerName', value)}
-                  onSelect={handleCustomerSelect}
+                  onSelect={(id, name) => handleCreditNoteChange('customerId', id)} // Only pass ID to state
                   options={availableCustomers}
-                  placeholder="Start typing customer name..."
+                  placeholder="Select or type customer name..."
                   required
                   aiHelper={true}
                   context="customer_selection"
@@ -669,4 +669,3 @@ function CreditNotesPage() {
 }
 
 export default CreditNotesPage;
-

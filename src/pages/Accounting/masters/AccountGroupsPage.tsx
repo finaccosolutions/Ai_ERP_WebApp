@@ -158,7 +158,7 @@ function AccountGroupsPage() {
 
       let nextNumber = 1;
       if (data && data.length > 0) {
-        const lastCode = data[0].account_code;
+        const lastCode = data.account_code;
         const lastNum = parseInt(lastCode.replace(prefix, ''));
         if (!isNaN(lastNum)) {
           nextNumber = lastNum + 1;

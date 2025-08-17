@@ -64,7 +64,7 @@ function GoodsReceiptsIssuesPage() {
     id: '',
     entryNo: '',
     entryType: 'material_receipt', // Can be toggled between receipt/issue
-    entryDate: new Date().toISOString().split('T')[0],
+    entryDate: new Date().toISOString().split('T'),
     warehouseId: '',
     referenceNo: '',
     notes: '',
@@ -155,7 +155,7 @@ function GoodsReceiptsIssuesPage() {
 
       query = query.order('entry_date', { ascending: false });
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
       setGoodsEntries(data || []);
@@ -172,7 +172,7 @@ function GoodsReceiptsIssuesPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -221,7 +221,7 @@ function GoodsReceiptsIssuesPage() {
       id: '',
       entryNo: '',
       entryType: 'material_receipt',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: new Date().toISOString().split('T'),
       warehouseId: '',
       referenceNo: '',
       notes: '',
@@ -302,6 +302,7 @@ function GoodsReceiptsIssuesPage() {
       if (entryId) {
         await supabase.from('stock_entry_items').delete().eq('entry_id', entryId);
         const itemsToInsert = formData.items.map(item => ({
+          ...item,
           entry_id: entryId,
           item_id: item.itemId,
           quantity: item.quantity,
@@ -401,7 +402,7 @@ function GoodsReceiptsIssuesPage() {
     endDate: '',
     warehouseId: '',
     status: 'all',
-  })[0]; // Initialize filterCriteria state
+  }); // Initialize filterCriteria state
 
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     filterCriteria.entryNo = newFilters.entryNo;
@@ -638,7 +639,7 @@ function GoodsReceiptsIssuesPage() {
           </Button>
           <MasterSelectField
             label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsOptions[0].id)?.name || ''}
+            value={numResultsOptions.find(opt => opt.id === numResultsOptions.id)?.name || ''}
             onValueChange={() => {}} // Not used for typing
             onSelect={(id) => {
               // Update filterCriteria.numResults and trigger fetch

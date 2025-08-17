@@ -24,8 +24,8 @@ function ActivityFormPage() {
     activityType: 'task',
     subject: '',
     description: '',
-    activityDate: new Date().toISOString().split('T')[0],
-    activityTime: new Date().toTimeString().split(' ')[0].substring(0, 5), // HH:MM
+    activityDate: new Date().toISOString().split('T'),
+    activityTime: new Date().toTimeString().split(' ').substring(0, 5), // HH:MM
     durationMinutes: 0,
     status: 'open',
     priority: 'medium',
@@ -166,8 +166,8 @@ function ActivityFormPage() {
       activityType: 'task',
       subject: '',
       description: '',
-      activityDate: new Date().toISOString().split('T')[0],
-      activityTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
+      activityDate: new Date().toISOString().split('T'),
+      activityTime: new Date().toTimeString().split(' ').substring(0, 5),
       durationMinutes: 0,
       status: 'open',
       priority: 'medium',
@@ -220,7 +220,7 @@ function ActivityFormPage() {
         assigned_to_id: formData.assignedToId || null,
         reference_type: formData.referenceType || null,
         reference_id: formData.referenceId || null,
-        created_by: supabase.auth.getUser().then(res => res.data.user?.id).catch(() => null),
+        created_by: (await supabase.auth.getUser()).data.user?.id, // Correctly get user ID
       };
 
       if (formData.id) {
@@ -404,4 +404,3 @@ function ActivityFormPage() {
 }
 
 export default ActivityFormPage;
-

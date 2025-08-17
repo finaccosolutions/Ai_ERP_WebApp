@@ -56,7 +56,7 @@ function SalesOrdersPage() {
     customerId: '',
     customerName: '',
     quotationId: '',
-    orderDate: new Date().toISOString().split('T')[0],
+    orderDate: new Date().toISOString().split('T'),
     deliveryDate: '',
     referenceNo: '',
     termsAndConditions: '',
@@ -125,7 +125,7 @@ function SalesOrdersPage() {
   };
 
   const fetchAvailableItems = async (companyId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('SalesOrdersPage: Supabase session at fetchAvailableItems start:', session);
 
     try {
@@ -171,7 +171,7 @@ function SalesOrdersPage() {
       customerId: '',
       customerName: '',
       quotationId: '',
-      orderDate: new Date().toISOString().split('T')[0],
+      orderDate: new Date().toISOString().split('T'),
       deliveryDate: '',
       referenceNo: '',
       termsAndConditions: '',
@@ -227,7 +227,7 @@ function SalesOrdersPage() {
 
   const addItem = () => {
     const newItem: SalesOrderItem = {
-      id: Date.now().toString(),
+      id: 'new-' + Date.now(),
       itemCode: '',
       itemName: '',
       description: '',
@@ -317,7 +317,7 @@ function SalesOrdersPage() {
           console.error('SalesOrdersPage: Error creating sales order:', error);
           throw error;
         }
-        salesOrderId = data[0].id;
+        salesOrderId = data.id;
         setSuccessMessage('Sales Order created successfully!');
       }
 
@@ -442,8 +442,8 @@ function SalesOrdersPage() {
         availableItems: availableItems.map(item => ({ id: item.id, name: item.name, code: item.item_code }))
       });
       
-      if (suggestions?.item) {
-        const suggestedItem = availableItems.find(item => item.id === suggestions.item.id || item.item_name === suggestions.item.name);
+      if (suggestions?.suggestions && suggestions.suggestions.length > 0 && suggestions.suggestions.data?.item) {
+        const suggestedItem = availableItems.find(item => item.id === suggestions.suggestions.data.item.id || item.item_name === suggestions.suggestions.data.item.name);
         if (suggestedItem) {
           handleItemSelect(index, suggestedItem.id, suggestedItem.name, suggestedItem);
         }
@@ -778,4 +778,3 @@ function SalesOrdersPage() {
 }
 
 export default SalesOrdersPage;
-

@@ -30,7 +30,7 @@ function UnitOfMeasureFilterModal({
   filters,
   onApplyFilters,
   onFilterChange,
-}: UnitOfMeasureFilterModalModalProps) {
+}: UnitOfMeasureFilterModalProps) {
   const { theme } = useTheme();
   const { suggestWithAI } = useAI();
   const { currentCompany } = useCompany();
@@ -74,8 +74,8 @@ function UnitOfMeasureFilterModal({
       const aiPrompt = `Suggest relevant filters for units of measure based on common inventory needs. Consider unit name, symbol, whether it's a base unit, and its base unit. Provide suggestions in a structured format.`;
       const aiResponse = await suggestWithAI({ query: aiPrompt, context: 'unit_of_measure_filters' });
 
-      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0) {
-        const suggestedFilters = aiResponse.suggestions[0].filterData; // Assuming AI returns filterData
+      if (aiResponse && aiResponse.suggestions && aiResponse.suggestions.length > 0 && aiResponse.suggestions.data?.filterData) {
+        const suggestedFilters = aiResponse.suggestions.data.filterData; // Assuming AI returns filterData
         if (suggestedFilters) {
           onApplyFilters({ ...filters, ...suggestedFilters });
         } else {
@@ -88,7 +88,7 @@ function UnitOfMeasureFilterModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z- flex items-center justify-center p-4 bg-black bg-opacity-50">
       <Card className={`w-full max-w-4xl ${theme.cardBg}`}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">

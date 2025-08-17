@@ -93,7 +93,7 @@ function SalesReturnsPage() {
     customerName: '',
     invoiceId: '',
     invoiceNo: '',
-    returnDate: new Date().toISOString().split('T')[0],
+    returnDate: new Date().toISOString().split('T'),
     reason: '',
     notes: '',
     status: 'draft', // draft, processed, cancelled
@@ -130,7 +130,7 @@ function SalesReturnsPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchSalesReturns = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('SalesReturnsPage: Supabase session at fetchSalesReturns start:', session);
 
     if (!currentCompany?.id) return;
@@ -158,7 +158,7 @@ function SalesReturnsPage() {
   };
 
   const fetchAvailableItems = async (companyId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('SalesReturnsPage: Supabase session at fetchAvailableItems start:', session);
 
     try {
@@ -205,7 +205,7 @@ function SalesReturnsPage() {
       customerName: '',
       invoiceId: '',
       invoiceNo: '',
-      returnDate: new Date().toISOString().split('T')[0],
+      returnDate: new Date().toISOString().split('T'),
       reason: '',
       notes: '',
       status: 'draft',
@@ -305,7 +305,6 @@ function SalesReturnsPage() {
 
     try {
       const salesReturnToSave = {
-        ...salesReturn,
         company_id: currentCompany.id,
         created_by: user.id,
         return_no: salesReturn.returnNo,
@@ -340,7 +339,7 @@ function SalesReturnsPage() {
           console.error('SalesReturnsPage: Error creating sales return:', error);
           throw error;
         }
-        salesReturnId = data[0].id;
+        salesReturnId = data.id;
         setSuccessMessage('Sales Return created successfully!');
       }
 
@@ -462,8 +461,8 @@ function SalesReturnsPage() {
         availableItems: availableItems.map(item => ({ id: item.id, name: item.name, code: item.item_code }))
       });
       
-      if (suggestions?.item) {
-        const suggestedItem = availableItems.find(item => item.id === suggestions.item.id || item.item_name === suggestions.item.name);
+      if (suggestions?.suggestions && suggestions.suggestions.length > 0 && suggestions.suggestions.data?.item) {
+        const suggestedItem = availableItems.find(item => item.id === suggestions.suggestions.data.item.id || item.item_name === suggestions.suggestions.data.item.name);
         if (suggestedItem) {
           handleItemSelect(index, suggestedItem.id, suggestedItem.name, suggestedItem);
         }
@@ -578,7 +577,7 @@ function SalesReturnsPage() {
                   aiHelper={true}
                   context="customer_selection"
                 />
-                {/* Add more customer fields if needed */}
+                {/* Add more customer fields if needed, e.g., customerId, contact info */}
               </div>
             </Card>
 
@@ -769,4 +768,3 @@ function SalesReturnsPage() {
 }
 
 export default SalesReturnsPage;
-

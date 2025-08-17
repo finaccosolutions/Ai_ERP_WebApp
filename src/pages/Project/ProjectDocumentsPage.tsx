@@ -34,6 +34,7 @@ function ProjectDocumentsPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get state
 
   const [documents, setDocuments] = useState<DocumentAttachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,11 +46,21 @@ function ProjectDocumentsPage() {
 
   const [documentTypeDistributionData, setDocumentTypeDistributionData] = useState<any[]>([]);
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Project Documents");
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchDocuments();
     }
-  }, [currentCompany?.id]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Project Documents"); // Default title
+    }
+  }, [currentCompany?.id, location.state]);
 
   const fetchDocuments = async () => {
     if (!currentCompany?.id) return;
@@ -71,7 +82,7 @@ function ProjectDocumentsPage() {
 
       query = query.order('created_at', { ascending: false });
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
       setDocuments(data || []);
@@ -171,7 +182,7 @@ function ProjectDocumentsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Project Documents</h1>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1>
           <p className={theme.textSecondary}>Manage all documents related to your projects.</p>
         </div>
         <div className="flex space-x-2">

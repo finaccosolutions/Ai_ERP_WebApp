@@ -234,7 +234,7 @@ function Accounting() {
         <Route path="vouchers/payments" element={<PaymentsPage />} />
         <Route path="vouchers/receipts" element={<ReceiptsPage />} />
         <Route path="vouchers/contra" element={<ContraPage />} />
-        <Route path="vouchers/journal" element={<div>Journal Page</div>} />
+        <Route path="vouchers/journal" element={<JournalPage />} />
         {/* Sales/Purchase related vouchers now link to their respective modules */}
         {/* <Route path="vouchers/sales" element={<SalesVoucherPage />} /> */}
         {/* <Route path="vouchers/sales-return" element={<SalesReturnVoucherPage />} /> */}
@@ -252,12 +252,12 @@ function Accounting() {
         <Route path="cost-centers/centers" element={<div>Cost Centers Page</div>} />
         <Route path="cost-centers/categories" element={<div>Cost Categories Page</div>} />
         {/* Reports Routes */}
-        <Route path="reports/ledger-wise" element={<div>Ledger-wise Report Page</div>} />
+        <Route path="reports/ledger-wise" element={<LedgerAccountPage />} />
         <Route path="reports/day-book" element={<div>Day Book Page</div>} />
         <Route path="reports/cash-book" element={<div>Cash Book Page</div>} />
         <Route path="reports/journal-register" element={<div>Journal Register Page</div>} />
         <Route path="reports/voucher-summary" element={<div>Voucher Summary Page</div>} />
-        <Route path="ledgers/:id/report" element={<LedgerAccountPage />} /> {/* NEW ROUTE */}
+        {/* <Route path="ledgers/:id/report" element={<LedgerAccountPage />} /> */} {/* NEW ROUTE */}
         {/* Settings Routes */}
         <Route path="settings/voucher-numbering" element={<div>Voucher Numbering Page</div>} />
         <Route path="settings/approval-workflows" element={<div>Approval Workflows Page</div>} />

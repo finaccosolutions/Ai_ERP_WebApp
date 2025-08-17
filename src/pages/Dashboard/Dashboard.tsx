@@ -376,7 +376,7 @@ function Dashboard() {
             type: 'receivable',
             description: `Invoice payment due`,
             amount: sale.outstanding_amount,
-            dueDate: dueDate.toISOString().split('T')[0],
+            dueDate: dueDate.toISOString().split('T'),
             overdue: dueDate < now
           });
         }
@@ -394,7 +394,7 @@ function Dashboard() {
             type: 'payable',
             description: `Bill payment due`,
             amount: purchase.outstanding_amount,
-            dueDate: dueDate.toISOString().split('T')[0],
+            dueDate: dueDate.toISOString().split('T'),
             overdue: dueDate < now
           });
         }
@@ -1054,4 +1054,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;

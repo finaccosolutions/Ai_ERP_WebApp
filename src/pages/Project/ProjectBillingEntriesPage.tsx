@@ -10,7 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 
 interface ProjectBillingEntry {
@@ -32,6 +32,7 @@ function ProjectBillingEntriesPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get state
 
   const [billingEntries, setBillingEntries] = useState<ProjectBillingEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,12 +57,22 @@ function ProjectBillingEntriesPage() {
   const [availableTasks, setAvailableTasks] = useState<{ id: string; name: string }[]>([]);
   const [availableInvoices, setAvailableInvoices] = useState<{ id: string; name: string }[]>([]);
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Project Billing Entries");
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchBillingEntries();
       fetchMasterData(currentCompany.id);
     }
-  }, [currentCompany?.id]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Project Billing Entries"); // Default title
+    }
+  }, [currentCompany?.id, location.state]);
 
   const fetchMasterData = async (companyId: string) => {
     try {
@@ -244,7 +255,7 @@ function ProjectBillingEntriesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Project Billing Entries</h1>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1>
           <p className={theme.textSecondary}>Record and manage billing events for projects and tasks.</p>
         </div>
         <div className="flex space-x-2">

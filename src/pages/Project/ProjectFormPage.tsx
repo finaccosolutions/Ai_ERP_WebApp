@@ -416,9 +416,7 @@ function ProjectFormPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="p-6">
-            <h3
-              className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
-            >
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
               <ClipboardCheck
                 size={20}
                 className={`mr-2 text-[${theme.hoverAccent}]`}
@@ -563,9 +561,7 @@ function ProjectFormPage() {
           </Card>
 
           <Card className="p-6">
-            <h3
-              className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}
-            >
+            <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
               <FileText size={20} className={`mr-2 text-[${theme.hoverAccent}]`} />
               Attachments
             </h3>

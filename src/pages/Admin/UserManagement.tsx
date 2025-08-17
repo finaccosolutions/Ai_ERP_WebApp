@@ -108,7 +108,6 @@ function UserManagement() {
 
       // Fetch emails from auth.users (only accessible by service_role key, but we're in client-side)
       // For client-side, we can only get emails of authenticated users or rely on user_profiles if email is stored there.
-      // Since email is not in user_profiles, we'll use a placeholder or assume it's available via auth.users directly if RLS allows.
       // A more robust solution for admin would be a Supabase Edge Function to fetch auth.users.
       const { data: authUsers, error: authUsersError } = await supabase.auth.admin.listUsers();
       if (authUsersError) {
@@ -301,11 +300,12 @@ function UserManagement() {
       if (error) throw error;
 
       // Also delete from users_companies if not cascaded by user_profiles (depends on FK setup)
-      await supabase.from('users_companies').delete().eq('user_id', userId);
+      // This line is removed as it should cascade automatically if FK is set up correctly
+      // await supabase.from('users_companies').delete().eq('user_id', userId);
 
       showNotification('User deleted successfully!', 'success');
       fetchUsersAndRoles(); // Refresh list
-    } catch (err: any) { // FIX: Changed `=> {` to `{`
+    } catch (err: any) {
       setFormErrors({ delete: err.message || 'Failed to delete user.' });
       showNotification(err.message || 'Failed to delete user.', 'error');
     } finally {

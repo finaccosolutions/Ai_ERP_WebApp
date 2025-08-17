@@ -234,16 +234,17 @@ function ItemMasterFormPage() {
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const file = e.target.files?.[0];  // ✅ pick the first file
+  if (file) {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
 
   const uploadImage = async (file: File) => {
     if (!currentCompany?.id) {
@@ -383,7 +384,7 @@ function ItemMasterFormPage() {
         purchase_rate: formData.purchaseRate,
         min_order_qty: formData.minOrderQty,
         reorder_level: formData.reorderLevel,
-        max_level: formData.max_level,
+        max_level: formData.maxLevel,
         lead_time_days: formData.leadTimeDays,
         weight: formData.weight,
         weight_unit: formData.weightUnit,

@@ -877,7 +877,7 @@ export interface Database {
           actual_due_date: string;
           project_category_id: string | null;
           assigned_staff_id: string | null;
-          status: string | null;
+          status: string;
           description: string | null;
           created_by: string | null;
           created_at: string;
@@ -901,7 +901,7 @@ export interface Database {
           actual_due_date?: string;
           project_category_id?: string | null;
           assigned_staff_id?: string | null;
-          status?: string | null;
+          status?: string;
           description?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -925,7 +925,7 @@ export interface Database {
           actual_due_date?: string;
           project_category_id?: string | null;
           assigned_staff_id?: string | null;
-          status?: string | null;
+          status?: string;
           description?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -988,7 +988,7 @@ export interface Database {
           project_id: string | null;
           task_name: string;
           assigned_to_id: string | null;
-          status: string | null;
+          status: string;
           due_date: string | null;
           description: string | null;
           created_at: string;
@@ -1005,7 +1005,7 @@ export interface Database {
           project_id?: string | null;
           task_name: string;
           assigned_to_id?: string | null;
-          status?: string | null;
+          status?: string;
           due_date?: string | null;
           description?: string | null;
           created_at?: string;
@@ -1022,7 +1022,7 @@ export interface Database {
           project_id?: string | null;
           task_name?: string;
           assigned_to_id?: string | null;
-          status?: string | null;
+          status?: string;
           due_date?: string | null;
           description?: string | null;
           created_at?: string;
@@ -1466,5 +1466,32 @@ export interface Database {
         };
       };
     };
+    Views: {
+      company_project_kpis: {
+        Row: {
+          company_id: string | null;
+          total_projects: number | null;
+          projects_not_started: number | null;
+          projects_in_progress: number | null;
+          projects_completed: number | null;
+          total_tasks: number | null;
+          open_tasks: number | null;
+          completed_tasks: number | null;
+          total_time_logged_minutes: number | null;
+          total_recurring_projects: number | null;
+          total_one_time_projects: number | null;
+          total_fixed_price_value: number | null;
+          total_time_based_value: number | null;
+          total_billed_amount: number | null;
+          total_billed_projects: number | null;
+          total_partially_billed_projects: number | null;
+          total_unbilled_projects: number | null;
+          total_billable_tasks: number | null;
+          total_billed_tasks_amount: number | null;
+          total_time_logged_cost: number | null;
+        };
+      };
+    };
   };
 }
+

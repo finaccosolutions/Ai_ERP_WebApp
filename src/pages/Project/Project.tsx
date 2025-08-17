@@ -98,8 +98,6 @@ function Project() {
     totalTeamMembers: 0, // Added for Masters tab
     totalDocuments: 0, // Added for Masters tab
   });
-  const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({}); // Changed to single ProjectData
-  const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
@@ -173,6 +171,7 @@ function Project() {
 
       if (kpisError) {
         console.error('Project.tsx: Error fetching KPIs from materialized view:', kpisError);
+        showNotification('Failed to load project metrics.', 'error');
         setProjectStats({
           totalProjects: 0, inProgress: 0, completed: 0, overdue: 0,
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
@@ -572,6 +571,7 @@ function Project() {
   if (!isMainProjectPage) {
     return (
       <Routes>
+        <Route path="/" element={<ProjectSummaryPage />} /> {/* Default to summary page */}
         <Route path="/list" element={<ProjectListPage />} />
         <Route path="/new" element={<ProjectFormPage />} />
         <Route path="/edit/:id" element={<ProjectFormPage />} />
@@ -621,19 +621,18 @@ function Project() {
       icon: LayoutGrid,
       modules: [
         { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, path: '/project/list', filter: { title: 'All Projects' } },
-        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'not_started', title: 'Not Started Projects' } },
-        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress', title: 'Ongoing Projects' } },
-        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, path: '/project/list', filter: { status: 'completed', title: 'Completed Projects' } },
+        { name: 'Not Started', value: projectStats.projectsNotStarted, icon: Clock, path: '/project/list', filter: { status: 'not_started', title: 'Not Started Projects' } },
+        { name: 'Ongoing', value: projectStats.projectsInProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress', title: 'Ongoing Projects' } },
+        { name: 'Completed', value: projectStats.projectsCompleted, icon: CheckCircle, path: '/project/list', filter: { status: 'completed', title: 'Completed Projects' } },
         { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, path: '/project/list', filter: { upcoming_due: 'true', title: 'Upcoming Due Projects' } },
         { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, path: '/project/list', filter: { overdue: 'true', title: 'Overdue Projects' } },
         { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billingType: 'fixed_price', title: 'Fixed Price Projects' } },
         { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { billingType: 'time_based', title: 'Time Based Projects' } },
         { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billing_status: 'billed', title: 'Billed Projects' } },
-        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { task_billing_status: 'billed', title: 'Billed Tasks' } },
-        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true', title: 'Recurring Projects' } },
-        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false', title: 'One-Time Projects' } },
         { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, path: '/project/list', filter: { is_billable: 'true', title: 'Billable Tasks' } },
         { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, path: '/project/reports/time-logs', filter: { title: 'Time Logged Cost Report' } },
+        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true', title: 'Recurring Projects' } },
+        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false', title: 'One-Time Projects' } },
       ]
     },
     {
@@ -643,7 +642,7 @@ function Project() {
       modules: [
         { name: 'Project List', description: 'Manage all your projects.', icon: ClipboardCheck, path: '/project/list', count: projectStats.totalProjects },
         { name: 'Project Categories', description: 'Define and manage project types.', icon: Layers, path: '/project/categories', count: projectStats.categoryWise },
-        { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/all-tasks', count: projectStats.totalTasks },
+        { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/tasks-list', count: projectStats.totalTasks },
         { name: 'Milestones', description: 'Track key project milestones.', icon: Flag, path: '/project/milestones', count: projectStats.totalMilestones },
         { name: 'Team Members', description: 'Manage project team members.', icon: Users, path: '/project/team-members', count: projectStats.totalTeamMembers },
         { name: 'Documents', description: 'Manage project documents.', icon: FileText, path: '/project/documents', count: projectStats.totalDocuments },
@@ -813,7 +812,7 @@ function Project() {
                     <Link to="/project/list?status=not_started" state={{ pageTitle: "Not Started Projects" }} className="flex">
                       <ProjectMetricsCard
                         title="Not Started"
-                        value={projectStats.inProgress}
+                        value={projectStats.projectsNotStarted}
                         description="Projects not yet started"
                         icon={Clock}
                         colorClass="bg-gray-500"
@@ -823,7 +822,7 @@ function Project() {
                     <Link to="/project/list?status=in_progress" state={{ pageTitle: "Ongoing Projects" }} className="flex">
                       <ProjectMetricsCard
                         title="Ongoing"
-                        value={projectStats.inProgress}
+                        value={projectStats.projectsInProgress}
                         description="Projects in progress"
                         icon={Clock}
                         colorClass="bg-blue-500"
@@ -833,7 +832,7 @@ function Project() {
                     <Link to="/project/list?status=completed" state={{ pageTitle: "Completed Projects" }} className="flex">
                       <ProjectMetricsCard
                         title="Completed"
-                        value={projectStats.completed}
+                        value={projectStats.projectsCompleted}
                         description="Projects marked as done"
                         icon={CheckCircle}
                         colorClass="bg-green-500"
@@ -937,7 +936,7 @@ function Project() {
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Health & Progress</h3>
                   <p className={theme.textSecondary}>Visual insights into project completion and milestone status.</p>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
+                    <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
                     <MilestoneStatusChart data={milestoneStatusData} />
                   </div>
                 </Card>
@@ -1194,7 +1193,7 @@ function Project() {
                 </div>
                 {/* NEW: Reports Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
+                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
                   <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
                 </div>
               </>
@@ -1246,7 +1245,7 @@ function Project() {
                 {/* NEW: Billing Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                   <BillingStatusChart data={billingStatusData} />
-                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
+                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
                 </div>
               </>
             )}

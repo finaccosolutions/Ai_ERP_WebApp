@@ -29,6 +29,7 @@ function MilestoneListPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get state
 
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,11 +42,21 @@ function MilestoneListPage() {
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Milestones");
+
   useEffect(() => {
     if (currentCompany?.id) {
       fetchMilestones();
     }
-  }, [currentCompany?.id]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Milestones"); // Default title
+    }
+  }, [currentCompany?.id, location.state]);
 
   const fetchMilestones = async () => {
     if (!currentCompany?.id) return;
@@ -130,7 +141,7 @@ function MilestoneListPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Milestones</h1>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1>
           <p className={theme.textSecondary}>Track key project milestones and their progress.</p>
         </div>
         <div className="flex space-x-2">

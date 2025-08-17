@@ -82,7 +82,7 @@ function DeliveryChallansPage() {
     customerId: '',
     customerName: '',
     salesOrderId: '',
-    challanDate: new Date().toISOString().split('T')[0], // Changed to string
+    challanDate: new Date().toISOString().split('T'), // Changed to string
     deliveryAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
     notes: '',
     status: 'draft', // draft, dispatched, delivered, cancelled
@@ -113,7 +113,7 @@ function DeliveryChallansPage() {
   }, [viewMode, currentCompany?.id]);
 
   const fetchDeliveryChallans = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('DeliveryChallansPage: Supabase session at fetchDeliveryChallans start:', session);
 
     if (!currentCompany?.id) return;
@@ -141,7 +141,7 @@ function DeliveryChallansPage() {
   };
 
   const fetchAvailableItems = async (companyId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } = { session: null } } = await supabase.auth.getSession();
     console.log('DeliveryChallansPage: Supabase session at fetchAvailableItems start:', session);
 
     try {
@@ -187,7 +187,7 @@ function DeliveryChallansPage() {
       customerId: '',
       customerName: '',
       salesOrderId: '',
-      challanDate: new Date().toISOString().split('T')[0],
+      challanDate: new Date().toISOString().split('T'),
       deliveryAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
       notes: '',
       status: 'draft',
@@ -215,7 +215,7 @@ function DeliveryChallansPage() {
 
   const addItem = () => {
     const newItem: DeliveryChallanItem = {
-      id: Date.now().toString(),
+      id: 'new-' + Date.now(),
       itemId: '',
       itemName: '',
       description: '',
@@ -294,7 +294,7 @@ function DeliveryChallansPage() {
           console.error('DeliveryChallansPage: Error creating delivery challan:', error);
           throw error;
         }
-        challanId = data[0].id; // Correctly get the ID from the insert result
+        challanId = data.id; // Correctly get the ID from the insert result
         setSuccessMessage('Delivery Challan created successfully!');
       }
 
@@ -334,7 +334,7 @@ function DeliveryChallansPage() {
       customerName: ch.customer_name || 'N/A',
       salesOrderId: ch.sales_order_id,
       challanDate: ch.challan_date,
-      deliveryAddress: ch.delivery_address || { street: '', city: '', state: '', zipCode: '', country: '' },
+      deliveryAddress: ch.delivery_address || { street: '', city: '', state: '', country: '' },
       notes: ch.notes || '',
       status: ch.status,
     });
@@ -404,8 +404,8 @@ function DeliveryChallansPage() {
         availableItems: availableItems.map(item => ({ id: item.id, name: item.name, code: item.item_code }))
       });
       
-      if (suggestions?.item) {
-        const suggestedItem = availableItems.find(item => item.id === suggestions.item.id || item.item_name === suggestions.item.name);
+      if (suggestions?.suggestions && suggestions.suggestions.length > 0 && suggestions.suggestions.data?.item) {
+        const suggestedItem = availableItems.find(item => item.id === suggestions.suggestions.data.item.id || item.item_name === suggestions.suggestions.data.item.name);
         if (suggestedItem) {
           handleItemSelect(index, suggestedItem.id, suggestedItem.name, suggestedItem);
         }
@@ -520,16 +520,16 @@ function DeliveryChallansPage() {
                   placeholder="State"
                 />
                 <FormField
-                  label="ZIP Code"
-                  value={challan.deliveryAddress.zipCode}
-                  onChange={(value) => handleChallanChange('deliveryAddress.zipCode', value)}
-                  placeholder="ZIP Code"
-                />
-                <FormField
                   label="Country"
                   value={challan.deliveryAddress.country}
                   onChange={(value) => handleChallanChange('deliveryAddress.country', value)}
                   placeholder="Country"
+                />
+                <FormField
+                  label="ZIP Code"
+                  value={challan.deliveryAddress.zipCode}
+                  onChange={(value) => handleChallanChange('deliveryAddress.zipCode', value)}
+                  placeholder="ZIP Code"
                 />
               </div>
             </Card>
@@ -675,4 +675,3 @@ function DeliveryChallansPage() {
 }
 
 export default DeliveryChallansPage;
-

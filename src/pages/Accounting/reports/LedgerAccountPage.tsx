@@ -158,8 +158,8 @@ function LedgerAccountPage() {
             )}
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => navigate(-1)} icon={<ArrowLeft size={16} />}>
-              Back
+            <Button variant="outline" onClick={() => navigate('/accounting/masters/ledgers')} icon={<ArrowLeft size={16} />}>
+              Back to Ledgers
             </Button>
             <Button icon={<RefreshCw size={16} />} onClick={fetchLedgerAccountData}>
               Refresh

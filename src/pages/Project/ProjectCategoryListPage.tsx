@@ -30,6 +30,7 @@ function ProjectCategoryListPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get state
 
   const [categories, setCategories] = useState<ProjectCategory[]>([]); // Changed to ProjectCategory
   const [loading, setLoading] = useState(true);
@@ -55,14 +56,23 @@ function ProjectCategoryListPage() {
     parentCategoryId: '',
     isActive: 'all',
   });
-  const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
+  const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Project Categories");
 
   useEffect(() => {
     if (currentCompany?.id) {
       fetchCategories();
     }
-  }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm]);
+
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Project Categories"); // Default title
+    }
+  }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm, location.state]);
 
   const fetchCategories = async () => {
     if (!currentCompany?.id) return;
@@ -72,7 +82,7 @@ function ProjectCategoryListPage() {
         .from('project_categories') // Changed from item_categories
         .select(`
           id, name, description, parent_category_id, is_active, created_at,
-          parent_category:project_categories!fk_project_category ( name ) // Corrected join
+          parent_category:project_categories ( name ) // Corrected join
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -108,8 +118,8 @@ function ProjectCategoryListPage() {
       setCategories(data || []);
       setTotalCategoriesCount(count || 0);
     } catch (err: any) {
-      showNotification(`Error fetching project categories: ${err.message}`, 'error');
-      console.error('Error fetching project categories:', err);
+      showNotification(`Error fetching project categories: ${err.message}`, 'error'); // Changed notification
+      console.error('Error fetching project categories:', err); // Changed error message
     } finally {
       setLoading(false);
     }
@@ -252,7 +262,7 @@ function ProjectCategoryListPage() {
     setShowFilterModal(false);
   };
 
-  const numCategoriesOptions = [
+  const numResultsOptions = [
     { id: '10', name: 'Show 10' },
     { id: '25', name: 'Show 25' },
     { id: '50', name: 'Show 50' },
@@ -325,7 +335,7 @@ function ProjectCategoryListPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Project Categories</h1> {/* Changed title */}
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1> {/* Changed title */}
           <p className={theme.textSecondary}>Organize your inventory items for better management and reporting.</p>
         </div>
         <div className="flex space-x-2">
@@ -399,7 +409,7 @@ function ProjectCategoryListPage() {
                   <tr key={category.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.description || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category?.name || 'N/A'}</td> {/* Corrected access */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category?.name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)} title="Edit">

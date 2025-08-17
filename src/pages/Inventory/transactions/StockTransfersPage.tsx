@@ -63,7 +63,7 @@ function StockTransfersPage() {
   const [formData, setFormData] = useState({
     id: '',
     entryNo: '',
-    entryDate: new Date().toISOString().split('T')[0],
+    entryDate: new Date().toISOString().split('T'),
     fromWarehouseId: '',
     toWarehouseId: '',
     notes: '',
@@ -166,7 +166,7 @@ function StockTransfersPage() {
         query = query.eq('status', filterCriteria.status);
       }
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
       setStockTransfers(data || []);
@@ -183,7 +183,7 @@ function StockTransfersPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemChange = (index: number, field: keyof typeof formData['items'][0], value: any) => {
+  const handleItemChange = (index: number, field: keyof typeof formData['items'], value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -231,7 +231,7 @@ function StockTransfersPage() {
     setFormData({
       id: '',
       entryNo: '',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: new Date().toISOString().split('T'),
       fromWarehouseId: '',
       toWarehouseId: '',
       notes: '',
@@ -319,6 +319,7 @@ function StockTransfersPage() {
       if (entryId) {
         await supabase.from('stock_entry_items').delete().eq('entry_id', entryId);
         const itemsToInsert = formData.items.map(item => ({
+          ...item,
           entry_id: entryId,
           item_id: item.itemId,
           quantity: item.quantity,
@@ -338,7 +339,7 @@ function StockTransfersPage() {
       resetForm();
       fetchStockTransfers();
     } catch (err: any) {
-      showNotification(`Failed to save stock transfer: ${err.message}`, 'error');
+      setError(`Failed to save stock transfer: ${err.message}`);
       console.error('Save stock transfer error:', err);
     } finally {
       setLoading(false);
