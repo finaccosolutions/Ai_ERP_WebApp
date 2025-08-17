@@ -28,6 +28,7 @@ interface SalesInvoice {
   customers: { name: string } | null; // Joined customer data
   tax_details: any | null; // Added new field
   other_ledger_entries: any | null; // Added new field
+  project_id: string | null; // Added project_id
 }
 
 function SalesInvoicesListPage() {
@@ -61,14 +62,23 @@ function SalesInvoicesListPage() {
     sortOrder: 'desc',     // New filter option
     referenceNo: '',       // New filter option
     createdBy: '',         // New filter option
+    projectId: '',         // NEW: Added projectId filter
   });
 
   useEffect(() => {
-    // No need to check location.state.mode here, this page is always the list
+    // Read project_id from URL search parameters
+    const params = new URLSearchParams(location.search);
+    const projectIdFromUrl = params.get('project_id');
+
+    setFilterCriteria(prev => ({
+      ...prev,
+      projectId: projectIdFromUrl || '', // Set projectId from URL, or empty string
+    }));
+
     if (currentCompany?.id) {
       fetchSalesInvoices();
     }
-  }, [currentCompany?.id, filterCriteria]); // Removed viewMode from dependency array
+  }, [currentCompany?.id, filterCriteria.numResults, location.search]); // Added location.search to dependencies
 
   const fetchSalesInvoices = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -81,7 +91,7 @@ function SalesInvoicesListPage() {
         .from('sales_invoices')
         .select(`
           id, invoice_no, invoice_date, due_date, status, total_amount, paid_amount, outstanding_amount, created_at,
-          customers ( name ), tax_details, other_ledger_entries
+          customers ( name ), tax_details, other_ledger_entries, project_id
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -110,7 +120,13 @@ function SalesInvoicesListPage() {
       if (filterCriteria.referenceNo) { // New filter
         query = query.ilike('reference_no', `%${filterCriteria.referenceNo}%`);
       }
-      // Note: createdBy filter would require joining with users table or storing user name in sales_invoices
+      if (filterCriteria.createdBy) { // New filter
+        // This would require joining with users table or storing user name in sales_invoices
+        // For now, it's a placeholder.
+      }
+      if (filterCriteria.projectId) { // NEW: Apply project_id filter
+        query = query.eq('project_id', filterCriteria.projectId);
+      }
 
       if (filterCriteria.numResults !== 'all') {
         query = query.limit(parseInt(filterCriteria.numResults));
@@ -324,4 +340,3 @@ function SalesInvoicesListPage() {
 }
 
 export default SalesInvoicesListPage;
-

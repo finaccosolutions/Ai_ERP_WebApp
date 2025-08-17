@@ -24,7 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'; // Import useLocation
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import ProjectListFilterModal from '../../components/Modals/ProjectListFilterModal';
 
@@ -66,6 +66,7 @@ function ProjectListPage() {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation(); // Use useLocation to get state
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +91,11 @@ function ProjectListPage() {
   });
   const [numResultsToShow, setNumResultsToShow] = useState<string>('10');
 
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("All Projects");
+
   useEffect(() => {
+    // Update filterCriteria from URL search params on component mount/update
     const newFilterCriteria = {
       customer: searchParams.get('customer') || '',
       assignedStaff: searchParams.get('assignedStaff') || '',
@@ -106,10 +111,17 @@ function ProjectListPage() {
     };
     setFilterCriteria(newFilterCriteria);
 
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("All Projects"); // Default title
+    }
+
     if (currentCompany?.id) {
       fetchProjects(newFilterCriteria);
     }
-  }, [currentCompany?.id, searchParams, numResultsToShow, searchTerm]);
+  }, [currentCompany?.id, searchParams, numResultsToShow, searchTerm, location.state]); // Added location.state
 
   const fetchProjects = async (currentFilters: typeof filterCriteria) => {
     if (!currentCompany?.id) return;
@@ -293,7 +305,7 @@ function ProjectListPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            Projects
+            {pageTitle} {/* Dynamic Page Title */}
           </h1>
           <p className={theme.textSecondary}>
             Manage all your projects, tasks, and time logs.

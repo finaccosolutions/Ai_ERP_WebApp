@@ -1,6 +1,6 @@
 // src/pages/Project/reports/TimeLogReportPage.tsx
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, RefreshCw, Filter, Calendar, Users, DollarSign } from 'lucide-react';
+import { ArrowLeft, Clock, RefreshCw, Filter, Calendar, Users, DollarSign, FileText } from 'lucide-react'; // Added FileText
 import Card from '../../../components/UI/Card';
 import Button from '../../../components/UI/Button';
 import AIButton from '../../../components/UI/AIButton';
@@ -72,8 +72,13 @@ function TimeLogReportPage() {
         const employeeName = log.employees ? `${log.employees.first_name} ${log.employees.last_name}` : 'Unassigned';
         employeeTime[employeeName] = (employeeTime[employeeName] || 0) + (log.duration_minutes || 0);
       });
-      setTimeLoggedByEmployeeChartData(Object.entries(employeeTime).map(([name, duration]) => ({ name, duration })));
 
+      const formattedTimeData = Object.keys(employeeTime).map(name => ({
+        name: name,
+        hours: parseFloat((employeeTime[name] / 60).toFixed(1)), // Convert minutes to hours
+      }));
+
+      setTimeLoggedByEmployeeChartData(formattedTimeData);
     } catch (err: any) {
       showNotification(`Error fetching report data: ${err.message}`, 'error');
       console.error('Error fetching time log report:', err);

@@ -43,6 +43,12 @@ import ProjectPerformanceReportPage from './reports/ProjectPerformanceReportPage
 import TimeLogReportPage from './reports/TimeLogReportPage';
 import BillingReportPage from './reports/BillingReportPage';
 
+// NEW: Import Master Pages
+import MilestoneListPage from './MilestoneListPage';
+import ProjectTeamMembersPage from './ProjectTeamMembersPage';
+import ProjectDocumentsPage from './ProjectDocumentsPage';
+import ProjectBillingEntriesPage from './ProjectBillingEntriesPage';
+
 
 interface ProjectData {
   id: string;
@@ -144,6 +150,27 @@ function Project() {
         .eq('company_id', companyId)
         .single();
 
+      // Fetch additional counts not in the KPI view
+      const { count: totalMilestonesCount, error: milestonesCountError } = await supabase
+        .from('milestones')
+        .select('id', { count: 'exact', head: true })
+        .in('project_id', supabase.from('projects').select('id').eq('company_id', companyId));
+      if (milestonesCountError) console.error('Error fetching total milestones:', milestonesCountError);
+
+      const { count: totalTeamMembersCount, error: teamMembersCountError } = await supabase
+        .from('project_team_members')
+        .select('id', { count: 'exact', head: true })
+        .in('project_id', supabase.from('projects').select('id').eq('company_id', companyId));
+      if (teamMembersCountError) console.error('Error fetching total team members:', teamMembersCountError);
+
+      const { count: totalDocumentsCount, error: documentsCountError } = await supabase
+        .from('document_attachments')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('reference_type', 'project');
+      if (documentsCountError) console.error('Error fetching total documents:', documentsCountError);
+
+
       if (kpisError) {
         console.error('Project.tsx: Error fetching KPIs from materialized view:', kpisError);
         setProjectStats({
@@ -151,7 +178,10 @@ function Project() {
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
           nonRecurring: 0, totalFixedPriceValue: 0, totalTimeBasedValue: 0,
           totalBilledAmount: 0, totalBillableTasks: 0, totalBilledTasksAmount: 0, totalTimeLoggedCost: 0,
-          totalTasks: 0, totalMilestones: 0, totalTeamMembers: 0, totalDocuments: 0,
+          totalTasks: 0,
+          totalMilestones: totalMilestonesCount || 0, // Use fetched count
+          totalTeamMembers: totalTeamMembersCount || 0, // Use fetched count
+          totalDocuments: totalDocumentsCount || 0, // Use fetched count
         });
       } else {
         setProjectStats({
@@ -170,10 +200,10 @@ function Project() {
           totalBillableTasks: kpis?.total_billable_tasks || 0,
           totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0,
           totalTimeLoggedCost: kpis?.total_time_logged_cost || 0,
-          totalTasks: kpis?.total_tasks || 0, // From KPI
-          totalMilestones: kpis?.total_milestones || 0, // Placeholder, needs actual query
-          totalTeamMembers: 0, // Placeholder, needs actual query
-          totalDocuments: 0, // Placeholder, needs actual query
+          totalTasks: kpis?.total_tasks || 0,
+          totalMilestones: totalMilestonesCount || 0, // Use fetched count
+          totalTeamMembers: totalTeamMembersCount || 0, // Use fetched count
+          totalDocuments: totalDocumentsCount || 0, // Use fetched count
         });
       }
 
@@ -553,6 +583,11 @@ function Project() {
         <Route path="/categories" element={<ProjectCategoryListPage />} />
         <Route path="/categories/new" element={<ProjectCategoryFormPage />} />
         <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} />
+        {/* NEW: Master Pages Routes */}
+        <Route path="/milestones" element={<MilestoneListPage />} />
+        <Route path="/team-members" element={<ProjectTeamMembersPage />} />
+        <Route path="/documents" element={<ProjectDocumentsPage />} />
+        <Route path="/billing/entries" element={<ProjectBillingEntriesPage />} />
         {/* NEW: Report Routes */}
         <Route path="/reports/performance" element={<ProjectPerformanceReportPage />} />
         <Route path="/reports/time-logs" element={<TimeLogReportPage />} />
@@ -585,20 +620,20 @@ function Project() {
       name: 'Overview',
       icon: LayoutGrid,
       modules: [
-        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, path: '/project/list', filter: {} },
-        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'not_started' } },
-        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress' } },
-        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, path: '/project/list', filter: { status: 'completed' } },
-        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, path: '/project/list', filter: { upcoming_due: 'true' } },
-        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, path: '/project/list', filter: { overdue: 'true' } },
-        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billingType: 'fixed_price' } },
-        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { billingType: 'time_based' } },
-        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billing_status: 'billed' } },
-        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { task_billing_status: 'billed' } },
-        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true' } },
-        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false' } },
-        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, path: '/project/list', filter: { is_billable: 'true' } },
-        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { time_logged_cost: 'true' } },
+        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, path: '/project/list', filter: { title: 'All Projects' } },
+        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'not_started', title: 'Not Started Projects' } },
+        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress', title: 'Ongoing Projects' } },
+        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, path: '/project/list', filter: { status: 'completed', title: 'Completed Projects' } },
+        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, path: '/project/list', filter: { upcoming_due: 'true', title: 'Upcoming Due Projects' } },
+        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, path: '/project/list', filter: { overdue: 'true', title: 'Overdue Projects' } },
+        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billingType: 'fixed_price', title: 'Fixed Price Projects' } },
+        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { billingType: 'time_based', title: 'Time Based Projects' } },
+        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billing_status: 'billed', title: 'Billed Projects' } },
+        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { task_billing_status: 'billed', title: 'Billed Tasks' } },
+        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true', title: 'Recurring Projects' } },
+        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false', title: 'One-Time Projects' } },
+        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, path: '/project/list', filter: { is_billable: 'true', title: 'Billable Tasks' } },
+        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, path: '/project/reports/time-logs', filter: { title: 'Time Logged Cost Report' } },
       ]
     },
     {
@@ -650,7 +685,7 @@ function Project() {
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
-          <h1 className={`text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-transparent bg-clip-text drop-shadow-lg`}>
+          <h1 className={`text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-transparent bg-clip-clip drop-shadow-lg`}>
             Project Management
           </h1>
           <p className={theme.textSecondary}>
@@ -706,7 +741,7 @@ function Project() {
         <Card className="p-4 bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 border-l-4 border-l-[${theme.hoverAccent}]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Bot size={24} className="text-[${theme.hoverAccent}]" />
+              <Bot size={24} className="mr-2 text-[${theme.hoverAccent}]" />
               <div>
                 <h3 className="font-semibold text-gray-900">AI Project Insights</h3>
                 <p className="text-sm text-gray-600">
@@ -764,22 +799,136 @@ function Project() {
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Summary</h3>
                   <p className={theme.textSecondary}>Key metrics for your projects.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
-                    {projectCategories[0].modules.map((tile, index) => {
-                      const Icon = tile.icon;
-                      const colors = moduleColors[index % moduleColors.length];
-                      const filterParams = new URLSearchParams(tile.filter).toString();
-                      return (
-                        <Link key={index} to={`${tile.path}?${filterParams}`} className="flex">
-                          <ProjectMetricsCard
-                            title={tile.name}
-                            value={tile.value}
-                            description="" // Description is part of the tile name now
-                            icon={Icon}
-                            colorClass={colors.iconBg}
-                          />
-                        </Link>
-                      );
-                    })}
+                    {/* Total Projects */}
+                    <Link to="/project/list" state={{ pageTitle: "All Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Total Projects"
+                        value={projectStats.totalProjects}
+                        description="All projects"
+                        icon={ClipboardCheck}
+                        colorClass="bg-blue-500"
+                      />
+                    </Link>
+                    {/* Not Started */}
+                    <Link to="/project/list?status=not_started" state={{ pageTitle: "Not Started Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Not Started"
+                        value={projectStats.inProgress}
+                        description="Projects not yet started"
+                        icon={Clock}
+                        colorClass="bg-gray-500"
+                      />
+                    </Link>
+                    {/* Ongoing */}
+                    <Link to="/project/list?status=in_progress" state={{ pageTitle: "Ongoing Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Ongoing"
+                        value={projectStats.inProgress}
+                        description="Projects in progress"
+                        icon={Clock}
+                        colorClass="bg-blue-500"
+                      />
+                    </Link>
+                    {/* Completed */}
+                    <Link to="/project/list?status=completed" state={{ pageTitle: "Completed Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Completed"
+                        value={projectStats.completed}
+                        description="Projects marked as done"
+                        icon={CheckCircle}
+                        colorClass="bg-green-500"
+                      />
+                    </Link>
+                    {/* Upcoming Due */}
+                    <Link to="/project/list?upcoming_due=true" state={{ pageTitle: "Upcoming Due Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Upcoming Due"
+                        value={projectStats.upcomingDue}
+                        description="Projects due in 7 days"
+                        icon={Calendar}
+                        colorClass="bg-orange-500"
+                      />
+                    </Link>
+                    {/* Overdue */}
+                    <Link to="/project/list?overdue=true" state={{ pageTitle: "Overdue Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Overdue"
+                        value={projectStats.overdue}
+                        description="Projects past due date"
+                        icon={AlertTriangle}
+                        colorClass="bg-red-500"
+                      />
+                    </Link>
+                    {/* Fixed Price Value */}
+                    <Link to="/project/list?billingType=fixed_price" state={{ pageTitle: "Fixed Price Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Fixed Price Value"
+                        value={`₹${projectStats.totalFixedPriceValue.toLocaleString()}`}
+                        description="Total fixed price projects"
+                        icon={DollarSign}
+                        colorClass="bg-purple-500"
+                      />
+                    </Link>
+                    {/* Time Based Value */}
+                    <Link to="/project/list?billingType=time_based" state={{ pageTitle: "Time Based Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Time Based Value"
+                        value={`₹${projectStats.totalTimeBasedValue.toLocaleString()}`}
+                        description="Total time based projects"
+                        icon={Clock}
+                        colorClass="bg-teal-500"
+                      />
+                    </Link>
+                    {/* Total Billed */}
+                    <Link to="/project/list?billing_status=billed" state={{ pageTitle: "Billed Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Total Billed"
+                        value={`₹${projectStats.totalBilledAmount.toLocaleString()}`}
+                        description="Amount billed across projects"
+                        icon={DollarSign}
+                        colorClass="bg-emerald-500"
+                      />
+                    </Link>
+                    {/* Billable Tasks */}
+                    <Link to="/project/list?is_billable=true" state={{ pageTitle: "Billable Tasks" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Billable Tasks"
+                        value={projectStats.totalBillableTasks}
+                        description="Total billable tasks"
+                        icon={ClipboardCheck}
+                        colorClass="bg-indigo-500"
+                      />
+                    </Link>
+                    {/* Time Logged Cost */}
+                    <Link to="/project/reports/time-logs" state={{ pageTitle: "Time Logged Cost Report" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Time Logged Cost"
+                        value={`₹${projectStats.totalTimeLoggedCost.toLocaleString()}`}
+                        description="Cost of time logged"
+                        icon={Clock}
+                        colorClass="bg-cyan-500"
+                      />
+                    </Link>
+                    {/* Recurring Projects */}
+                    <Link to="/project/list?isRecurring=true" state={{ pageTitle: "Recurring Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="Recurring Projects"
+                        value={projectStats.recurringJobs}
+                        description="Ongoing recurring projects"
+                        icon={Zap}
+                        colorClass="bg-pink-500"
+                      />
+                    </Link>
+                    {/* One-Time Projects */}
+                    <Link to="/project/list?isRecurring=false" state={{ pageTitle: "One-Time Projects" }} className="flex">
+                      <ProjectMetricsCard
+                        title="One-Time Projects"
+                        value={projectStats.nonRecurring}
+                        description="Non-recurring projects"
+                        icon={Calendar}
+                        colorClass="bg-yellow-500"
+                      />
+                    </Link>
                   </div>
                 </Card>
 
@@ -788,7 +937,7 @@ function Project() {
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Health & Progress</h3>
                   <p className={theme.textSecondary}>Visual insights into project completion and milestone status.</p>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
+                    <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
                     <MilestoneStatusChart data={milestoneStatusData} />
                   </div>
                 </Card>
@@ -869,7 +1018,9 @@ function Project() {
                                 {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency})
                               </p>
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => navigate(`/project/list?isRecurring=true&upcoming_due=true`)}>View</Button>
+                            <Link to={`/project/${job.id}/details`}>
+                              <Button size="sm" variant="outline">View</Button>
+                            </Link>
                           </div>
                         ))
                       )}
@@ -1043,7 +1194,7 @@ function Project() {
                 </div>
                 {/* NEW: Reports Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
+                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
                   <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
                 </div>
               </>
@@ -1095,7 +1246,7 @@ function Project() {
                 {/* NEW: Billing Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                   <BillingStatusChart data={billingStatusData} />
-                  <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
+                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.completed / projectStats.totalProjects * 100) : 0} />
                 </div>
               </>
             )}
