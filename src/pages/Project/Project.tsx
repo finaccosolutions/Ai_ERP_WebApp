@@ -17,7 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'; // NEW: Import Recharts components
 
 // Import Project sub-pages
@@ -37,6 +37,11 @@ import MilestoneStatusChart from '../../components/Project/MilestoneStatusChart'
 import TimeLoggedByEmployeeChart from '../../components/Project/TimeLoggedByEmployeeChart';
 import DocumentTypeDistributionChart from '../../components/Project/DocumentTypeDistributionChart';
 import BillingStatusChart from '../../components/Project/BillingStatusChart';
+
+// NEW: Import Report Pages
+import ProjectPerformanceReportPage from './reports/ProjectPerformanceReportPage';
+import TimeLogReportPage from './reports/TimeLogReportPage';
+import BillingReportPage from './reports/BillingReportPage';
 
 
 interface ProjectData {
@@ -87,7 +92,7 @@ function Project() {
     totalTeamMembers: 0, // Added for Masters tab
     totalDocuments: 0, // Added for Masters tab
   });
-  const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData>>({}); // Changed to single ProjectData
+  const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({}); // Changed to single ProjectData
   const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
@@ -548,6 +553,10 @@ function Project() {
         <Route path="/categories" element={<ProjectCategoryListPage />} />
         <Route path="/categories/new" element={<ProjectCategoryFormPage />} />
         <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} />
+        {/* NEW: Report Routes */}
+        <Route path="/reports/performance" element={<ProjectPerformanceReportPage />} />
+        <Route path="/reports/time-logs" element={<TimeLogReportPage />} />
+        <Route path="/reports/billing" element={<BillingReportPage />} />
       </Routes>
     );
   }
@@ -576,20 +585,20 @@ function Project() {
       name: 'Overview',
       icon: LayoutGrid,
       modules: [
-        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, filter: 'all' },
-        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, filter: 'not_started' },
-        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, filter: 'in_progress' },
-        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, filter: 'completed' },
-        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, filter: 'upcoming_due' },
-        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, filter: 'overdue' },
-        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, filter: 'billingType=fixed_price' },
-        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, filter: 'billingType=time_based' },
-        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, filter: 'billing_status=billed' },
-        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, filter: 'task_billing_status=billed' },
-        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, filter: 'isRecurring=true' },
-        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, filter: 'isRecurring=false' },
-        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, filter: 'is_billable=true' },
-        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, filter: 'time_logged_cost' },
+        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, path: '/project/list', filter: {} },
+        { name: 'Not Started', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'not_started' } },
+        { name: 'Ongoing', value: projectStats.inProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress' } },
+        { name: 'Completed', value: projectStats.completed, icon: CheckCircle, path: '/project/list', filter: { status: 'completed' } },
+        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, path: '/project/list', filter: { upcoming_due: 'true' } },
+        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, path: '/project/list', filter: { overdue: 'true' } },
+        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billingType: 'fixed_price' } },
+        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { billingType: 'time_based' } },
+        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billing_status: 'billed' } },
+        { name: 'Billed Tasks Amount', value: `₹${projectStats.totalBilledTasksAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { task_billing_status: 'billed' } },
+        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true' } },
+        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false' } },
+        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, path: '/project/list', filter: { is_billable: 'true' } },
+        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { time_logged_cost: 'true' } },
       ]
     },
     {
@@ -602,6 +611,7 @@ function Project() {
         { name: 'Tasks', description: 'Manage all tasks across projects.', icon: FileText, path: '/project/all-tasks', count: projectStats.totalTasks },
         { name: 'Milestones', description: 'Track key project milestones.', icon: Flag, path: '/project/milestones', count: projectStats.totalMilestones },
         { name: 'Team Members', description: 'Manage project team members.', icon: Users, path: '/project/team-members', count: projectStats.totalTeamMembers },
+        { name: 'Documents', description: 'Manage project documents.', icon: FileText, path: '/project/documents', count: projectStats.totalDocuments },
       ]
     },
     {
@@ -634,25 +644,6 @@ function Project() {
       case 'billing': return 'border-emerald-500';
       default: return theme.borderColor;
     }
-  };
-
-  // NEW: Custom Tooltip for Recharts
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className={`
-          ${theme.cardBg} border ${theme.borderColor} rounded-lg p-3 shadow-lg
-        `}>
-          {label && <p className={`${theme.textPrimary} font-medium mb-1`}>{label}</p>}
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -776,8 +767,9 @@ function Project() {
                     {projectCategories[0].modules.map((tile, index) => {
                       const Icon = tile.icon;
                       const colors = moduleColors[index % moduleColors.length];
+                      const filterParams = new URLSearchParams(tile.filter).toString();
                       return (
-                        <Link key={index} to={`/project/list?status=${tile.filter}`} className="flex">
+                        <Link key={index} to={`${tile.path}?${filterParams}`} className="flex">
                           <ProjectMetricsCard
                             title={tile.name}
                             value={tile.value}
@@ -796,7 +788,7 @@ function Project() {
                   <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Health & Progress</h3>
                   <p className={theme.textSecondary}>Visual insights into project completion and milestone status.</p>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
+                    <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
                     <MilestoneStatusChart data={milestoneStatusData} />
                   </div>
                 </Card>
@@ -877,7 +869,7 @@ function Project() {
                                 {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency})
                               </p>
                             </div>
-                            <Button size="sm" variant="outline">View</Button>
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/project/list?isRecurring=true&upcoming_due=true`)}>View</Button>
                           </div>
                         ))
                       )}
@@ -890,7 +882,7 @@ function Project() {
                       className={`text-lg font-semibold ${theme.textPrimary} flex items-center mb-4`}
                     >
                       <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      AI Recurring Job Insights
+                      AI Project Insights
                       <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
                     </h3>
                     <Button
@@ -899,7 +891,6 @@ function Project() {
                       onClick={() =>
                         currentCompany?.id && generateAIInsights(currentCompany.id)
                       }
-                      disabled={refreshingInsights}
                       icon={
                         <RefreshCw
                           size={16}
@@ -999,12 +990,10 @@ function Project() {
                     );
                   })}
                 </div>
-                {/* NEW: Masters Tab Charts */}
+                {/* NEW: Masters Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
-                  <MilestoneStatusChart data={milestoneStatusData} />
-                  <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
                   <DocumentTypeDistributionChart data={documentTypeDistributionData} />
+                  <MilestoneStatusChart data={milestoneStatusData} /> {/* Added Milestone Status Chart */}
                 </div>
               </>
             )}
@@ -1052,10 +1041,10 @@ function Project() {
                     );
                   })}
                 </div>
-                {/* NEW: Reports Tab Charts */}
+                {/* NEW: Reports Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ProjectProgressChart completedPercentage={projectStats.projects_completed / projectStats.totalProjects * 100 || 0} />
-                  <MilestoneStatusChart data={milestoneStatusData} />
+                  <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
+                  <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
                 </div>
               </>
             )}
@@ -1103,9 +1092,10 @@ function Project() {
                     );
                   })}
                 </div>
-                {/* NEW: Billing Tab Charts */}
+                {/* NEW: Billing Tab Charts - Different charts for this section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                   <BillingStatusChart data={billingStatusData} />
+                  <ProjectProgressChart completedPercentage={projectStats.completed / projectStats.totalProjects * 100 || 0} />
                 </div>
               </>
             )}
