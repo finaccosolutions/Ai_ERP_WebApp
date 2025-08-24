@@ -10,11 +10,11 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
-import ItemCategoryFilterModal from '../../components/Modals/ItemCategoryFilterModal'; // Import the new filter modal
+import ItemCategoryFilterModal from '../../components/Modals/ItemCategoryFilterModal';
 
-interface ProjectCategory { // Changed from ItemCategory
+interface ProjectCategory {
   id: string;
   name: string;
   description: string | null;
@@ -22,18 +22,26 @@ interface ProjectCategory { // Changed from ItemCategory
   is_active: boolean;
   created_at: string;
   // Joined data
-  parent_category?: { name: string } | null; // Corrected to parent_category
-  parent_category_name?: string; // Add a field for the resolved parent name
+  parent_category?: { name: string } | null;
+  parent_category_name?: string;
 }
+
+// Move numResultsOptions outside the component function
+const numResultsOptions = [
+  { id: '10', name: 'Show 10' },
+  { id: '25', name: 'Show 25' },
+  { id: '50', name: 'Show 50' },
+  { id: 'all', name: `Show All` }, // Will update count dynamically
+];
 
 function ProjectCategoryListPage() {
   const { theme } = useTheme();
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const location = useLocation(); // Use useLocation to get state
+  const location = useLocation();
 
-  const [categories, setCategories] = useState<ProjectCategory[]>([]); // Changed to ProjectCategory
+  const [categories, setCategories] = useState<ProjectCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalCategoriesCount, setTotalCategoriesCount] = useState(0);
@@ -57,9 +65,9 @@ function ProjectCategoryListPage() {
     parentCategoryId: '',
     isActive: 'all',
   });
-  const [numResultsToShow, setNumResultsToShow] = useState<string>('10'); // Default to 10
+  const [numCategoriesToShow, setNumCategoriesToShow] = useState<string>('10');
 
-  // NEW: State for dynamic page title
+  // State for dynamic page title
   const [pageTitle, setPageTitle] = useState("Project Categories");
 
   useEffect(() => {
@@ -73,17 +81,17 @@ function ProjectCategoryListPage() {
     } else {
       setPageTitle("Project Categories"); // Default title
     }
-  }, [currentCompany?.id, filterCriteria, numResultsToShow, searchTerm, location.state]);
+  }, [currentCompany?.id, filterCriteria, numCategoriesToShow, searchTerm, location.state]);
 
   const fetchCategories = async () => {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
       let query = supabase
-        .from('project_categories') // Changed from item_categories
+        .from('project_categories')
         .select(`
           *,
-          parent_category:project_categories ( name ) // Corrected to parent_category
+          parent_category:project_categories ( name )
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -108,27 +116,28 @@ function ProjectCategoryListPage() {
 
       query = query.order('name', { ascending: true });
 
-      if (numResultsToShow !== 'all') {
-        query = query.limit(parseInt(numResultsToShow));
+      if (numCategoriesToShow !== 'all') {
+        query = query.limit(parseInt(numCategoriesToShow));
       }
 
       const { data, error, count } = await query;
 
       if (error) throw error;
 
-      // Manually resolve parent category names since direct nested select failed
+      // Manually resolve parent category names since direct nested select might not always work as expected
+      // (though the syntax 'parent_category:project_categories ( name )' is generally correct for Supabase)
       const categoriesWithParentNames = (data || []).map(cat => ({
         ...cat,
-        parent_category_name: cat.parent_category_id 
-          ? (data.find(p => p.id === cat.parent_category_id)?.name || 'N/A') 
+        parent_category_name: cat.parent_category_id
+          ? (cat.parent_category?.name || 'N/A') // Use the joined data if available
           : 'N/A'
       }));
 
       setCategories(categoriesWithParentNames);
       setTotalCategoriesCount(count || 0);
     } catch (err: any) {
-      showNotification(`Error fetching project categories: ${err.message}`, 'error'); // Changed notification
-      console.error('Error fetching project categories:', err); // Changed error message
+      showNotification(`Error fetching project categories: ${err.message}`, 'error');
+      console.error('Error fetching project categories:', err);
     } finally {
       setLoading(false);
     }
@@ -160,7 +169,7 @@ function ProjectCategoryListPage() {
     e.preventDefault();
     if (!validateForm()) return;
     if (!currentCompany?.id) {
-      showNotification('Company information is missing.', 'error');
+      showNotification('Company information is missing. Please select a company.', 'error');
       return;
     }
 
@@ -176,30 +185,44 @@ function ProjectCategoryListPage() {
 
       if (formData.id) {
         const { error } = await supabase
-          .from('project_categories') // Changed from item_categories
+          .from('project_categories')
           .update(categoryToSave)
           .eq('id', formData.id);
         if (error) throw error;
-        showNotification('Project category updated successfully!', 'success'); // Changed notification
+        showNotification('Project category updated successfully!', 'success');
       } else {
-        const { error } = await supabase
-          .from('project_categories') // Changed from item_categories
-          .insert(categoryToSave);
+        const { data, error } = await supabase
+          .from('project_categories')
+          .insert(categoryToSave)
+          .select('id, name')
+          .single();
         if (error) throw error;
-        showNotification('Project category created successfully!', 'success'); // Changed notification
+        showNotification('Project category created successfully!', 'success');
+
+        if (location.state?.fromProjectForm && location.state?.returnPath) {
+          navigate(location.state.returnPath, {
+            replace: true,
+            state: {
+              createdCategoryId: data.id,
+              createdCategoryName: data.name,
+              projectFormData: location.state.projectFormData,
+              fromProjectCategoryCreation: true
+            }
+          });
+          return;
+        }
       }
-      setViewMode('list');
+      navigate('/project/categories');
       resetForm();
-      fetchCategories();
     } catch (err: any) {
-      showNotification(`Failed to save project category: ${err.message}`, 'error'); // Changed notification
-      console.error('Save project category error:', err); // Changed error message
+      showNotification(`Failed to save project category: ${err.message}`, 'error');
+      console.error('Save project category error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditCategory = (category: ProjectCategory) => { // Changed to ProjectCategory
+  const handleEditCategory = (category: ProjectCategory) => {
     setFormData({
       id: category.id,
       name: category.name,
@@ -221,45 +244,43 @@ function ProjectCategoryListPage() {
     setShowDeleteConfirm(false);
     setLoading(true);
     try {
-      // Check if any items are linked to this category
       const { count: linkedProjectsCount, error: projectsCountError } = await supabase
-        .from('projects') // Changed from items
+        .from('projects')
         .select('count', { count: 'exact', head: true })
-        .eq('project_category_id', categoryToDeleteId); // Changed category_id to project_category_id
+        .eq('project_category_id', categoryToDeleteId);
 
       if (projectsCountError) throw projectsCountError;
 
       if (linkedProjectsCount && linkedProjectsCount > 0) {
-        showNotification(`Cannot delete category: ${linkedProjectsCount} project(s) are linked to it. Please reassign them first.`, 'error'); // Changed notification
+        showNotification(`Cannot delete category: ${linkedProjectsCount} project(s) are linked to it. Please reassign them first.`, 'error');
         setLoading(false);
         return;
       }
 
-      // Check if any other categories use this as a parent
       const { count: childCategoriesCount, error: childCountError } = await supabase
-        .from('project_categories') // Changed from item_categories
+        .from('project_categories')
         .select('count', { count: 'exact', head: true })
         .eq('parent_category_id', categoryToDeleteId);
 
       if (childCountError) throw childCountError;
 
       if (childCategoriesCount && childCategoriesCount > 0) {
-        showNotification(`Cannot delete category: ${childCategoriesCount} sub-category(s) are linked to it. Please reassign them first.`, 'error'); // Changed notification
+        showNotification(`Cannot delete category: ${childCategoriesCount} sub-category(s) are linked to it. Please reassign them first.`, 'error');
         setLoading(false);
         return;
       }
 
       const { error } = await supabase
-        .from('project_categories') // Changed from item_categories
+        .from('project_categories')
         .delete()
         .eq('id', categoryToDeleteId);
 
       if (error) throw error;
-      showNotification('Project category deleted successfully!', 'success'); // Changed notification
+      showNotification('Project category deleted successfully!', 'success');
       fetchCategories();
     } catch (err: any) {
-      showNotification(`Error deleting project category: ${err.message}`, 'error'); // Changed notification
-      console.error('Error deleting project category:', err); // Changed error message
+      showNotification(`Error deleting project category: ${err.message}`, 'error');
+      console.error('Error deleting project category:', err);
     } finally {
       setLoading(false);
       setCategoryToDeleteId(null);
@@ -271,12 +292,8 @@ function ProjectCategoryListPage() {
     setShowFilterModal(false);
   };
 
-  const numResultsOptions = [
-    { id: '10', name: 'Show 10' },
-    { id: '25', name: 'Show 25' },
-    { id: '50', name: 'Show 50' },
-    { id: 'all', name: `Show All (${totalCategoriesCount})` },
-  ];
+  // Update numResultsOptions to dynamically show total count
+  numResultsOptions[numResultsOptions.length - 1].name = `Show All (${totalCategoriesCount})`;
 
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
@@ -290,7 +307,7 @@ function ProjectCategoryListPage() {
               {viewMode === 'create' ? 'Define a new way to organize your items.' : 'Update item category or group details.'}
             </p>
           </div>
-          <Button variant="outline" onClick={() => setViewMode('list')} icon={<ArrowLeft size={16} />}>
+          <Button variant="outline" onClick={() => { setViewMode('list'); resetForm(); }} icon={<ArrowLeft size={16} />}>
             Back to List
           </Button>
         </div>
@@ -315,7 +332,7 @@ function ProjectCategoryListPage() {
               <MasterSelectField
                 label="Parent Category/Group"
                 value={categories.find(cat => cat.id === formData.parentCategoryId)?.name || ''}
-                onValueChange={(val) => {}}
+                onValueChange={() => {}}
                 onSelect={(id) => handleInputChange('parentCategoryId', id)}
                 options={categories.filter(cat => cat.id !== formData.id)} // Cannot be its own parent
                 placeholder="Select Parent (Optional)"
@@ -328,7 +345,7 @@ function ProjectCategoryListPage() {
           </Card>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+            <Button type="button" variant="outline" onClick={() => { setViewMode('list'); resetForm(); }}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading} icon={<Save size={16} />}>
@@ -344,11 +361,11 @@ function ProjectCategoryListPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>{pageTitle}</h1> {/* Changed title */}
-          <p className={theme.textSecondary}>Organize your inventory items for better management and reporting.</p>
+          <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>Project Categories</h1>
+          <p className={theme.textSecondary}>Organize your projects for better management and reporting.</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/inventory')} icon={<ArrowLeft size={16} />}> {/* Changed navigate path */}
+          <Button variant="outline" onClick={() => navigate('/project')} icon={<ArrowLeft size={16} />}>
             Back
           </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Category Suggestions')} />
@@ -359,7 +376,7 @@ function ProjectCategoryListPage() {
       </div>
 
       <Card className="p-6">
-        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>All Categories / Groups</h3>
+        <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>All Categories</h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
           <div className="relative flex-grow">
             <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -381,10 +398,10 @@ function ProjectCategoryListPage() {
           </Button>
           <MasterSelectField
             label="" // No label needed for this dropdown
-            value={numCategoriesOptions.find(opt => opt.id === numCategoriesToShow)?.name || ''}
-            onValueChange={() => {}} // Not used for typing
+            value={numResultsOptions.find(opt => opt.id === numCategoriesToShow)?.name || ''}
+            onValueChange={() => {}}
             onSelect={(id) => setNumCategoriesToShow(id)}
-            options={numCategoriesOptions}
+            options={numResultsOptions}
             placeholder="Show"
             className="w-32"
           />
@@ -400,7 +417,7 @@ function ProjectCategoryListPage() {
             </div>
           ) : categories.length === 0 ? (
             <div className="flex items-center justify-center h-48 border border-dashed rounded-lg text-gray-500">
-              <p>No project categories or groups found. Create a new one to get started.</p>
+              <p>No project categories found. Create a new one to get started.</p>
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
@@ -418,7 +435,7 @@ function ProjectCategoryListPage() {
                   <tr key={category.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.description || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category_name || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category?.name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)} title="Edit">
@@ -441,7 +458,7 @@ function ProjectCategoryListPage() {
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={confirmDeleteCategory}
         title="Confirm Category Deletion"
-        message="Are you sure you want to delete this item category/group? This action cannot be undone. Items or sub-categories linked to this will need to be reassigned."
+        message="Are you sure you want to delete this project category? This action cannot be undone. Projects or sub-categories linked to this will need to be reassigned."
         confirmText="Yes, Delete Category"
       />
 

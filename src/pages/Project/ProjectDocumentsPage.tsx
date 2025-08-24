@@ -79,7 +79,7 @@ function ProjectDocumentsPage() {
         .from('document_attachments')
         .select(`
           *,
-          uploaded_by_user:user_profiles ( full_name ),
+          uploaded_by:users(user_profiles(full_name)),
           projects ( project_name )
         `, { count: 'exact' })
         .in('reference_id', projectIds) // Filter by project IDs
@@ -92,10 +92,13 @@ function ProjectDocumentsPage() {
 
       query = query.order('created_at', { ascending: false });
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      setDocuments(data || []);
+      setDocuments(data.map(doc => ({
+        ...doc,
+        uploaded_by_user: doc.uploaded_by?.user_profiles || null // Map to the expected structure
+      })) || []);
       setTotalDocumentsCount(count || 0);
 
       // Prepare data for chart

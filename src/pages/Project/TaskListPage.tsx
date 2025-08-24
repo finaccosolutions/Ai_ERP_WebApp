@@ -59,9 +59,9 @@ function TaskListPage() {
   const { currentCompany } = useCompany();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams(); // For URL filters
-  const location = useLocation(); // Use useLocation to get state
+  const { projectId } = useParams<{ projectId: string }>(); // Get projectId directly
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +88,9 @@ function TaskListPage() {
 
   // NEW STATES FOR METRICS AND CHART DATA
   const [taskMetrics, setTaskMetrics] = useState({ total: 0, completed: 0, open: 0, statusDistribution: [] });
+
+  // NEW: State for dynamic page title
+  const [pageTitle, setPageTitle] = useState("Tasks");
 
 
   useEffect(() => {
@@ -138,15 +141,7 @@ function TaskListPage() {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
-      // First, fetch project IDs for the current company
-      const { data: companyProjects, error: projectsError } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('company_id', currentCompany.id);
-
-      if (projectsError) throw projectsError;
-      const projectIds = companyProjects.map(p => p.id);
-
+      // Directly query tasks for the given projectId
       let query = supabase
         .from('tasks')
         .select(
@@ -154,7 +149,7 @@ function TaskListPage() {
           *,
           employees ( first_name, last_name )
         `, { count: 'exact' })
-        .in('project_id', projectIds); // Use the fetched project IDs
+        .eq('project_id', id); // Use the projectId directly
 
       if (searchTerm) {
         query = query.ilike('task_name', `%${searchTerm}%`);
@@ -300,7 +295,6 @@ function TaskListPage() {
   const handleApplyFilters = (newFilters: typeof filterCriteria) => {
     setFilterCriteria(newFilters);
     setShowFilterModal(false);
-    // Update URL search params when filters change
     setSearchParams((prev) => {
       for (const key in newFilters) {
         const value = newFilters[key as keyof typeof newFilters];
@@ -325,7 +319,7 @@ function TaskListPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className={`text-3xl font-bold ${theme.textPrimary}`}>
-            Tasks for {projectDetails?.project_name || 'Project'}
+            Tasks for {projectDetails?.project_name || 'Task'}
           </h1>
           <p className={theme.textSecondary}>
             Manage tasks and track progress for this project.
@@ -477,7 +471,13 @@ function TaskListPage() {
                 {tasks.map((task) => (
                   <tr key={task.id}>
                     <td className="px-3 py-2 whitespace-normal text-sm font-medium text-gray-900 max-w-[150px] overflow-hidden text-ellipsis">
-                      {task.task_name}
+                      <Link
+                        to={`/project/${projectId}/tasks/${task.id}/time-logs`}
+                        state={{ pageTitle: `Time Logs for ${task.task_name}` }}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {task.task_name}
+                      </Link>
                     </td>
                     <td className="px-3 py-2 whitespace-normal text-sm text-gray-500 max-w-[100px] overflow-hidden text-ellipsis">
                       {task.employees
