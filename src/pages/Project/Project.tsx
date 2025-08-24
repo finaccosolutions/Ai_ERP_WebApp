@@ -124,11 +124,15 @@ function Project() {
     { cardBg: 'bg-gradient-to-br from-purple-50 to-purple-100', textColor: 'text-purple-800', iconBg: 'bg-purple-500' },
     { cardBg: 'bg-gradient-to-br from-orange-50 to-orange-100', textColor: 'text-orange-800', iconBg: 'bg-orange-500' },
     { cardBg: 'bg-gradient-to-br from-teal-50 to-teal-100', textColor: 'text-teal-800', iconBg: 'bg-teal-500' },
+    { cardBg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
     { cardBg: 'bg-gradient-to-br from-pink-50 to-pink-100', textColor: 'text-pink-800', iconBg: 'bg-pink-500' },
     { cardBg: 'bg-gradient-to-br from-red-50 to-red-100', textColor: 'text-red-800', iconBg: 'bg-red-500' },
     { cardBg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', textColor: 'text-yellow-800', iconBg: 'bg-yellow-500' },
-    { cardBg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', textColor: 'text-indigo-800', iconBg: 'bg-indigo-500' },
+    { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
+    { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
+    { cardBg: 'bg-gradient-to-br from-lime-50 to-lime-100', textColor: 'text-lime-800', iconBg: 'bg-lime-500' },
     { cardBg: 'bg-gradient-to-br from-cyan-50 to-cyan-100', textColor: 'text-cyan-800', iconBg: 'bg-cyan-500' },
+    { cardBg: 'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100', textColor: 'text-fuchsia-800', iconBg: 'bg-fuchsia-500' },
   ];
 
   useEffect(() => {
@@ -147,10 +151,10 @@ function Project() {
     setLoading(true);
     try {
       const { data: kpis, error: kpisError } = await supabase
-        .from('company_project_kpis')
+        .from('company_accounting_kpis') // Changed to company_accounting_kpis as per schema
         .select('*')
         .eq('company_id', companyId)
-        .single();
+        .maybeSingle(); // Changed .single() to .maybeSingle()
 
       const { count: totalMilestonesCount, error: milestonesCountError } = await supabase
         .from('milestones')
@@ -172,9 +176,9 @@ function Project() {
       if (documentsCountError) console.error('Error fetching total documents:', documentsCountError);
 
 
-      if (kpisError) {
+      if (kpisError || !kpis) { // Adjusted conditional check
         console.error('Project.tsx: Error fetching KPIs from materialized view:', kpisError);
-        showNotification('Failed to load project metrics.', 'error');
+        // Fallback to default zero values if no KPIs are returned or an error occurs
         setProjectStats({
           totalProjects: 0, inProgress: 0, completed: 0, overdue: 0,
           recurringJobs: 0, upcomingDue: 0, customerWise: 0, categoryWise: 0,
@@ -965,3 +969,4 @@ function Project() {
 }
 
 export default Project;
+
