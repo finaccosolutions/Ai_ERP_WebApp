@@ -19,6 +19,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Link, Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'; // NEW: Import Recharts components
+import { useAuth } from '../../hooks/useAuth';
 
 // Import Project sub-pages
 import ProjectListPage from './ProjectListPage';
@@ -29,6 +30,13 @@ import TimeLogPage from './TimeLogPage';
 import ProjectDetailPage from './ProjectDetailPage';
 import ProjectCategoryFormPage from './ProjectCategoryFormPage';
 import ProjectCategoryListPage from './ProjectCategoryListPage';
+import MilestoneListPage from './MilestoneListPage'; // NEW
+import ProjectTeamMembersPage from './ProjectTeamMembersPage'; // NEW
+import ProjectDocumentsPage from './ProjectDocumentsPage'; // NEW
+import ProjectBillingEntriesPage from './ProjectBillingEntriesPage'; // NEW
+import ProjectPerformanceReportPage from './reports/ProjectPerformanceReportPage'; // NEW
+import TimeLogReportPage from './reports/TimeLogReportPage'; // NEW
+import BillingReportPage from './reports/BillingReportPage'; // NEW
 
 // NEW: Import Project-specific components
 import ProjectMetricsCard from '../../components/Project/ProjectMetricsCard';
@@ -37,6 +45,7 @@ import MilestoneStatusChart from '../../components/Project/MilestoneStatusChart'
 import TimeLoggedByEmployeeChart from '../../components/Project/TimeLoggedByEmployeeChart';
 import DocumentTypeDistributionChart from '../../components/Project/DocumentTypeDistributionChart';
 import BillingStatusChart from '../../components/Project/BillingStatusChart';
+import ProjectOverviewContent from './ProjectOverviewContent'; // NEW: Import the new overview content component
 
 
 interface ProjectData {
@@ -65,8 +74,7 @@ function Project() {
   const navigate = useNavigate();
   const { currentCompany, currentPeriod } = useCompany();
   const { showNotification } = useNotification();
-  // Correctly destructure userLoaded from useAuth
-  const { user, isAuthenticated, loading: authLoading, userLoaded } = useAuth(); 
+  const { user, isAuthenticated, loading: authLoading, userLoaded } = useAuth();
 
   const [projectStats, setProjectStats] = useState({
     totalProjects: 0,
@@ -84,10 +92,10 @@ function Project() {
     totalBillableTasks: 0,
     totalBilledTasksAmount: 0,
     totalTimeLoggedCost: 0,
-    totalTasks: 0, // Added for Masters tab
-    totalMilestones: 0, // Added for Masters tab
-    totalTeamMembers: 0, // Added for Masters tab
-    totalDocuments: 0, // Added for Masters tab
+    totalTasks: 0,
+    totalMilestones: 0,
+    totalTeamMembers: 0,
+    totalDocuments: 0,
   });
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
@@ -124,17 +132,16 @@ function Project() {
   ];
 
   useEffect(() => {
-    // Add userLoaded to the dependency array
     if (!authLoading && isAuthenticated && userLoaded && currentCompany?.id && currentPeriod?.id) {
       fetchProjectData(currentCompany.id, currentPeriod.startDate, currentPeriod.endDate);
       fetchUpcomingRecurringJobs(currentCompany.id);
       fetchProjectsByTypeData(currentCompany.id);
       fetchTimeTrackingTodayData(currentCompany.id);
-      fetchMilestoneStatusData(currentCompany.id); // NEW
-      fetchBillingStatusData(currentCompany.id); // NEW
-      fetchDocumentTypeDistributionData(currentCompany.id); // NEW
+      fetchMilestoneStatusData(currentCompany.id);
+      fetchBillingStatusData(currentCompany.id);
+      fetchDocumentTypeDistributionData(currentCompany.id);
     }
-  }, [currentCompany?.id, currentPeriod?.id, isAuthenticated, authLoading, userLoaded]); // Added userLoaded
+  }, [currentCompany?.id, currentPeriod?.id, isAuthenticated, authLoading, userLoaded]);
 
   const fetchProjectData = async (companyId: string, periodStartDate: string, periodEndDate: string) => {
     setLoading(true);
@@ -145,18 +152,16 @@ function Project() {
         .eq('company_id', companyId)
         .single();
 
-      // Fetch additional counts not in the KPI view
       const { count: totalMilestonesCount, error: milestonesCountError } = await supabase
         .from('milestones')
         .select('id', { count: 'exact', head: true })
-        // Ensure user?.companies is always an array for the .in() filter
-        .in('project_id', user?.companies || []); 
+        .in('project_id', user?.companies || []);
       if (milestonesCountError) console.error('Error fetching total milestones:', milestonesCountError);
 
       const { count: totalTeamMembersCount, error: teamMembersCountError } = await supabase
         .from('project_team_members')
         .select('id', { count: 'exact', head: true })
-        .in('project_id', user?.companies || []); // Ensure user?.companies is always an array
+        .in('project_id', user?.companies || []);
       if (teamMembersCountError) console.error('Error fetching total team members:', teamMembersCountError);
 
       const { count: totalDocumentsCount, error: documentsCountError } = await supabase
@@ -176,20 +181,20 @@ function Project() {
           nonRecurring: 0, totalFixedPriceValue: 0, totalTimeBasedValue: 0,
           totalBilledAmount: 0, totalBillableTasks: 0, totalBilledTasksAmount: 0, totalTimeLoggedCost: 0,
           totalTasks: 0,
-          totalMilestones: totalMilestonesCount || 0, // Use fetched count
-          totalTeamMembers: totalTeamMembersCount || 0, // Use fetched count
-          totalDocuments: totalDocumentsCount || 0, // Use fetched count
+          totalMilestones: totalMilestonesCount || 0,
+          totalTeamMembers: totalTeamMembersCount || 0,
+          totalDocuments: totalDocumentsCount || 0,
         });
       } else {
         setProjectStats({
           totalProjects: kpis?.total_projects || 0,
           inProgress: kpis?.projects_in_progress || 0,
           completed: kpis?.projects_completed || 0,
-          overdue: 0, // Will be calculated below
+          overdue: 0,
           recurringJobs: kpis?.total_recurring_projects || 0,
-          upcomingDue: 0, // Will be calculated below
-          customerWise: 0, // Not directly from KPI view
-          categoryWise: 0, // Not directly from KPI view
+          upcomingDue: 0,
+          customerWise: 0,
+          categoryWise: 0,
           nonRecurring: kpis?.total_one_time_projects || 0,
           totalFixedPriceValue: kpis?.total_fixed_price_value || 0,
           totalTimeBasedValue: kpis?.total_time_based_value || 0,
@@ -198,9 +203,9 @@ function Project() {
           totalBilledTasksAmount: kpis?.total_billed_tasks_amount || 0,
           totalTimeLoggedCost: kpis?.total_time_logged_cost || 0,
           totalTasks: kpis?.total_tasks || 0,
-          totalMilestones: totalMilestonesCount || 0, // Use fetched count
-          totalTeamMembers: totalTeamMembersCount || 0, // Use fetched count
-          totalDocuments: totalDocumentsCount || 0, // Use fetched count
+          totalMilestones: totalMilestonesCount || 0,
+          totalTeamMembers: totalTeamMembersCount || 0,
+          totalDocuments: totalDocumentsCount || 0,
         });
       }
 
@@ -336,7 +341,7 @@ function Project() {
           employees ( first_name, last_name )
         `)
         .gte('start_time', today)
-        .lte('start_time', `${today}T23:59:59.999Z`); // End of today
+        .lte('start_time', `${today}T23:59:59.999Z`);
 
       if (error) throw error;
 
@@ -348,7 +353,7 @@ function Project() {
 
       const formattedTimeData = Object.keys(employeeTime).map(name => ({
         name: name,
-        hours: parseFloat((employeeTime[name] / 60).toFixed(1)), // Convert minutes to hours
+        hours: parseFloat((employeeTime[name] / 60).toFixed(1)),
       }));
 
       setTimeTrackingTodayData(formattedTimeData);
@@ -357,10 +362,8 @@ function Project() {
     }
   };
 
-  // NEW: Fetch Milestone Status Data
   const fetchMilestoneStatusData = async (companyId: string) => {
     try {
-      // First, get all project IDs for the company
       const { data: projectIdsData, error: projectsError } = await supabase
         .from('projects')
         .select('id')
@@ -370,14 +373,14 @@ function Project() {
       const projectIds = projectIdsData.map(p => p.id);
 
       if (projectIds.length === 0) {
-        setMilestoneStatusData([]); // No projects, no milestones
+        setMilestoneStatusData([]);
         return;
       }
 
       const { data, error } = await supabase
         .from('milestones')
         .select('status')
-        .in('project_id', projectIds); // Use the array of IDs
+        .in('project_id', projectIds);
 
       if (error) throw error;
 
@@ -397,7 +400,6 @@ function Project() {
     }
   };
 
-  // NEW: Fetch Billing Status Data
   const fetchBillingStatusData = async (companyId: string) => {
     try {
       const { data, error } = await supabase
@@ -419,7 +421,7 @@ function Project() {
         } else if (project.billing_status === 'partially_billed') {
           billingStatusTotals['partially_billed'] += project.total_billed_amount || 0;
         } else {
-          billingStatusTotals['not_billed'] += project.expected_value || 0; // For not billed, use expected value
+          billingStatusTotals['not_billed'] += project.expected_value || 0;
         }
       });
 
@@ -433,7 +435,6 @@ function Project() {
     }
   };
 
-  // NEW: Fetch Document Type Distribution Data
   const fetchDocumentTypeDistributionData = async (companyId: string) => {
     try {
       const { data, error } = await supabase
@@ -459,7 +460,7 @@ function Project() {
     }
   };
 
-  const generateAIInsights = async (companyId: string) => {
+  const generateAIInsights = async () => {
     setRefreshingInsights(true);
     try {
       const insights = {
@@ -491,34 +492,6 @@ function Project() {
     } finally {
       setRefreshingInsights(false);
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'not_started': return 'bg-gray-100 text-gray-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'waiting_for_client': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'billed': return 'bg-purple-100 text-purple-800';
-      case 'closed': return 'bg-emerald-100 text-emerald-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getProgressBarColor = (percentage: number) => {
-    if (percentage < 30) return 'bg-red-500';
-    if (percentage < 70) return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
-
-  const calculateDaysLeft = (dueDate: string) => {
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
-    if (diffDays === 0) return 'Due today';
-    return `${diffDays} days left`;
   };
 
   const getInsightIcon = (type: string) => {
@@ -564,74 +537,15 @@ function Project() {
 
   // Check if we are on the main Project dashboard page
   const isMainProjectPage = location.pathname === '/project' || location.pathname === '/project/';
+  console.log("Project.tsx: isMainProjectPage =", isMainProjectPage, "Current Path:", location.pathname);
 
-  // Conditional rendering for routing
-  if (!isMainProjectPage) {
-    return (
-      <Routes>
-        <Route path="/" element={<ProjectSummaryPage />} /> {/* Default to summary page */}
-        <Route path="/list" element={<ProjectListPage />} />
-        <Route path="/new" element={<ProjectFormPage />} />
-        <Route path="/edit/:id" element={<ProjectFormPage />} />
-        <Route path="/:projectId/details" element={<ProjectDetailPage />} />
-        <Route path="/:projectId/tasks" element={<TaskListPage />} />
-        <Route path="/:projectId/tasks/new" element={<TaskFormPage />} />
-        <Route path="/:projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
-        <Route path="/:projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
-        <Route path="/categories" element={<ProjectCategoryListPage />} />
-        <Route path="/categories/new" element={<ProjectCategoryFormPage />} />
-        <Route path="/categories/edit/:id" element={<ProjectCategoryFormPage />} />
-        {/* NEW: Master Pages Routes */}
-        <Route path="/milestones" element={<MilestoneListPage />} />
-        <Route path="/team-members" element={<ProjectTeamMembersPage />} />
-        <Route path="/documents" element={<ProjectDocumentsPage />} />
-        <Route path="/billing/entries" element={<ProjectBillingEntriesPage />} />
-        {/* NEW: Report Routes */}
-        <Route path="/reports/performance" element={<ProjectPerformanceReportPage />} />
-        <Route path="/reports/time-logs" element={<TimeLogReportPage />} />
-        <Route path="/reports/billing" element={<BillingReportPage />} />
-      </Routes>
-    );
-  }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
-      </div>
-    );
-  }
-
-  const projectKanbanStatuses = [
-    { id: 'not_started', name: 'Not Started' },
-    { id: 'in_progress', name: 'In Progress' },
-    { id: 'waiting_for_client', name: 'Waiting for Client' },
-    { id: 'completed', name: 'Completed' },
-    { id: 'billed', name: 'Billed' },
-    { id: 'closed', name: 'Closed' },
-  ];
-
-  // NEW: Project Categories for tab navigation
   const projectCategories = [
     {
       id: 'overview',
       name: 'Overview',
       icon: LayoutGrid,
-      modules: [
-        { name: 'Total Projects', value: projectStats.totalProjects, icon: ClipboardCheck, path: '/project/list', filter: { title: 'All Projects' } },
-        { name: 'Not Started', value: projectStats.projectsNotStarted, icon: Clock, path: '/project/list', filter: { status: 'not_started', title: 'Not Started Projects' } },
-        { name: 'Ongoing', value: projectStats.projectsInProgress, icon: Clock, path: '/project/list', filter: { status: 'in_progress', title: 'Ongoing Projects' } },
-        { name: 'Completed', value: projectStats.projectsCompleted, icon: CheckCircle, path: '/project/list', filter: { status: 'completed', title: 'Completed Projects' } },
-        { name: 'Upcoming Due', value: projectStats.upcomingDue, icon: Calendar, path: '/project/list', filter: { upcoming_due: 'true', title: 'Upcoming Due Projects' } },
-        { name: 'Overdue', value: projectStats.overdue, icon: AlertTriangle, path: '/project/list', filter: { overdue: 'true', title: 'Overdue Projects' } },
-        { name: 'Fixed Price Value', value: `₹${projectStats.totalFixedPriceValue.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billingType: 'fixed_price', title: 'Fixed Price Projects' } },
-        { name: 'Time Based Value', value: `₹${projectStats.totalTimeBasedValue.toLocaleString()}`, icon: Clock, path: '/project/list', filter: { billingType: 'time_based', title: 'Time Based Projects' } },
-        { name: 'Total Billed', value: `₹${projectStats.totalBilledAmount.toLocaleString()}`, icon: DollarSign, path: '/project/list', filter: { billing_status: 'billed', title: 'Billed Projects' } },
-        { name: 'Billable Tasks', value: projectStats.totalBillableTasks, icon: ClipboardCheck, path: '/project/list', filter: { is_billable: 'true', title: 'Billable Tasks' } },
-        { name: 'Time Logged Cost', value: `₹${projectStats.totalTimeLoggedCost.toLocaleString()}`, icon: Clock, path: '/project/reports/time-logs', filter: { title: 'Time Logged Cost Report' } },
-        { name: 'Recurring Projects', value: projectStats.recurringJobs, icon: Zap, path: '/project/list', filter: { isRecurring: 'true', title: 'Recurring Projects' } },
-        { name: 'One-Time Projects', value: projectStats.nonRecurring, icon: Calendar, path: '/project/list', filter: { isRecurring: 'false', title: 'One-Time Projects' } },
-      ]
+      modules: [], // Content handled by ProjectOverviewContent
     },
     {
       id: 'masters',
@@ -662,8 +576,8 @@ function Project() {
       icon: Scale,
       modules: [
         { name: 'Project Billing Entries', description: 'Record project-specific billing.', icon: FileText, path: '/project/billing/entries' },
-        { name: 'Generate Invoices', description: 'Create invoices from projects/tasks.', icon: FileText, path: '/sales/invoices/create' }, // Links to Sales Invoice creation
-        { name: 'View Invoices', description: 'View all project-related invoices.', icon: FileText, path: '/sales/invoices' }, // Links to Sales Invoices list
+        { name: 'Generate Invoices', description: 'Create invoices from projects/tasks.', icon: FileText, path: '/sales/invoices/create' },
+        { name: 'View Invoices', description: 'View all project-related invoices.', icon: FileText, path: '/sales/invoices' },
       ]
     }
   ];
@@ -678,11 +592,45 @@ function Project() {
     }
   };
 
+  // Conditional rendering for routing
+  if (!isMainProjectPage) {
+    return (
+      <Routes>
+        <Route path="list" element={<ProjectListPage />} />
+        <Route path="new" element={<ProjectFormPage />} />
+        <Route path="edit/:id" element={<ProjectFormPage />} />
+        <Route path=":projectId/details" element={<ProjectDetailPage />} />
+        <Route path=":projectId/tasks" element={<TaskListPage />} />
+        <Route path=":projectId/tasks/new" element={<TaskFormPage />} />
+        <Route path=":projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
+        <Route path=":projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
+        <Route path="categories" element={<ProjectCategoryListPage />} />
+        <Route path="categories/new" element={<ProjectCategoryFormPage />} />
+        <Route path="categories/edit/:id" element={<ProjectCategoryFormPage />} />
+        <Route path="milestones" element={<MilestoneListPage />} />
+        <Route path="team-members" element={<ProjectTeamMembersPage />} />
+        <Route path="documents" element={<ProjectDocumentsPage />} />
+        <Route path="billing/entries" element={<ProjectBillingEntriesPage />} />
+        <Route path="reports/performance" element={<ProjectPerformanceReportPage />} />
+        <Route path="reports/time-logs" element={<TimeLogReportPage />} />
+        <Route path="reports/billing" element={<BillingReportPage />} />
+      </Routes>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[${theme.hoverAccent}]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
         <div>
-          <h1 className={`text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-transparent bg-clip-clip drop-shadow-lg`}>
+          <h1 className={`text-3xl font-bold text-gray-900`}> {/* Removed background color classes */}
             Project Management
           </h1>
           <p className={theme.textSecondary}>
@@ -790,306 +738,21 @@ function Project() {
             <p className={theme.textSecondary}>Explore {category.name.toLowerCase()} modules.</p>
 
             {category.id === 'overview' && (
-              <>
-                {/* Project Summary Section */}
-                <Card className="p-6 mb-6">
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Summary</h3>
-                  <p className={theme.textSecondary}>Key metrics for your projects.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
-                    {/* Total Projects */}
-                    <Link to="/project/list" state={{ pageTitle: "All Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Total Projects"
-                        value={projectStats.totalProjects}
-                        description="All projects"
-                        icon={ClipboardCheck}
-                        colorClass="bg-blue-500"
-                      />
-                    </Link>
-                    {/* Not Started */}
-                    <Link to="/project/list?status=not_started" state={{ pageTitle: "Not Started Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Not Started"
-                        value={projectStats.projectsNotStarted}
-                        description="Projects not yet started"
-                        icon={Clock}
-                        colorClass="bg-gray-500"
-                      />
-                    </Link>
-                    {/* Ongoing */}
-                    <Link to="/project/list?status=in_progress" state={{ pageTitle: "Ongoing Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Ongoing"
-                        value={projectStats.projectsInProgress}
-                        description="Projects in progress"
-                        icon={Clock}
-                        colorClass="bg-blue-500"
-                      />
-                    </Link>
-                    {/* Completed */}
-                    <Link to="/project/list?status=completed" state={{ pageTitle: "Completed Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Completed"
-                        value={projectStats.projectsCompleted}
-                        description="Projects marked as done"
-                        icon={CheckCircle}
-                        colorClass="bg-green-500"
-                      />
-                    </Link>
-                    {/* Upcoming Due */}
-                    <Link to="/project/list?upcoming_due=true" state={{ pageTitle: "Upcoming Due Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Upcoming Due"
-                        value={projectStats.upcomingDue}
-                        description="Projects due in 7 days"
-                        icon={Calendar}
-                        colorClass="bg-orange-500"
-                      />
-                    </Link>
-                    {/* Overdue */}
-                    <Link to="/project/list?overdue=true" state={{ pageTitle: "Overdue Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Overdue"
-                        value={projectStats.overdue}
-                        description="Projects past due date"
-                        icon={AlertTriangle}
-                        colorClass="bg-red-500"
-                      />
-                    </Link>
-                    {/* Fixed Price Value */}
-                    <Link to="/project/list?billingType=fixed_price" state={{ pageTitle: "Fixed Price Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Fixed Price Value"
-                        value={`₹${projectStats.totalFixedPriceValue.toLocaleString()}`}
-                        description="Total fixed price projects"
-                        icon={DollarSign}
-                        colorClass="bg-purple-500"
-                      />
-                    </Link>
-                    {/* Time Based Value */}
-                    <Link to="/project/list?billingType=time_based" state={{ pageTitle: "Time Based Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Time Based Value"
-                        value={`₹${projectStats.totalTimeBasedValue.toLocaleString()}`}
-                        description="Total time based projects"
-                        icon={Clock}
-                        colorClass="bg-teal-500"
-                      />
-                    </Link>
-                    {/* Total Billed */}
-                    <Link to="/project/list?billing_status=billed" state={{ pageTitle: "Billed Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Total Billed"
-                        value={`₹${projectStats.totalBilledAmount.toLocaleString()}`}
-                        description="Amount billed across projects"
-                        icon={DollarSign}
-                        colorClass="bg-emerald-500"
-                      />
-                    </Link>
-                    {/* Billable Tasks */}
-                    <Link to="/project/list?is_billable=true" state={{ pageTitle: "Billable Tasks" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Billable Tasks"
-                        value={projectStats.totalBillableTasks}
-                        description="Total billable tasks"
-                        icon={ClipboardCheck}
-                        colorClass="bg-indigo-500"
-                      />
-                    </Link>
-                    {/* Time Logged Cost */}
-                    <Link to="/project/reports/time-logs" state={{ pageTitle: "Time Logged Cost Report" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Time Logged Cost"
-                        value={`₹${projectStats.totalTimeLoggedCost.toLocaleString()}`}
-                        description="Cost of time logged"
-                        icon={Clock}
-                        colorClass="bg-cyan-500"
-                      />
-                    </Link>
-                    {/* Recurring Projects */}
-                    <Link to="/project/list?isRecurring=true" state={{ pageTitle: "Recurring Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="Recurring Projects"
-                        value={projectStats.recurringJobs}
-                        description="Ongoing recurring projects"
-                        icon={Zap}
-                        colorClass="bg-pink-500"
-                      />
-                    </Link>
-                    {/* One-Time Projects */}
-                    <Link to="/project/list?isRecurring=false" state={{ pageTitle: "One-Time Projects" }} className="flex">
-                      <ProjectMetricsCard
-                        title="One-Time Projects"
-                        value={projectStats.nonRecurring}
-                        description="Non-recurring projects"
-                        icon={Calendar}
-                        colorClass="bg-yellow-500"
-                      />
-                    </Link>
-                  </div>
-                </Card>
-
-                {/* Project Health & Progress Section */}
-                <Card className="p-6 mb-6">
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Health & Progress</h3>
-                  <p className={theme.textSecondary}>Visual insights into project completion and milestone status.</p>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
-                    <MilestoneStatusChart data={milestoneStatusData} />
-                  </div>
-                </Card>
-
-                {/* Resource & Financial Insights Section */}
-                <Card className="p-6 mb-6">
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Resource & Financial Insights</h3>
-                  <p className={theme.textSecondary}>Detailed breakdown of time logging and billing status.</p>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
-                    <BillingStatusChart data={billingStatusData} />
-                  </div>
-                </Card>
-
-                {/* Visual Project Pipeline */}
-                <Card className="p-6 mb-6">
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>Project Pipeline</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    {projectKanbanStatuses.map((statusCol, colIndex) => {
-                      const colors = moduleColors[colIndex % moduleColors.length];
-                      return (
-                        <div key={statusCol.id} className={`flex-shrink-0 p-4 rounded-lg shadow-sm ${colors.cardBg}`}>
-                          <h4 className={`font-semibold text-lg mb-3 flex items-center ${colors.textColor}`}>
-                            <span className={`w-3 h-3 rounded-full mr-2 ${colors.iconBg.replace('bg-', 'bg-')}`} />
-                            {statusCol.name} ({kanbanProjects[statusCol.id]?.length || 0})
-                          </h4>
-                          <div className="space-y-3 min-h-[100px]">
-                            {kanbanProjects[statusCol.id]?.slice(0, 5).map(project => (
-                              <Card key={project.id} className="p-3" hover>
-                                <Link to={`/project/${project.id}/details`}>
-                                  <p className="font-medium text-gray-900">{project.project_name}</p>
-                                  <p className="text-sm text-gray-600">{project.customers?.name || 'N/A'}</p>
-                                  <p className="text-xs text-gray-500">{project.project_categories?.name || 'N/A'}</p>
-                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                                    <div className={`${getProgressBarColor(project.progress_percentage || 0)} h-2.5 rounded-full`} style={{ width: `${project.progress_percentage || 0}%` }}></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500 mt-1 block">{project.progress_percentage || 0}% Complete</span>
-                                  {project.actual_due_date && (
-                                    <p className="text-xs text-gray-500 mt-1">Due: {project.actual_due_date} ({calculateDaysLeft(project.actual_due_date)})</p>
-                                  )}
-                                </Link>
-                              </Card>
-                            ))}
-                            {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length === 0 && (
-                              <div className="text-center text-gray-400 text-sm py-8">No projects</div>
-                            )}
-                            {kanbanProjects[statusCol.id] && kanbanProjects[statusCol.id].length > 5 && (
-                              <Link to={`/project/list?status=${statusCol.id}`} className="block text-center text-sm text-blue-600 hover:underline mt-2">
-                                View All ({kanbanProjects[statusCol.id].length})
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-
-                {/* Quick Panels Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  {/* Upcoming Recurring Jobs */}
-                  <Card className="p-6">
-                    <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-4 flex items-center`}>
-                      <Zap size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      Upcoming Recurring Jobs
-                    </h3>
-                    <div className="space-y-3">
-                      {upcomingRecurringJobs.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          No upcoming recurring jobs.
-                        </div>
-                      ) : (
-                        upcomingRecurringJobs.map((job, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium text-gray-900">{job.project_name}</p>
-                              <p className="text-sm text-gray-600">
-                                {job.customers?.name || 'N/A'} • Due: {job.actual_due_date} ({job.project_categories?.recurrence_frequency})
-                              </p>
-                            </div>
-                            <Link to={`/project/${job.id}/details`}>
-                              <Button size="sm" variant="outline">View</Button>
-                            </Link>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* AI Project Insights for Recurring Jobs */}
-                  <Card className="p-6">
-                    <h3
-                      className={`text-lg font-semibold ${theme.textPrimary} flex items-center mb-4`}
-                    >
-                      <Bot size={20} className="mr-2 text-[${theme.hoverAccent}]" />
-                      AI Project Insights
-                      <div className="ml-2 w-2 h-2 bg-[${theme.hoverAccent}] rounded-full animate-pulse" />
-                    </h3>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        currentCompany?.id && generateAIInsights(currentCompany.id)
-                      }
-                      icon={
-                        <RefreshCw
-                          size={16}
-                          className={refreshingInsights ? 'animate-spin' : ''}
-                        />
-                      }
-                    >
-                      {refreshingInsights ? 'Refreshing...' : 'Refresh Insights'}
-                    </Button>
-                    <div className="space-y-4 mt-4">
-                      {aiInsights.length > 0 ? (
-                        aiInsights.map((insight, index) => (
-                          <div
-                            key={index}
-                            className={`
-                              p-3 rounded-2xl border-l-4
-                              ${getImpactColor(insight.impact)}
-                            `}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex items-center space-x-2">
-                                {getInsightIcon(insight.type)}
-                                <h4 className={`font-medium ${theme.textPrimary} text-sm`}>
-                                  {insight.title}
-                                </h4>
-                              </div>
-                              <span
-                                className={`
-                                  px-2 py-1 text-xs rounded-full ${getConfidenceColor(insight.confidence)}
-                                `}
-                              >
-                                {insight.confidence}
-                              </span>
-                            </div>
-                            <p className={`text-sm ${theme.textMuted} mb-3`}>{insight.message}</p>
-                            {insight.actionable && (
-                              <button className="text-xs text-sky-600 hover:text-sky-800 font-medium">
-                                {insight.action || 'View Details'} →
-                              </button>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          No AI insights available. Click "Refresh Insights" to generate.
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                </div>
-              </>
+              <ProjectOverviewContent
+                projectStats={projectStats}
+                loading={loading}
+                aiInsights={aiInsights}
+                refreshingInsights={refreshingInsights}
+                onRefreshInsights={generateAIInsights} // Pass the function as a prop
+                kanbanProjects={kanbanProjects}
+                upcomingRecurringJobs={upcomingRecurringJobs}
+                projectsByTypeData={projectsByTypeData}
+                timeTrackingTodayData={timeTrackingTodayData}
+                milestoneStatusData={milestoneStatusData}
+                billingStatusData={billingStatusData}
+                documentTypeDistributionData={documentTypeDistributionData}
+                isAIEnabled={true}
+              />
             )}
 
             {category.id === 'masters' && (
@@ -1138,11 +801,6 @@ function Project() {
                     );
                   })}
                 </div>
-                {/* NEW: Masters Tab Charts - Different charts for this section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <DocumentTypeDistributionChart data={documentTypeDistributionData} />
-                  <MilestoneStatusChart data={milestoneStatusData} /> {/* Added Milestone Status Chart */}
-                </div>
               </>
             )}
 
@@ -1189,11 +847,6 @@ function Project() {
                     );
                   })}
                 </div>
-                {/* NEW: Reports Tab Charts - Different charts for this section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
-                  <TimeLoggedByEmployeeChart data={timeTrackingTodayData} />
-                </div>
               </>
             )}
 
@@ -1239,11 +892,6 @@ function Project() {
                       </Link>
                     );
                   })}
-                </div>
-                {/* NEW: Billing Tab Charts - Different charts for this section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <BillingStatusChart data={billingStatusData} />
-                  <ProjectProgressChart completedPercentage={projectStats.totalProjects > 0 ? (projectStats.projectsCompleted / projectStats.totalProjects * 100) : 0} />
                 </div>
               </>
             )}
@@ -1292,6 +940,26 @@ function Project() {
           </div>
         )}
       </div>
+      <Routes>
+        <Route path="list" element={<ProjectListPage />} />
+        <Route path="new" element={<ProjectFormPage />} />
+        <Route path="edit/:id" element={<ProjectFormPage />} />
+        <Route path=":projectId/details" element={<ProjectDetailPage />} />
+        <Route path=":projectId/tasks" element={<TaskListPage />} />
+        <Route path=":projectId/tasks/new" element={<TaskFormPage />} />
+        <Route path=":projectId/tasks/edit/:taskId" element={<TaskFormPage />} />
+        <Route path=":projectId/tasks/:taskId/time-logs" element={<TimeLogPage />} />
+        <Route path="categories" element={<ProjectCategoryListPage />} />
+        <Route path="categories/new" element={<ProjectCategoryFormPage />} />
+        <Route path="categories/edit/:id" element={<ProjectCategoryFormPage />} />
+        <Route path="milestones" element={<MilestoneListPage />} />
+        <Route path="team-members" element={<ProjectTeamMembersPage />} />
+        <Route path="documents" element={<ProjectDocumentsPage />} />
+        <Route path="billing/entries" element={<ProjectBillingEntriesPage />} />
+        <Route path="reports/performance" element={<ProjectPerformanceReportPage />} />
+        <Route path="reports/time-logs" element={<TimeLogReportPage />} />
+        <Route path="reports/billing" element={<BillingReportPage />} />
+      </Routes>
     </div>
   );
 }
