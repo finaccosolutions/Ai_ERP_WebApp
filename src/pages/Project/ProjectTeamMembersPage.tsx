@@ -8,7 +8,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import FormField from '../../components/UI/FormField';
 import MasterSelectField from '../../components/UI/MasterSelectField';
@@ -95,6 +95,15 @@ function ProjectTeamMembersPage() {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
+      // First, fetch project IDs for the current company
+      const { data: companyProjects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('company_id', currentCompany.id);
+
+      if (projectsError) throw projectsError;
+      const projectIds = companyProjects.map(p => p.id);
+
       let query = supabase
         .from('project_team_members')
         .select(`
@@ -102,7 +111,7 @@ function ProjectTeamMembersPage() {
           employees ( first_name, last_name, email, hourly_rate ),
           projects ( project_name )
         `, { count: 'exact' })
-        .in('project_id', supabase.from('projects').select('id').eq('company_id', currentCompany.id)); // Filter by company projects
+        .in('project_id', projectIds); // Use the fetched project IDs
 
       if (searchTerm) {
         query = query.ilike('employees.first_name', `%${searchTerm}%`); // Search by employee name

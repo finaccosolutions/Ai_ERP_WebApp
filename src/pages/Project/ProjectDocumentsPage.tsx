@@ -8,7 +8,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import DocumentTypeDistributionChart from '../../components/Project/DocumentTypeDistributionChart'; // Assuming you have this chart
 
@@ -66,6 +66,15 @@ function ProjectDocumentsPage() {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
+      // First, fetch project IDs for the current company
+      const { data: companyProjects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('company_id', currentCompany.id);
+
+      if (projectsError) throw projectsError;
+      const projectIds = companyProjects.map(p => p.id);
+
       let query = supabase
         .from('document_attachments')
         .select(`
@@ -73,6 +82,7 @@ function ProjectDocumentsPage() {
           uploaded_by_user:user_profiles ( full_name ),
           projects ( project_name )
         `, { count: 'exact' })
+        .in('reference_id', projectIds) // Filter by project IDs
         .eq('company_id', currentCompany.id)
         .eq('reference_type', 'project'); // Filter for project documents
 

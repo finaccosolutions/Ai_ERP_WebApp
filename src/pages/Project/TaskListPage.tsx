@@ -25,7 +25,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import TaskListFilterModal from '../../components/Modals/TaskListFilterModal';
 
@@ -61,6 +61,7 @@ function TaskListPage() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams, setSearchParams] = useSearchParams(); // For URL filters
+  const location = useLocation(); // Use useLocation to get state
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,11 +104,18 @@ function TaskListPage() {
     };
     setFilterCriteria(newFilterCriteria);
 
+    // Set dynamic page title from Link state or default
+    if (location.state?.pageTitle) {
+      setPageTitle(location.state.pageTitle);
+    } else {
+      setPageTitle("Tasks"); // Default title
+    }
+
     if (currentCompany?.id && projectId) {
       fetchProjectDetails(projectId);
       fetchTasks(projectId, newFilterCriteria); // Pass the updated filters
     }
-  }, [currentCompany?.id, projectId, searchParams, numResultsToShow, searchTerm]);
+  }, [currentCompany?.id, projectId, searchParams, numResultsToShow, searchTerm, location.state]);
 
   const fetchProjectDetails = async (id: string) => {
     try {
@@ -130,16 +138,23 @@ function TaskListPage() {
     if (!currentCompany?.id) return;
     setLoading(true);
     try {
+      // First, fetch project IDs for the current company
+      const { data: companyProjects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('company_id', currentCompany.id);
+
+      if (projectsError) throw projectsError;
+      const projectIds = companyProjects.map(p => p.id);
+
       let query = supabase
         .from('tasks')
         .select(
           `
           *,
           employees ( first_name, last_name )
-        `,
-          { count: 'exact' }
-        )
-        .eq('project_id', id);
+        `, { count: 'exact' })
+        .in('project_id', projectIds); // Use the fetched project IDs
 
       if (searchTerm) {
         query = query.ilike('task_name', `%${searchTerm}%`);
@@ -295,7 +310,7 @@ function TaskListPage() {
           } else {
             prev.delete(key);
           }
-        } else if (value === 'all' || value === '') {
+        } else if (value === 'all' || value === '' || value === 'false') {
           prev.delete(key);
         } else {
           prev.set(key, value);
@@ -551,7 +566,9 @@ function TaskListPage() {
         onClose={() => setShowFilterModal(false)}
         filters={filterCriteria}
         onApplyFilters={handleApplyFilters}
-        onFilterChange={(key, value) => setFilterCriteria((prev) => ({ ...prev, [key]: value }))}
+        onFilterChange={(key, value) =>
+          setFilterCriteria((prev) => ({ ...prev, [key]: value }))
+        }
       />
     </div>
   );

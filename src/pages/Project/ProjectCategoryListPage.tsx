@@ -10,7 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Link, useNavigate } from 'react-router-dom'; // Import Link
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link
 import ConfirmationModal from '../../components/UI/ConfirmationModal';
 import ItemCategoryFilterModal from '../../components/Modals/ItemCategoryFilterModal'; // Import the new filter modal
 
@@ -23,6 +23,7 @@ interface ProjectCategory { // Changed from ItemCategory
   created_at: string;
   // Joined data
   parent_category?: { name: string } | null; // Corrected to parent_category
+  parent_category_name?: string; // Add a field for the resolved parent name
 }
 
 function ProjectCategoryListPage() {
@@ -81,8 +82,8 @@ function ProjectCategoryListPage() {
       let query = supabase
         .from('project_categories') // Changed from item_categories
         .select(`
-          id, name, description, parent_category_id, is_active, created_at,
-          parent_category:project_categories ( name ) // Corrected join
+          *,
+          parent_category:project_categories ( name ) // Corrected to parent_category
         `, { count: 'exact' })
         .eq('company_id', currentCompany.id);
 
@@ -115,7 +116,15 @@ function ProjectCategoryListPage() {
 
       if (error) throw error;
 
-      setCategories(data || []);
+      // Manually resolve parent category names since direct nested select failed
+      const categoriesWithParentNames = (data || []).map(cat => ({
+        ...cat,
+        parent_category_name: cat.parent_category_id 
+          ? (data.find(p => p.id === cat.parent_category_id)?.name || 'N/A') 
+          : 'N/A'
+      }));
+
+      setCategories(categoriesWithParentNames);
       setTotalCategoriesCount(count || 0);
     } catch (err: any) {
       showNotification(`Error fetching project categories: ${err.message}`, 'error'); // Changed notification
@@ -308,7 +317,7 @@ function ProjectCategoryListPage() {
                 value={categories.find(cat => cat.id === formData.parentCategoryId)?.name || ''}
                 onValueChange={(val) => {}}
                 onSelect={(id) => handleInputChange('parentCategoryId', id)}
-                options={categories.filter(cat => cat.id !== formData.id).map(cat => ({ id: cat.id, name: cat.name }))} // Cannot be its own parent
+                options={categories.filter(cat => cat.id !== formData.id)} // Cannot be its own parent
                 placeholder="Select Parent (Optional)"
               />
               <div className="flex items-center space-x-3">
@@ -339,7 +348,7 @@ function ProjectCategoryListPage() {
           <p className={theme.textSecondary}>Organize your inventory items for better management and reporting.</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/project')} icon={<ArrowLeft size={16} />}> {/* Changed navigate path */}
+          <Button variant="outline" onClick={() => navigate('/inventory')} icon={<ArrowLeft size={16} />}> {/* Changed navigate path */}
             Back
           </Button>
           <AIButton variant="suggest" onSuggest={() => console.log('AI Category Suggestions')} />
@@ -372,10 +381,10 @@ function ProjectCategoryListPage() {
           </Button>
           <MasterSelectField
             label="" // No label needed for this dropdown
-            value={numResultsOptions.find(opt => opt.id === numResultsToShow)?.name || ''}
+            value={numCategoriesOptions.find(opt => opt.id === numCategoriesToShow)?.name || ''}
             onValueChange={() => {}} // Not used for typing
-            onSelect={(id) => setNumResultsToShow(id)}
-            options={numResultsOptions}
+            onSelect={(id) => setNumCategoriesToShow(id)}
+            options={numCategoriesOptions}
             placeholder="Show"
             className="w-32"
           />
@@ -409,7 +418,7 @@ function ProjectCategoryListPage() {
                   <tr key={category.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.description || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category?.name || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.parent_category_name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)} title="Edit">
