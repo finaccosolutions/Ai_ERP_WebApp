@@ -38,17 +38,6 @@ import TimeLoggedByEmployeeChart from '../../components/Project/TimeLoggedByEmpl
 import DocumentTypeDistributionChart from '../../components/Project/DocumentTypeDistributionChart';
 import BillingStatusChart from '../../components/Project/BillingStatusChart';
 
-// NEW: Import Report Pages
-import ProjectPerformanceReportPage from './reports/ProjectPerformanceReportPage';
-import TimeLogReportPage from './reports/TimeLogReportPage';
-import BillingReportPage from './reports/BillingReportPage';
-
-// NEW: Import Master Pages
-import MilestoneListPage from './MilestoneListPage';
-import ProjectTeamMembersPage from './ProjectTeamMembersPage';
-import ProjectDocumentsPage from './ProjectDocumentsPage';
-import ProjectBillingEntriesPage from './ProjectBillingEntriesPage';
-
 
 interface ProjectData {
   id: string;
@@ -76,6 +65,8 @@ function Project() {
   const navigate = useNavigate();
   const { currentCompany, currentPeriod } = useCompany();
   const { showNotification } = useNotification();
+  // Correctly destructure userLoaded from useAuth
+  const { user, isAuthenticated, loading: authLoading, userLoaded } = useAuth(); 
 
   const [projectStats, setProjectStats] = useState({
     totalProjects: 0,
@@ -114,6 +105,11 @@ function Project() {
   const [billingStatusData, setBillingStatusData] = useState<any[]>([]); // NEW
   const [documentTypeDistributionData, setDocumentTypeDistributionData] = useState<any[]>([]); // NEW
 
+  // Declare kanbanProjects and upcomingRecurringJobs states
+  const [kanbanProjects, setKanbanProjects] = useState<Record<string, ProjectData[]>>({});
+  const [upcomingRecurringJobs, setUpcomingRecurringJobs] = useState<any[]>([]);
+
+
   const moduleColors = [
     { cardBg: 'bg-gradient-to-br from-blue-50 to-blue-100', textColor: 'text-blue-800', iconBg: 'bg-blue-500' },
     { cardBg: 'bg-gradient-to-br from-green-50 to-green-100', textColor: 'text-green-800', iconBg: 'bg-green-500' },
@@ -128,7 +124,8 @@ function Project() {
   ];
 
   useEffect(() => {
-    if (currentCompany?.id && currentPeriod?.id) {
+    // Add userLoaded to the dependency array
+    if (!authLoading && isAuthenticated && userLoaded && currentCompany?.id && currentPeriod?.id) {
       fetchProjectData(currentCompany.id, currentPeriod.startDate, currentPeriod.endDate);
       fetchUpcomingRecurringJobs(currentCompany.id);
       fetchProjectsByTypeData(currentCompany.id);
@@ -137,7 +134,7 @@ function Project() {
       fetchBillingStatusData(currentCompany.id); // NEW
       fetchDocumentTypeDistributionData(currentCompany.id); // NEW
     }
-  }, [currentCompany?.id, currentPeriod?.id]);
+  }, [currentCompany?.id, currentPeriod?.id, isAuthenticated, authLoading, userLoaded]); // Added userLoaded
 
   const fetchProjectData = async (companyId: string, periodStartDate: string, periodEndDate: string) => {
     setLoading(true);
@@ -152,13 +149,14 @@ function Project() {
       const { count: totalMilestonesCount, error: milestonesCountError } = await supabase
         .from('milestones')
         .select('id', { count: 'exact', head: true })
-        .in('project_id', supabase.from('projects').select('id').eq('company_id', companyId));
+        // Ensure user?.companies is always an array for the .in() filter
+        .in('project_id', user?.companies || []); 
       if (milestonesCountError) console.error('Error fetching total milestones:', milestonesCountError);
 
       const { count: totalTeamMembersCount, error: teamMembersCountError } = await supabase
         .from('project_team_members')
         .select('id', { count: 'exact', head: true })
-        .in('project_id', supabase.from('projects').select('id').eq('company_id', companyId));
+        .in('project_id', user?.companies || []); // Ensure user?.companies is always an array
       if (teamMembersCountError) console.error('Error fetching total team members:', teamMembersCountError);
 
       const { count: totalDocumentsCount, error: documentsCountError } = await supabase
